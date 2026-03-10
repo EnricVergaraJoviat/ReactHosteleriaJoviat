@@ -26,7 +26,9 @@ function AppShell({ activeView, onNavigate, children }) {
     <div className="app-shell">
       <Header
         logoSrc={joviatLogo}
+        isMenuOpen={isMenuOpen}
         showMenuButton={!isDesktop}
+        onHomeClick={() => handleNavigate('home')}
         onMenuToggle={() => setIsMenuOpen((current) => !current)}
       />
       <div className="app-shell__layout">
