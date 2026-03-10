@@ -1,5 +1,16 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { collection, getDocs } from 'firebase/firestore';
 import App from './App';
+
+jest.mock('./helpers/firebase', () => ({
+  db: {},
+}));
+
+jest.mock('firebase/firestore', () => ({
+  collection: jest.fn(),
+  getDocs: jest.fn(),
+}));
 
 beforeAll(() => {
   Object.defineProperty(window, 'matchMedia', {
@@ -17,6 +28,21 @@ beforeAll(() => {
   });
 });
 
+beforeEach(() => {
+  collection.mockReturnValue('alumni-collection');
+  getDocs.mockResolvedValue({
+    docs: [
+      {
+        id: 'student-1',
+        data: () => ({
+          Name: 'Aina Serra',
+          PhotoURL: 'https://i.pravatar.cc/320?img=12',
+        }),
+      },
+    ],
+  });
+});
+
 test('renders the Joviat home screen', () => {
   render(<App />);
   expect(screen.getByAltText(/logo joviat/i)).toBeInTheDocument();
@@ -25,4 +51,18 @@ test('renders the Joviat home screen', () => {
   expect(
     screen.getByText(/pagina principal en construccio/i)
   ).toBeInTheDocument();
+});
+
+test('navigates to the students screen', async () => {
+  render(<App />);
+  await userEvent.click(
+    screen.getByRole('button', { name: /visualitzar alumnes/i })
+  );
+
+  expect(
+    await screen.findByRole('heading', { name: /llistat d'alumnes/i })
+  ).toBeInTheDocument();
+  expect(await screen.findByText(/aina serra/i)).toBeInTheDocument();
+  expect(collection).toHaveBeenCalledWith({}, 'Alumni');
+  expect(getDocs).toHaveBeenCalledWith('alumni-collection');
 });

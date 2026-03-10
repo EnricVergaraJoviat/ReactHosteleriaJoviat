@@ -1,11 +1,17 @@
 import './Sidebar.css';
 
 const MENU_ITEMS = [
-  'Visualitzar Restaurants',
-  'Visualitzar alumnes',
+  {
+    label: 'Visualitzar Restaurants',
+    view: 'restaurants',
+  },
+  {
+    label: 'Visualitzar alumnes',
+    view: 'students',
+  },
 ];
 
-function Sidebar({ isDesktop, isOpen, onClose }) {
+function Sidebar({ activeView, isDesktop, isOpen, onClose, onNavigate }) {
   const sidebarClassName = isDesktop
     ? 'sidebar sidebar--desktop'
     : `sidebar sidebar--mobile ${isOpen ? 'sidebar--open' : ''}`;
@@ -25,9 +31,15 @@ function Sidebar({ isDesktop, isOpen, onClose }) {
           <p className="sidebar__label">Menu</p>
           <ul className="sidebar__list">
             {MENU_ITEMS.map((item) => (
-              <li key={item}>
-                <button className="sidebar__link" type="button">
-                  {item}
+              <li key={item.view}>
+                <button
+                  className={`sidebar__link ${
+                    activeView === item.view ? 'sidebar__link--active' : ''
+                  }`}
+                  type="button"
+                  onClick={() => onNavigate(item.view)}
+                >
+                  {item.label}
                 </button>
               </li>
             ))}

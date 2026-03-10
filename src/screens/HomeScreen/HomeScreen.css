@@ -1,20 +1,7 @@
-.home-screen {
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at top, rgba(236, 187, 58, 0.2), transparent 30%),
-    linear-gradient(180deg, #f7f1e6 0%, #efe4d2 100%);
-}
-
-.home-screen__layout {
-  display: flex;
-  align-items: stretch;
-}
-
 .home-screen__hero {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 1;
   min-height: calc(100vh - 91px);
   padding: 2rem 1.5rem 4rem;
 }
@@ -49,10 +36,6 @@
 }
 
 @media (max-width: 640px) {
-  .home-screen__layout {
-    display: block;
-  }
-
   .home-screen__hero {
     align-items: flex-start;
     min-height: auto;

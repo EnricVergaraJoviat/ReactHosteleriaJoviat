@@ -43,6 +43,11 @@
   transform: translateX(4px);
 }
 
+.sidebar__link--active {
+  background: #f0dcc1;
+  color: #111111;
+}
+
 .sidebar--desktop {
   width: 280px;
   min-height: calc(100vh - 91px);

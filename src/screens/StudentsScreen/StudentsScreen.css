@@ -1,0 +1,102 @@
+.students-screen {
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+.students-screen__intro {
+  margin: 0 auto 2rem;
+  max-width: 1100px;
+}
+
+.students-screen__eyebrow {
+  margin: 0 0 0.75rem;
+  color: #6d5532;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.students-screen__intro h1 {
+  margin: 0;
+  color: #111111;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 0.95;
+}
+
+.students-screen__description {
+  max-width: 620px;
+  margin: 1rem 0 0;
+  color: #3f372e;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.students-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin: 0 auto;
+  max-width: 1100px;
+}
+
+.students-screen__status {
+  margin: 0 auto 1.5rem;
+  max-width: 1100px;
+  color: #3f372e;
+  font-size: 1rem;
+}
+
+.students-screen__status--error {
+  color: #9f2d2d;
+}
+
+.student-card {
+  overflow: hidden;
+  border: 1px solid rgba(109, 85, 50, 0.12);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 16px 40px rgba(72, 53, 24, 0.09);
+}
+
+.student-card__image-wrap {
+  aspect-ratio: 1 / 1;
+  background: linear-gradient(180deg, #efe6d4 0%, #dbcdb4 100%);
+}
+
+.student-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.student-card__body {
+  padding: 1rem 1rem 1.2rem;
+}
+
+.student-card__label {
+  margin: 0 0 0.35rem;
+  color: #7c6850;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.student-card__body h2 {
+  margin: 0;
+  color: #141414;
+  font-size: 1.2rem;
+}
+
+.student-card__meta {
+  margin: 0.6rem 0 0;
+  color: #5b5348;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 640px) {
+  .students-screen {
+    padding-top: 2rem;
+  }
+}
