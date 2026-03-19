@@ -1,0 +1,265 @@
+.restaurant-detail {
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+.restaurant-detail__header,
+.restaurant-detail__hero,
+.restaurant-detail__panel,
+.restaurant-detail__status {
+  margin: 0 auto;
+  max-width: 1100px;
+}
+
+.restaurant-detail__back {
+  border: 0;
+  border-radius: 999px;
+  background: #111111;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.8rem 1.2rem;
+}
+
+.restaurant-detail__hero {
+  display: grid;
+  grid-template-columns: minmax(220px, 340px) 1fr;
+  gap: 2rem;
+  margin-top: 1.5rem;
+  align-items: end;
+}
+
+.restaurant-detail__photo-wrap {
+  aspect-ratio: 16 / 11;
+  overflow: hidden;
+  border-radius: 32px;
+  background: linear-gradient(180deg, #f3dfd0 0%, #eac9b6 100%);
+  box-shadow: 0 20px 48px rgba(72, 53, 24, 0.14);
+}
+
+.restaurant-detail__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.restaurant-detail__eyebrow {
+  margin: 0 0 0.75rem;
+  color: #8b3d1f;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.restaurant-detail__hero-body h1,
+.restaurant-detail__panel h2 {
+  margin: 0;
+}
+
+.restaurant-detail__hero-body h1 {
+  color: #111111;
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  line-height: 0.95;
+}
+
+.restaurant-detail__address {
+  margin: 0.9rem 0 0;
+  color: #5b5348;
+  line-height: 1.6;
+}
+
+.restaurant-detail__panel {
+  margin-top: 2rem;
+  border: 1px solid rgba(109, 85, 50, 0.12);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 16px 40px rgba(72, 53, 24, 0.09);
+  padding: 1.5rem;
+}
+
+.restaurant-detail__panel-heading p {
+  margin: 0.6rem 0 0;
+  color: #5b5348;
+}
+
+.restaurant-detail__map-wrap {
+  margin-top: 1rem;
+}
+
+.restaurant-detail__map {
+  width: 100%;
+  height: min(420px, 58vh);
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.restaurant-detail__map-empty {
+  margin-top: 1rem;
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  border-radius: 24px;
+  background: #f8f3eb;
+  color: #5b5348;
+  text-align: center;
+}
+
+.restaurant-detail__contacts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.restaurant-detail__contact-item {
+  border-radius: 22px;
+  background: #f8f3eb;
+  padding: 1rem 1.1rem;
+}
+
+.restaurant-detail__contact-label {
+  margin: 0 0 0.35rem;
+  color: #7c6850;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.restaurant-detail__contact-value {
+  margin: 0;
+  color: #141414;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.restaurant-detail__contact-value--link {
+  color: #8b3d1f;
+  text-decoration: none;
+}
+
+.restaurant-detail__contact-value--muted {
+  color: #6e6558;
+}
+
+.restaurant-detail__students {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1.4rem;
+}
+
+.restaurant-detail__student-card {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 1rem;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 24px;
+  background: #fdfbf7;
+  border: 1px solid rgba(109, 85, 50, 0.12);
+  padding: 0.9rem;
+}
+
+.restaurant-detail__student-image-wrap {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #efe6d4 0%, #dbcdb4 100%);
+}
+
+.restaurant-detail__student-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.restaurant-detail__student-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.restaurant-detail__student-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.restaurant-detail__student-topline h3 {
+  margin: 0;
+  color: #111111;
+  font-size: 1.1rem;
+}
+
+.restaurant-detail__student-role {
+  margin: 0.7rem 0 0;
+  color: #5b5348;
+  line-height: 1.5;
+}
+
+.restaurant-detail__badge {
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #111111;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.35rem 0.6rem;
+  text-transform: uppercase;
+}
+
+.restaurant-detail__badge--muted {
+  background: #d9d0c3;
+  color: #5b5348;
+}
+
+.restaurant-detail__details {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.3rem;
+  height: 2.3rem;
+  border: 0;
+  border-radius: 999px;
+  background: #111111;
+  color: #ffffff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.restaurant-detail__details svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.restaurant-detail__status {
+  color: #3f372e;
+  font-size: 1rem;
+}
+
+.restaurant-detail__status--error {
+  color: #9f2d2d;
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 760px) {
+  .restaurant-detail {
+    padding-top: 2rem;
+  }
+
+  .restaurant-detail__hero {
+    grid-template-columns: 1fr;
+  }
+
+  .restaurant-detail__student-card {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,223 @@
+.student-detail {
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+.student-detail__header,
+.student-detail__hero,
+.student-detail__panel,
+.student-detail__status {
+  margin: 0 auto;
+  max-width: 1100px;
+}
+
+.student-detail__back {
+  border: 0;
+  border-radius: 999px;
+  background: #111111;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.8rem 1.2rem;
+}
+
+.student-detail__hero {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  gap: 2rem;
+  margin-top: 1.5rem;
+  align-items: end;
+}
+
+.student-detail__photo-wrap {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 32px;
+  background: linear-gradient(180deg, #efe6d4 0%, #dbcdb4 100%);
+  box-shadow: 0 20px 48px rgba(72, 53, 24, 0.14);
+}
+
+.student-detail__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.student-detail__eyebrow {
+  margin: 0 0 0.75rem;
+  color: #6d5532;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.student-detail__hero-body h1,
+.student-detail__panel h2 {
+  margin: 0;
+}
+
+.student-detail__hero-body h1 {
+  color: #111111;
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  line-height: 0.95;
+}
+
+.student-detail__panel {
+  margin-top: 2rem;
+  border: 1px solid rgba(109, 85, 50, 0.12);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 16px 40px rgba(72, 53, 24, 0.09);
+  padding: 1.5rem;
+}
+
+.student-detail__panel-heading p {
+  margin: 0.6rem 0 0;
+  color: #5b5348;
+}
+
+.student-detail__contacts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.student-detail__contact-item {
+  border-radius: 22px;
+  background: #f8f3eb;
+  padding: 1rem 1.1rem;
+}
+
+.student-detail__contact-label {
+  margin: 0 0 0.35rem;
+  color: #7c6850;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.student-detail__contact-value {
+  margin: 0;
+  color: #141414;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.student-detail__contact-value--link {
+  color: #8b3d1f;
+  text-decoration: none;
+}
+
+.student-detail__contact-value--muted {
+  color: #6e6558;
+}
+
+.student-detail__restaurants {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1.4rem;
+}
+
+.student-detail__restaurant-card {
+  overflow: hidden;
+  border-radius: 24px;
+  background: #fdfbf7;
+  border: 1px solid rgba(109, 85, 50, 0.12);
+}
+
+.student-detail__restaurant-image-wrap {
+  aspect-ratio: 16 / 10;
+  background: linear-gradient(180deg, #f3dfd0 0%, #eac9b6 100%);
+}
+
+.student-detail__restaurant-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.student-detail__restaurant-body {
+  padding: 1rem;
+}
+
+.student-detail__restaurant-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.student-detail__restaurant-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.student-detail__restaurant-topline h3 {
+  margin: 0;
+  color: #111111;
+  font-size: 1.1rem;
+}
+
+.student-detail__restaurant-address {
+  margin: 0.7rem 0 0;
+  color: #5b5348;
+  line-height: 1.5;
+}
+
+.student-detail__badge {
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #111111;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.35rem 0.6rem;
+  text-transform: uppercase;
+}
+
+.student-detail__details {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.3rem;
+  height: 2.3rem;
+  border: 0;
+  border-radius: 999px;
+  background: #111111;
+  color: #ffffff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.student-detail__details svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.student-detail__status {
+  color: #3f372e;
+  font-size: 1rem;
+}
+
+.student-detail__status--error {
+  color: #9f2d2d;
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 760px) {
+  .student-detail {
+    padding-top: 2rem;
+  }
+
+  .student-detail__hero {
+    grid-template-columns: 1fr;
+  }
+}
