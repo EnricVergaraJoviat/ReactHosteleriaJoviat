@@ -11,12 +11,14 @@ function createSvgPlaceholder(type, label) {
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140">
       <rect width="120" height="140" rx="24" fill="${background}"/>
       ${shape}
+      ${type === 'student' ? '' : `
       <text x="60" y="123" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="${accent}">
         ${safeLabel.slice(0, 18)}
       </text>
       <text x="60" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="${accent}">
         ${subtitle}
       </text>
+      `}
     </svg>
   `)}`;
 }

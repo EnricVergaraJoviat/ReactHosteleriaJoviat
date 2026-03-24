@@ -1,0 +1,434 @@
+.add-student-screen {
+  padding: 2rem 1.5rem 4rem;
+}
+
+.add-student-screen__intro,
+.add-student-form {
+  width: min(980px, 100%);
+  margin: 0 auto;
+}
+
+.add-student-screen__intro {
+  margin-bottom: 1.5rem;
+}
+
+.add-student-screen__eyebrow {
+  margin: 0 0 0.75rem;
+  color: #8d5f1c;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.add-student-screen__intro h1 {
+  margin: 0;
+  color: #111111;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1;
+}
+
+.add-student-screen__description {
+  max-width: 780px;
+  margin: 1rem 0 0;
+  color: #5f5343;
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.add-student-form {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.add-student-form__top {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+.add-student-form__card {
+  padding: 2rem;
+  border-radius: 28px;
+  background: #fffdf5;
+  box-shadow: 0 24px 60px rgba(89, 74, 37, 0.08);
+}
+
+.add-student-form__card--aside {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.add-student-form__card--main {
+  min-width: 0;
+}
+
+.add-student-form__panel {
+  margin-top: 1.5rem;
+  padding-top: 0;
+  border: none;
+  background: #fffcf2;
+  border-radius: 26px;
+  box-shadow: 0 20px 40px rgba(89, 74, 37, 0.08);
+}
+
+.add-student-form__panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.add-student-form__section-title {
+  margin: 0 0 1.5rem;
+  color: #29241a;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.add-student-form__upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+.add-student-form__upload-preview-wrapper {
+  width: min(200px, 100%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid rgba(141, 95, 28, 0.2);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 1px 6px rgba(255, 255, 255, 0.7);
+}
+
+.add-student-form__upload-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.add-student-form__upload-label {
+  color: #6b5c43;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.add-student-form__upload-name {
+  max-width: 220px;
+  color: #7a6d5c;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.add-student-form__file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.add-student-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+}
+
+.add-student-form__field,
+.add-student-form__field--radios {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.add-student-form__field span,
+.add-student-form__field--radios legend {
+  color: #64553f;
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.add-student-form__required {
+  color: #c12e2e;
+  margin-left: 0.15rem;
+  font-size: 1.35rem;
+  font-weight: 900;
+  display: inline-block;
+  line-height: 1;
+  vertical-align: text-top;
+  text-transform: none;
+}
+
+.add-student-form__field span .add-student-form__required {
+  color: #c12e2e;
+  font-size: 1.45rem;
+  font-weight: 900;
+  margin-left: 0.18rem;
+}
+
+.add-student-form__field input,
+.add-student-form__field select {
+  width: 100%;
+  min-height: 64px;
+  padding: 0.95rem 1.15rem;
+  border: 1px solid rgba(228, 222, 214, 0.9);
+  border-radius: 14px;
+  background: rgba(255, 253, 250, 0.96);
+  color: #1c1711;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.add-student-form__field input::placeholder,
+.add-student-form__field select::placeholder {
+  color: #b3aa9c;
+  opacity: 1;
+}
+
+.add-student-form__field input:focus,
+.add-student-form__field select:focus {
+  outline: 2px solid rgba(141, 95, 28, 0.18);
+  border-color: #a77a3a;
+}
+
+.add-student-form__field small {
+  color: #6f655a;
+  font-size: 0.88rem;
+}
+
+.add-student-form__field--full {
+  grid-column: 1 / -1;
+}
+
+.add-student-form__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #2f2a24;
+}
+
+.add-student-form__panel-heading p {
+  margin: 0.35rem 0 0;
+  color: #6f655a;
+}
+
+.add-student-form__panel-heading h2 {
+  margin: 0;
+  color: #1c1711;
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  letter-spacing: -0.03em;
+  text-transform: none;
+  font-weight: 800;
+}
+
+.add-student-form__section-title {
+  margin: 0 0 1.5rem;
+  color: #111111;
+  font-size: clamp(1.9rem, 3vw, 2.5rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+
+.add-student-form__section-title {
+  margin: 0 0 1.5rem;
+  color: #1c1711;
+  font-size: clamp(2rem, 3vw, 2.7rem);
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.add-student-form__add-button,
+.add-student-form__remove-button,
+.add-student-form__submit {
+  border: none;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.add-student-form__add-button,
+.add-student-form__remove-button {
+  padding: 0.8rem 1rem;
+  background: #fffdf5;
+  color: #8d5f1c;
+  border: 1px solid rgba(141, 95, 28, 0.2);
+  box-shadow: 0 4px 10px rgba(17, 17, 17, 0.08);
+}
+
+.add-student-form__submit {
+  min-width: 180px;
+  padding: 0.95rem 1.4rem;
+  background: #8d5f1c;
+  color: #fff8f0;
+  box-shadow: 0 14px 30px rgba(141, 95, 28, 0.24);
+}
+
+.add-student-form__add-button:hover,
+.add-student-form__remove-button:hover,
+.add-student-form__submit:hover {
+  transform: translateY(-1px);
+}
+
+.add-student-form__status,
+.add-student-form__feedback {
+  margin: 1rem 0 0;
+  border-radius: 18px;
+  padding: 0.9rem 1rem;
+}
+
+.add-student-form__status {
+  background: rgba(255, 251, 244, 0.75);
+  color: #5b4c38;
+}
+
+.add-student-form__status--empty {
+  margin-top: 0.25rem;
+  background: rgba(255, 251, 244, 0.6);
+  color: #5b4c38;
+}
+
+.add-student-form__restaurant-entry {
+  border: 1px solid rgba(141, 95, 28, 0.12);
+  border-radius: 24px;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.8);
+  margin-top: 0.75rem;
+}
+
+.add-student-form__restaurant-entry-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.add-student-form__restaurant-entry-role {
+  margin: 0.45rem 0 0;
+  color: #5f5343;
+}
+
+.add-student-form__restaurant-entry-badge {
+  display: inline-flex;
+  margin-top: 0.65rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: rgba(208, 197, 170, 0.35);
+  color: #4c3c29;
+}
+
+.add-student-form__restaurant-entry-badge--previous {
+  background: rgba(151, 134, 115, 0.25);
+}
+
+.add-student-form__restaurant-add {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(141, 95, 28, 0.12);
+}
+
+.add-student-form__restaurant-add-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.add-student-form__restaurant-add-row--actions {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, auto);
+  align-items: flex-end;
+}
+
+.add-student-form__restaurant-add-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.add-student-form__checkbox--inline {
+  margin-top: 0;
+}
+
+.add-student-form__feedback--error {
+  background: rgba(183, 54, 54, 0.1);
+  color: #8f2020;
+}
+
+.add-student-form__feedback--success {
+  background: rgba(56, 130, 78, 0.12);
+  color: #215f34;
+}
+
+.add-student-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.add-student-form__submit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+@media (max-width: 760px) {
+  .add-student-screen {
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .add-student-form__top {
+    grid-template-columns: 1fr;
+  }
+
+  .add-student-form__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .add-student-form__panel-heading,
+  .add-student-form__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .add-student-form__card {
+    padding: 1.35rem;
+    border-radius: 22px;
+  }
+
+  .add-student-form__upload-circle {
+    width: 180px;
+  }
+
+  .add-student-form__restaurant-add-row--actions {
+    grid-template-columns: 1fr;
+  }
+
+  .add-student-form__restaurant-add-inline {
+    align-items: flex-start;
+  }
+}

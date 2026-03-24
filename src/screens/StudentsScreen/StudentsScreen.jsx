@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
-import { getImageWithFallback } from '../../helpers/imageFallbacks';
+import SmartImage from '../../components/SmartImage/SmartImage';
 import './StudentsScreen.css';
 
 function StudentsScreen({ onOpenStudentDetails }) {
@@ -106,16 +106,17 @@ function StudentsScreen({ onOpenStudentDetails }) {
         {filteredStudents.map((student) => (
           <article className="student-card" key={student.id ?? student.Name}>
             <div className="student-card__image-wrap">
-              <img
+              <SmartImage
                 className="student-card__image"
-                src={getImageWithFallback(student.PhotoURL, 'student', student.Name)}
+                src={student.PhotoURL}
+                type="student"
+                label={student.Name}
                 alt={student.Name ?? 'Alumne'}
               />
             </div>
             <div className="student-card__body">
               <div className="student-card__header">
                 <div>
-                  <p className="student-card__label">Name</p>
                   <h2>{student.Name ?? 'Sense nom'}</h2>
                 </div>
                 <button

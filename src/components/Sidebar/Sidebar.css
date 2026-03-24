@@ -24,6 +24,20 @@
   list-style: none;
 }
 
+.sidebar__divider {
+  height: 1px;
+  margin: 1.25rem 0;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.sidebar__auth {
+  display: grid;
+}
+
+.sidebar__list--admin {
+  margin-top: 0.75rem;
+}
+
 .sidebar__link {
   width: 100%;
   border: 0;

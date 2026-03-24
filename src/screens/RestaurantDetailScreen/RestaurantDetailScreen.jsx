@@ -5,7 +5,7 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
-import { getImageWithFallback } from '../../helpers/imageFallbacks';
+import SmartImage from '../../components/SmartImage/SmartImage';
 import 'leaflet/dist/leaflet.css';
 import './RestaurantDetailScreen.css';
 
@@ -139,9 +139,11 @@ function RestaurantDetailScreen({ restaurantId, onBack, onOpenStudentDetails }) 
 
       <div className="restaurant-detail__hero">
         <div className="restaurant-detail__photo-wrap">
-          <img
+          <SmartImage
             className="restaurant-detail__photo"
-            src={getImageWithFallback(restaurant.PhotoURL, 'restaurant', restaurant.Name)}
+            src={restaurant.PhotoURL}
+            type="restaurant"
+            label={restaurant.Name}
             alt={restaurant.Name ?? 'Restaurant'}
           />
         </div>
@@ -211,9 +213,11 @@ function RestaurantDetailScreen({ restaurantId, onBack, onOpenStudentDetails }) 
             {restaurant.linkedStudents.map((student) => (
               <article className="restaurant-detail__student-card" key={`${restaurant.id}-${student.id}`}>
                 <div className="restaurant-detail__student-image-wrap">
-                  <img
+                  <SmartImage
                     className="restaurant-detail__student-image"
-                    src={getImageWithFallback(student.PhotoURL, 'student', student.Name)}
+                    src={student.PhotoURL}
+                    type="student"
+                    label={student.Name}
                     alt={student.Name ?? 'Alumne'}
                   />
                 </div>

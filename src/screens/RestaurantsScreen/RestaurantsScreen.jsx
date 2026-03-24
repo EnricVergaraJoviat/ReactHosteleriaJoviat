@@ -5,7 +5,7 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
-import { getImageWithFallback } from '../../helpers/imageFallbacks';
+import SmartImage from '../../components/SmartImage/SmartImage';
 import 'leaflet/dist/leaflet.css';
 import './RestaurantsScreen.css';
 
@@ -43,14 +43,8 @@ function parseLocation(location) {
   return null;
 }
 
-function formatLocation(location) {
-  const parsedLocation = parseLocation(location);
-
-  if (!parsedLocation) {
-    return 'Ubicacio no disponible';
-  }
-
-  return `${parsedLocation[0].toFixed(6)}, ${parsedLocation[1].toFixed(6)}`;
+function formatLinkedStudents(count) {
+  return `${count} alumni associat${count === 1 ? '' : 's'}`;
 }
 
 function MapBounds({ locations }) {
@@ -211,16 +205,17 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
         {filteredRestaurants.map((restaurant) => (
           <article className="restaurant-card" key={restaurant.id ?? restaurant.Name}>
             <div className="restaurant-card__image-wrap">
-              <img
+              <SmartImage
                 className="restaurant-card__image"
-                src={getImageWithFallback(restaurant.PhotoURL, 'restaurant', restaurant.Name)}
+                src={restaurant.PhotoURL}
+                type="restaurant"
+                label={restaurant.Name}
                 alt={restaurant.Name ?? 'Restaurant'}
               />
             </div>
             <div className="restaurant-card__body">
               <div className="restaurant-card__header">
                 <div>
-                  <p className="restaurant-card__label">Restaurant</p>
                   <h2>{restaurant.Name ?? 'Sense nom'}</h2>
                 </div>
                 <button
@@ -238,11 +233,7 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
                 </button>
               </div>
               <p className="restaurant-card__meta">
-                {restaurant.linkedStudentCount > 0
-                  ? `${restaurant.linkedStudentCount} alumni associat${
-                    restaurant.linkedStudentCount === 1 ? '' : 's'
-                  }`
-                  : formatLocation(restaurant.Location)}
+                {formatLinkedStudents(restaurant.linkedStudentCount ?? 0)}
               </p>
             </div>
           </article>

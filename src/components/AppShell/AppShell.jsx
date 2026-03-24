@@ -5,7 +5,14 @@ import useIsDesktop from '../../hooks/useIsDesktop';
 import joviatLogo from '../../assets/images/logo_joviat.webp';
 import './AppShell.css';
 
-function AppShell({ activeView, onNavigate, children }) {
+function AppShell({
+  activeView,
+  isAdministrator,
+  isAuthenticated,
+  onAuthAction,
+  onNavigate,
+  children,
+}) {
   const isDesktop = useIsDesktop();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -34,8 +41,16 @@ function AppShell({ activeView, onNavigate, children }) {
       <div className="app-shell__layout">
         <Sidebar
           activeView={activeView}
+          isAdministrator={isAdministrator}
+          isAuthenticated={isAuthenticated}
           isDesktop={isDesktop}
           isOpen={isMenuOpen}
+          onAuthAction={() => {
+            onAuthAction();
+            if (!isDesktop) {
+              setIsMenuOpen(false);
+            }
+          }}
           onClose={() => setIsMenuOpen(false)}
           onNavigate={handleNavigate}
         />

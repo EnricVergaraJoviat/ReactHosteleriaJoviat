@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getImageWithFallback } from '../../helpers/imageFallbacks';
+import SmartImage from '../../components/SmartImage/SmartImage';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import './StudentDetailScreen.css';
 
@@ -102,9 +102,11 @@ function StudentDetailScreen({ studentId, onBack, onOpenRestaurantDetails }) {
 
       <div className="student-detail__hero">
         <div className="student-detail__photo-wrap">
-          <img
+          <SmartImage
             className="student-detail__photo"
-            src={getImageWithFallback(student.PhotoURL, 'student', student.Name)}
+            src={student.PhotoURL}
+            type="student"
+            label={student.Name}
             alt={student.Name ?? 'Alumne'}
           />
         </div>
@@ -150,9 +152,11 @@ function StudentDetailScreen({ studentId, onBack, onOpenRestaurantDetails }) {
             {student.linkedRestaurants.map((restaurant) => (
               <article className="student-detail__restaurant-card" key={`${student.id}-${restaurant.id}`}>
                 <div className="student-detail__restaurant-image-wrap">
-                  <img
+                  <SmartImage
                     className="student-detail__restaurant-image"
-                    src={getImageWithFallback(restaurant.PhotoURL, 'restaurant', restaurant.Name)}
+                    src={restaurant.PhotoURL}
+                    type="restaurant"
+                    label={restaurant.Name}
                     alt={restaurant.Name ?? 'Restaurant'}
                   />
                 </div>

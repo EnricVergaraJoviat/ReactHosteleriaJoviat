@@ -1,0 +1,134 @@
+.auth-screen {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: calc(100vh - 91px);
+  padding: 2rem;
+}
+
+.auth-screen__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 17, 17, 0.14);
+}
+
+.auth-screen__dialog,
+.auth-screen__error-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 480px);
+  border-radius: 28px;
+  background: rgba(255, 252, 246, 0.98);
+  box-shadow: 0 28px 70px rgba(17, 17, 17, 0.18);
+}
+
+.auth-screen__dialog {
+  padding: 2rem;
+}
+
+.auth-screen__eyebrow {
+  margin: 0 0 0.75rem;
+  color: #8d5f1c;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.auth-screen__dialog h1,
+.auth-screen__error-dialog h2 {
+  margin: 0;
+  color: #111111;
+}
+
+.auth-screen__description {
+  margin: 0.9rem 0 0;
+  color: #4b4b4b;
+  line-height: 1.6;
+}
+
+.auth-screen__form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.6rem;
+}
+
+.auth-screen__field {
+  display: grid;
+  gap: 0.45rem;
+  color: #242424;
+  font-weight: 600;
+}
+
+.auth-screen__field input {
+  width: 100%;
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 0.95rem 1rem;
+  font: inherit;
+}
+
+.auth-screen__field input:focus {
+  outline: 2px solid rgba(141, 95, 28, 0.28);
+  outline-offset: 2px;
+}
+
+.auth-screen__actions {
+  margin-top: 1.6rem;
+}
+
+.auth-screen__primary-action,
+.auth-screen__secondary-action,
+.auth-screen__error-dialog button {
+  border: 0;
+  border-radius: 16px;
+  background: #111111;
+  color: #ffffff;
+  padding: 0.95rem 1.2rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-screen__primary-action:disabled,
+.auth-screen__secondary-action:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.auth-screen__error-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: rgba(17, 17, 17, 0.34);
+  padding: 1.5rem;
+}
+
+.auth-screen__error-dialog {
+  padding: 1.6rem;
+}
+
+.auth-screen__error-dialog p {
+  margin: 0.9rem 0 1.25rem;
+  color: #3a3a3a;
+  line-height: 1.55;
+}
+
+@media (max-width: 640px) {
+  .auth-screen {
+    min-height: calc(100vh - 91px);
+    padding: 1rem;
+  }
+
+  .auth-screen__dialog,
+  .auth-screen__error-dialog {
+    border-radius: 22px;
+  }
+
+  .auth-screen__dialog {
+    padding: 1.4rem;
+  }
+}
