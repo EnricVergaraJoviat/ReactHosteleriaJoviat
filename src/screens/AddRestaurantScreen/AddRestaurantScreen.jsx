@@ -1,28 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, functions, storage } from '../../helpers/firebase';
+import { joviatMapIcon } from '../../helpers/joviatMapIcon';
 import {
   fetchPlaceDetails,
   loadGooglePlacesApi,
   searchRestaurants,
 } from '../../helpers/googlePlaces';
+import { useI18n } from '../../i18n/I18nContext';
 import 'leaflet/dist/leaflet.css';
 import './AddRestaurantScreen.css';
-
-delete L.Icon.Default.prototype._getIconUrl;
-
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-});
 
 const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY ?? '';
 const STORAGE_BUCKET = storage?.app?.options?.storageBucket ?? '';
@@ -186,51 +176,51 @@ function buildFormDataFromRestaurant(restaurant) {
 
 const copyPlacePhotoToStorage = httpsCallable(functions, 'copyPlacePhotoToStorage');
 
-function getPlacesErrorMessage(error) {
+function getPlacesErrorMessage(error, t) {
   switch (error?.message) {
     case 'missing-api-key':
-      return 'Falta configurar REACT_APP_GOOGLE_MAPS_API_KEY per poder cercar restaurants a Google Places.';
+      return t('forms.missingGoogleApiKey');
     case 'REQUEST_DENIED':
-      return 'Google Places ha rebutjat la peticio. Revisa la clau API i els permisos.';
+      return t('forms.googleDenied');
     case 'OVER_QUERY_LIMIT':
-      return 'S\'ha superat el limit de consultes de Google Places.';
+      return t('forms.googleLimit');
     case 'google-script-error':
     case 'google-places-unavailable':
-      return 'No s\'ha pogut carregar Google Places. Torna-ho a provar.';
+      return t('forms.googleLoadError');
     default:
-      return 'No s\'ha pogut completar la consulta a Google Places.';
+      return t('forms.googleQueryError');
   }
 }
 
-function getRestaurantSaveErrorMessage(error, mode) {
+function getRestaurantSaveErrorMessage(error, mode, t) {
   if (
     error?.message === 'restaurant-photo-download-failed'
     || error?.message === 'restaurant-photo-fetch-failed'
   ) {
-    return 'No s\'ha pogut descarregar la foto del restaurant des de Google Places per pujar-la a Storage.';
+    return t('forms.restaurantPhotoDownloadError');
   }
 
   switch (error?.code) {
     case 'permission-denied':
       return mode === 'edit'
-        ? 'Firebase ha rebutjat l\'actualitzacio del restaurant per permisos insuficients.'
-        : 'Firebase ha rebutjat la creacio del restaurant per permisos insuficients.';
+        ? t('forms.restaurantPermissionUpdate')
+        : t('forms.restaurantPermissionCreate');
     case 'not-found':
-      return 'No s\'ha trobat aquest restaurant a Firestore. Potser el document ja no existeix.';
+      return t('forms.restaurantNotFound');
     case 'unauthenticated':
-      return 'Cal tenir la sessio iniciada per modificar restaurants.';
+      return t('forms.restaurantUnauthenticated');
     case 'storage/unauthorized':
-      return 'No tens permisos per pujar la foto del restaurant a Storage.';
+      return t('forms.storageUnauthorized');
     case 'storage/object-not-found':
-      return 'La foto del restaurant no s\'ha trobat a Storage.';
+      return t('forms.storagePhotoNotFound');
     case 'storage/unknown':
-      return 'Storage ha retornat un error desconegut mentre es pujava la foto del restaurant.';
+      return t('forms.storageUnknown');
     case 'unavailable':
-      return 'Firebase no esta disponible ara mateix. Torna-ho a provar daqui una estona.';
+      return t('forms.firebaseUnavailable');
     default:
       return mode === 'edit'
-        ? `No s'ha pogut actualitzar el restaurant. ${error?.code ? `(${error.code})` : 'Torna-ho a provar.'}`
-        : `No s'ha pogut desar el restaurant. ${error?.code ? `(${error.code})` : 'Torna-ho a provar.'}`;
+        ? t('forms.restaurantUpdateFailed', { detail: error?.code ? `(${error.code})` : t('forms.tryAgain') })
+        : t('forms.restaurantSaveFailed', { detail: error?.code ? `(${error.code})` : t('forms.tryAgain') });
   }
 }
 
@@ -311,6 +301,7 @@ function buildGoogleEmbedUrl({ googlePlaceId, latitude, longitude, address, name
 }
 
 function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
+  const { t } = useI18n();
   const [googleStatus, setGoogleStatus] = useState(
     GOOGLE_MAPS_API_KEY ? 'loading' : 'missing-key'
   );
@@ -330,7 +321,7 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
   useEffect(() => {
     if (!GOOGLE_MAPS_API_KEY) {
       setGoogleStatus('missing-key');
-      setGoogleError(getPlacesErrorMessage(new Error('missing-api-key')));
+      setGoogleError(getPlacesErrorMessage(new Error('missing-api-key'), t));
       return;
     }
 
@@ -346,14 +337,14 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
       .catch((error) => {
         if (isMounted) {
           setGoogleStatus('error');
-          setGoogleError(getPlacesErrorMessage(error));
+          setGoogleError(getPlacesErrorMessage(error, t));
         }
       });
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [t]);
 
   const selectedResult = useMemo(
     () => results.find((entry) => entry.placeId === selectedPlaceId) ?? null,
@@ -410,12 +401,12 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
     const trimmedSearch = searchTerm.trim();
 
     if (!trimmedSearch) {
-      setErrorMessage('Escriu un nom abans de cercar.');
+      setErrorMessage(t('forms.searchBefore'));
       return;
     }
 
     if (googleStatus !== 'ready') {
-      setErrorMessage(googleError || 'Google Places encara no esta disponible.');
+      setErrorMessage(googleError || t('forms.googleNotReady'));
       return;
     }
 
@@ -427,10 +418,10 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
       setSelectedPlaceId(places[0]?.placeId ?? '');
 
       if (places.length === 0) {
-        setErrorMessage('No s\'han trobat restaurants amb aquesta cerca.');
+        setErrorMessage(t('forms.noRestaurantsFound'));
       }
     } catch (error) {
-      setErrorMessage(getPlacesErrorMessage(error));
+      setErrorMessage(getPlacesErrorMessage(error, t));
     } finally {
       setIsSearching(false);
     }
@@ -438,7 +429,7 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
 
   async function handleImportSelectedPlace() {
     if (!selectedPlaceId) {
-      setErrorMessage('Selecciona un restaurant del llistat.');
+      setErrorMessage(t('forms.selectRestaurantError'));
       return;
     }
 
@@ -465,9 +456,9 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
         googlePlaceId: details.googlePlaceId,
         googlePhotoName: details.googlePhotoName ?? '',
       });
-      setSuccessMessage('Dades del restaurant carregades des de Google Places. Pots revisar-les abans de desar.');
+      setSuccessMessage(t('forms.restaurantImported'));
     } catch (error) {
-      setErrorMessage(getPlacesErrorMessage(error));
+      setErrorMessage(getPlacesErrorMessage(error, t));
     } finally {
       setIsImporting(false);
     }
@@ -482,7 +473,7 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
     const trimmedName = formData.name.trim();
 
     if (!trimmedName) {
-      setErrorMessage('El nom del restaurant es obligatori.');
+      setErrorMessage(t('forms.searchBefore'));
       return;
     }
 
@@ -517,8 +508,8 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
           if (mode === 'edit') {
             storedPhotoUrl = existingStoredPhotoUrl;
             photoUploadWarning = existingStoredPhotoUrl
-              ? 'No s\'ha pogut actualitzar la nova foto de Google Places i s\'ha mantingut la foto anterior.'
-              : 'No s\'ha pogut desar la nova foto de Google Places, pero la resta de canvis del restaurant si que s\'han actualitzat.';
+              ? t('forms.photoUpdateWarning')
+              : t('forms.photoSaveWarning');
           } else {
             throw error;
           }
@@ -533,8 +524,8 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
           if (mode === 'edit') {
             storedPhotoUrl = existingStoredPhotoUrl;
             photoUploadWarning = existingStoredPhotoUrl
-              ? 'No s\'ha pogut actualitzar la nova foto des de Google Places i s\'ha mantingut la foto anterior.'
-              : 'No s\'ha pogut desar la nova foto des de Google Places, pero la resta de canvis del restaurant si que s\'han actualitzat.';
+              ? t('forms.photoUrlUpdateWarning')
+              : t('forms.photoUrlSaveWarning');
           } else {
             throw error;
           }
@@ -562,7 +553,7 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
           updatedAt: serverTimestamp(),
         });
         setSuccessTone(photoUploadWarning ? 'warning' : 'success');
-        setSuccessMessage(photoUploadWarning || 'Restaurant actualitzat correctament.');
+        setSuccessMessage(photoUploadWarning || t('forms.restaurantUpdated'));
         onSaved?.(restaurant.id);
       } else {
         const createdRestaurant = await addDoc(collection(db, 'Restaurant'), {
@@ -575,7 +566,7 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
         setSelectedPlaceId('');
         setSearchTerm('');
         setSuccessTone('success');
-        setSuccessMessage('Restaurant creat correctament.');
+        setSuccessMessage(t('forms.restaurantCreated'));
         onSaved?.(createdRestaurant.id);
       }
     } catch (error) {
@@ -587,24 +578,24 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
         errorMessage: error?.message ?? null,
       });
       setSuccessTone('success');
-      setErrorMessage(getRestaurantSaveErrorMessage(error, mode));
+      setErrorMessage(getRestaurantSaveErrorMessage(error, mode, t));
     } finally {
       setIsSubmitting(false);
     }
   }
 
   const isEditing = mode === 'edit';
-  const screenTitle = isEditing ? 'Editar Restaurant' : 'Afegir Restaurant';
+  const screenTitle = isEditing ? t('forms.editRestaurant') : t('forms.addRestaurant');
   const screenDescription = isEditing
-    ? 'Actualitza la fitxa del restaurant reutilitzant el mateix formulari de creacio.'
-    : 'Cerca el restaurant a Google Places, selecciona\'l del llistat i importa la seva informacio per omplir la fitxa automaticament abans de desar-la a Firestore.';
-  const submitLabel = isEditing ? 'Desar canvis' : 'Desar restaurant';
-  const submitLoadingLabel = isEditing ? 'Desant canvis...' : 'Desant...';
+    ? t('forms.restaurantEditDescription')
+    : t('forms.restaurantCreateDescription');
+  const submitLabel = isEditing ? t('common.saveChanges') : t('forms.saveRestaurant');
+  const submitLoadingLabel = isEditing ? t('common.saving') : t('common.saving');
 
   return (
     <section className="add-restaurant-screen">
       <div className="add-restaurant-screen__intro">
-        <p className="add-restaurant-screen__eyebrow">Administracio</p>
+        <p className="add-restaurant-screen__eyebrow">{t('common.administration')}</p>
         <h1>{screenTitle}</h1>
         <p className="add-restaurant-screen__description">
           {screenDescription}
@@ -615,14 +606,14 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
         <section className="add-restaurant-form__card add-restaurant-form__card--search">
           <div className="add-restaurant-form__panel-heading">
             <div>
-              <h2>Cerca a Google Places</h2>
-              <p>Escriu el nom del restaurant i recupera els resultats disponibles.</p>
+              <h2>{t('forms.googleSearchTitle')}</h2>
+              <p>{t('forms.googleSearchDescription')}</p>
             </div>
           </div>
 
           <div className="add-restaurant-form__search-row">
             <label className="add-restaurant-form__field add-restaurant-form__field--grow">
-              <span>Nom del restaurant</span>
+              <span>{t('forms.restaurantName')}</span>
               <input
                 name="google-search"
                 type="text"
@@ -637,20 +628,20 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
               onClick={handleSearch}
               disabled={isSearching || googleStatus === 'loading'}
             >
-              {isSearching ? 'Cercant...' : 'Buscar'}
+              {isSearching ? t('forms.searching') : t('forms.search')}
             </button>
           </div>
 
           <div className="add-restaurant-form__search-row add-restaurant-form__search-row--results">
             <label className="add-restaurant-form__field add-restaurant-form__field--grow">
-              <span>Resultats</span>
+              <span>{t('forms.results')}</span>
               <select
                 value={selectedPlaceId}
                 onChange={(event) => setSelectedPlaceId(event.target.value)}
                 disabled={results.length === 0}
               >
                 <option value="">
-                  {results.length ? 'Selecciona un restaurant' : 'Encara no hi ha resultats'}
+                  {results.length ? t('forms.selectRestaurant') : t('forms.noResultsYet')}
                 </option>
                 {results.map((result) => (
                   <option key={result.placeId} value={result.placeId}>
@@ -665,20 +656,20 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
               onClick={handleImportSelectedPlace}
               disabled={!selectedPlaceId || isImporting}
             >
-              {isImporting ? 'Importando...' : 'Autocompletar'}
+              {isImporting ? t('forms.importing') : t('forms.autocomplete')}
             </button>
           </div>
 
           {selectedResult ? (
             <div className="add-restaurant-form__selected">
               <strong>{selectedResult.name}</strong>
-              <p>{selectedResult.address || 'Adreca no disponible'}</p>
+              <p>{selectedResult.address || t('common.addressUnavailable')}</p>
             </div>
           ) : null}
 
           {googleStatus === 'loading' ? (
             <p className="add-restaurant-form__status" role="status">
-              Carregant Google Places...
+              {t('forms.loadingGoogle')}
             </p>
           ) : null}
 
@@ -692,36 +683,36 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
         <section className="add-restaurant-form__card">
           <div className="add-restaurant-form__panel-heading">
             <div>
-              <h2>Dades del restaurant</h2>
-              <p>Revisa els camps importats i completa manualment el que Google no proporcioni.</p>
+              <h2>{t('forms.restaurantData')}</h2>
+              <p>{t('forms.restaurantDataDescription')}</p>
             </div>
           </div>
 
           <div className="add-restaurant-form__grid">
             <label className="add-restaurant-form__field add-restaurant-form__field--full">
-              <span>Nom</span>
+              <span>{t('forms.name')}</span>
               <input
                 name="name"
                 type="text"
                 value={formData.name}
                 onChange={handleFormChange}
-                placeholder="Nom del restaurant"
+                placeholder={t('forms.restaurantName')}
               />
             </label>
 
             <label className="add-restaurant-form__field add-restaurant-form__field--full">
-              <span>Adreca</span>
+              <span>{t('forms.address')}</span>
               <input
                 name="address"
                 type="text"
                 value={formData.address}
                 onChange={handleFormChange}
-                placeholder="Adreca completa"
+                placeholder={t('forms.fullAddress')}
               />
             </label>
 
             <label className="add-restaurant-form__field">
-              <span>Telefon</span>
+              <span>{t('common.phone')}</span>
               <input
                 name="phone"
                 type="text"
@@ -765,7 +756,7 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
             </label>
 
             <label className="add-restaurant-form__field">
-              <span>Latitud</span>
+              <span>{t('forms.latitude')}</span>
               <input
                 name="latitude"
                 type="text"
@@ -776,7 +767,7 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
             </label>
 
             <label className="add-restaurant-form__field">
-              <span>Longitud</span>
+              <span>{t('forms.longitude')}</span>
               <input
                 name="longitude"
                 type="text"
@@ -798,7 +789,7 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
             </label>
 
             <label className="add-restaurant-form__field">
-              <span>Estat del negoci</span>
+              <span>{t('common.businessStatus')}</span>
               <input
                 name="businessStatus"
                 type="text"
@@ -809,7 +800,7 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
             </label>
 
             <label className="add-restaurant-form__field add-restaurant-form__field--full">
-              <span>Foto URL</span>
+              <span>{t('forms.photoUrl')}</span>
               <input
                 name="photoUrl"
                 type="url"
@@ -832,35 +823,35 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
           </div>
 
           <div className="add-restaurant-form__preview-grid">
-            <section className="add-restaurant-form__preview-card" aria-label="Previsualitzacio de foto">
+            <section className="add-restaurant-form__preview-card" aria-label={t('forms.photoPreview')}>
               <div className="add-restaurant-form__preview-heading">
-                <h3>Previsualitzacio de foto</h3>
+                <h3>{t('forms.photoPreview')}</h3>
               </div>
               {formData.photoUrl && !hasPhotoPreviewError ? (
                 <img
                   className="add-restaurant-form__photo-preview"
                   src={formData.photoUrl}
-                  alt={formData.name || 'Previsualitzacio del restaurant'}
+                  alt={formData.name || t('forms.photoPreviewAlt')}
                   onError={() => setHasPhotoPreviewError(true)}
                 />
               ) : (
                 <p className="add-restaurant-form__preview-empty">
                   {formData.photoUrl
-                    ? 'No s\'ha pogut carregar la imatge de la URL indicada.'
-                    : 'Afegeix una Photo URL per veure la imatge aqui.'}
+                    ? t('forms.photoPreviewError')
+                    : t('forms.photoPreviewEmpty')}
                 </p>
               )}
             </section>
 
-            <section className="add-restaurant-form__preview-card" aria-label="Previsualitzacio del mapa">
+            <section className="add-restaurant-form__preview-card" aria-label={t('forms.mapPreview')}>
               <div className="add-restaurant-form__preview-heading">
-                <h3>Previsualitzacio del mapa</h3>
+                <h3>{t('forms.mapPreview')}</h3>
               </div>
               {googleEmbedUrl ? (
                 <div className="add-restaurant-form__map-wrap">
                   <iframe
                     className="add-restaurant-form__map-embed"
-                    title="Previsualitzacio Google Maps"
+                    title={t('forms.googleMapsPreviewTitle')}
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
                     src={googleEmbedUrl}
@@ -878,14 +869,14 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
-                    <Marker position={previewCoordinates}>
-                      <Popup>{formData.name || 'Restaurant'}</Popup>
+                    <Marker icon={joviatMapIcon} position={previewCoordinates}>
+                      <Popup>{formData.name || t('common.restaurant')}</Popup>
                     </Marker>
                   </MapContainer>
                 </div>
               ) : (
                 <p className="add-restaurant-form__preview-empty">
-                  Afegeix coordenades o un Google Maps URL valid per veure la ubicacio al mapa.
+                  {t('forms.mapPreviewEmpty')}
                 </p>
               )}
             </section>

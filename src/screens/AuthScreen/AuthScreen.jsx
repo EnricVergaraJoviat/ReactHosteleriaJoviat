@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useI18n } from '../../i18n/I18nContext';
 import './AuthScreen.css';
 
 function AuthScreen({
@@ -12,6 +13,7 @@ function AuthScreen({
   onLogout,
   onRequestAccess,
 }) {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [requestEmail, setRequestEmail] = useState('');
@@ -22,6 +24,14 @@ function AuthScreen({
 
   const isLoginMode = mode === 'login';
   const isLogoutMode = mode === 'logout';
+  const requestResultMessage = requestSuccessMessage || requestErrorMessage;
+  const isRequestSuccess = Boolean(requestSuccessMessage);
+
+  function closeRequestDialog() {
+    setIsRequestDialogOpen(false);
+    setRequestErrorMessage('');
+    setRequestSuccessMessage('');
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -38,16 +48,22 @@ function AuthScreen({
         email: requestEmail,
         name: requestName,
       });
-      setRequestSuccessMessage('Hem registrat la teva sol.licitud d\'acces.');
+      setRequestSuccessMessage(t('auth.requestSent'));
       setRequestEmail('');
       setRequestName('');
     } catch (error) {
-      setRequestErrorMessage('No s\'ha pogut registrar la sol.licitud. Torna-ho a provar.');
+      if (error?.code === 'alumni/email-already-exists') {
+        setRequestErrorMessage(t('auth.emailExists'));
+      } else if (error?.code === 'user-registration/email-already-pending') {
+        setRequestErrorMessage(t('auth.emailPending'));
+      } else {
+        setRequestErrorMessage(t('auth.requestError'));
+      }
     }
   }
 
   return (
-    <section className="auth-screen" aria-label="Autenticacio">
+    <section className="auth-screen" aria-label={t('auth.area')}>
       <div className="auth-screen__backdrop" />
       <div
         className="auth-screen__dialog"
@@ -57,10 +73,10 @@ function AuthScreen({
       >
         {isLoginMode ? (
           <>
-            <p className="auth-screen__eyebrow">Acces</p>
-            <h1 id="auth-screen-title">Iniciar sessio</h1>
+            <p className="auth-screen__eyebrow">{t('auth.access')}</p>
+            <h1 id="auth-screen-title">{t('auth.loginTitle')}</h1>
             <p className="auth-screen__description">
-              Entra amb el teu correu electronic i la contrasenya per accedir a l&apos;aplicacio.
+              {t('auth.loginDescription')}
             </p>
             <form className="auth-screen__form" onSubmit={handleSubmit}>
               <label className="auth-screen__field">
@@ -75,7 +91,7 @@ function AuthScreen({
                 />
               </label>
               <label className="auth-screen__field">
-                <span>Contrasenya</span>
+                <span>{t('auth.password')}</span>
                 <input
                   autoComplete="current-password"
                   name="password"
@@ -86,11 +102,11 @@ function AuthScreen({
                 />
               </label>
               <button className="auth-screen__primary-action" type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Validant...' : 'Fer login'}
+                {isSubmitting ? t('auth.validating') : t('auth.doLogin')}
               </button>
             </form>
             <div className="auth-screen__request-access">
-              <p>Si aun no estas registrado</p>
+              <p>{t('auth.notRegistered')}</p>
               <button
                 className="auth-screen__request-access-link"
                 type="button"
@@ -100,7 +116,7 @@ function AuthScreen({
                   setIsRequestDialogOpen(true);
                 }}
               >
-                solicita acceso
+                {t('auth.requestAccess')}
               </button>
             </div>
           </>
@@ -108,12 +124,12 @@ function AuthScreen({
 
         {isLogoutMode ? (
           <>
-            <p className="auth-screen__eyebrow">Sessio activa</p>
-            <h1 id="auth-screen-title">Vols fer logout?</h1>
+            <p className="auth-screen__eyebrow">{t('auth.activeSession')}</p>
+            <h1 id="auth-screen-title">{t('auth.logoutTitle')}</h1>
             <p className="auth-screen__description">
               {userEmail
-                ? `Has iniciat sessio com ${userEmail}. Si continues, es tancara la sessio actual.`
-                : 'Si continues, es tancara la sessio actual.'}
+                ? t('auth.logoutDescriptionWithEmail', { email: userEmail })
+                : t('auth.logoutDescription')}
             </p>
             <div className="auth-screen__actions">
               <button
@@ -122,7 +138,7 @@ function AuthScreen({
                 onClick={onLogout}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Tancant...' : 'Confirmar logout'}
+                {isSubmitting ? t('auth.closing') : t('auth.confirmLogout')}
               </button>
             </div>
           </>
@@ -130,12 +146,12 @@ function AuthScreen({
 
         {!isLoginMode && !isLogoutMode ? (
           <>
-            <p className="auth-screen__eyebrow">Sessio activa</p>
-            <h1 id="auth-screen-title">Sessio iniciada</h1>
+            <p className="auth-screen__eyebrow">{t('auth.activeSession')}</p>
+            <h1 id="auth-screen-title">{t('auth.loggedTitle')}</h1>
             <p className="auth-screen__description">
               {isAuthenticated && userEmail
-                ? `Has iniciat sessio correctament amb ${userEmail}.`
-                : 'Has iniciat sessio correctament.'}
+                ? t('auth.loggedDescriptionWithEmail', { email: userEmail })
+                : t('auth.loggedDescription')}
             </p>
           </>
         ) : null}
@@ -149,10 +165,10 @@ function AuthScreen({
             aria-modal="true"
             aria-labelledby="auth-error-title"
           >
-            <h2 id="auth-error-title">Error de login</h2>
+            <h2 id="auth-error-title">{t('auth.loginErrorTitle')}</h2>
             <p>{errorMessage}</p>
             <button type="button" onClick={onClearError}>
-              D&apos;acord
+              {t('auth.ok')}
             </button>
           </div>
         </div>
@@ -166,53 +182,67 @@ function AuthScreen({
             aria-modal="true"
             aria-labelledby="auth-request-title"
           >
-            <h2 id="auth-request-title">Solicitar acceso</h2>
-            <form className="auth-screen__form" onSubmit={handleRequestAccessSubmit}>
-              <label className="auth-screen__field">
-                <span>Email</span>
-                <input
-                  autoComplete="email"
-                  name="request-email"
-                  type="email"
-                  value={requestEmail}
-                  onChange={(event) => setRequestEmail(event.target.value)}
-                  required
-                />
-              </label>
-              <label className="auth-screen__field">
-                <span>Nombre y apellidos</span>
-                <input
-                  autoComplete="name"
-                  name="request-name"
-                  type="text"
-                  value={requestName}
-                  onChange={(event) => setRequestName(event.target.value)}
-                  required
-                />
-              </label>
-              {requestErrorMessage ? (
-                <p className="auth-screen__request-feedback auth-screen__request-feedback--error">
-                  {requestErrorMessage}
+            <h2 id="auth-request-title">{t('auth.requestTitle')}</h2>
+            {requestResultMessage ? (
+              <>
+                <p
+                  className={`auth-screen__request-feedback ${
+                    isRequestSuccess
+                      ? 'auth-screen__request-feedback--success'
+                      : 'auth-screen__request-feedback--error'
+                  }`}
+                  role={isRequestSuccess ? 'status' : 'alert'}
+                >
+                  {requestResultMessage}
                 </p>
-              ) : null}
-              {requestSuccessMessage ? (
-                <p className="auth-screen__request-feedback auth-screen__request-feedback--success">
-                  {requestSuccessMessage}
-                </p>
-              ) : null}
+                <div className="auth-screen__dialog-actions">
+                  <button
+                    className="auth-screen__primary-action"
+                    type="button"
+                    onClick={closeRequestDialog}
+                  >
+                    {t('common.close')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <form className="auth-screen__form" onSubmit={handleRequestAccessSubmit}>
+                <label className="auth-screen__field">
+                  <span>Email</span>
+                  <input
+                    autoComplete="email"
+                    name="request-email"
+                    type="email"
+                    value={requestEmail}
+                    onChange={(event) => setRequestEmail(event.target.value)}
+                    required
+                  />
+                </label>
+                <label className="auth-screen__field">
+                  <span>{t('auth.fullName')}</span>
+                  <input
+                    autoComplete="name"
+                    name="request-name"
+                    type="text"
+                    value={requestName}
+                    onChange={(event) => setRequestName(event.target.value)}
+                    required
+                  />
+                </label>
               <div className="auth-screen__dialog-actions">
                 <button
                   className="auth-screen__secondary-button"
                   type="button"
-                  onClick={() => setIsRequestDialogOpen(false)}
+                  onClick={closeRequestDialog}
                 >
-                  Cerrar
+                  {t('common.close')}
                 </button>
                 <button className="auth-screen__primary-action" type="submit">
-                  Solicitar acceso
+                  {t('auth.requestTitle')}
                 </button>
               </div>
-            </form>
+              </form>
+            )}
           </div>
         </div>
       ) : null}

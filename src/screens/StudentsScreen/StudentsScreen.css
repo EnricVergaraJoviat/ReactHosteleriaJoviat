@@ -29,13 +29,24 @@
 }
 
 .students-search__label {
-  display: block;
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  flex-wrap: wrap;
   margin: 0 0 0.45rem;
   color: #5c4a31;
   font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.students-search__count {
+  color: rgba(92, 74, 49, 0.72);
+  font-size: 0.74rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .students-search__field {
@@ -169,8 +180,33 @@
   font-size: 1rem;
 }
 
+.students-screen__status--loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  min-height: 14rem;
+  text-align: center;
+}
+
+.students-screen__spinner {
+  width: 2.8rem;
+  height: 2.8rem;
+  border: 4px solid rgba(17, 17, 17, 0.12);
+  border-top-color: #111111;
+  border-radius: 999px;
+  animation: students-screen-spin 0.75s linear infinite;
+}
+
 .students-screen__status--error {
   color: #9f2d2d;
+}
+
+@keyframes students-screen-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .student-card {

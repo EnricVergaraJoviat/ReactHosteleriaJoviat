@@ -16,21 +16,22 @@ import StudentDetailScreen from './screens/StudentDetailScreen/StudentDetailScre
 import StudentsScreen from './screens/StudentsScreen/StudentsScreen';
 import { loadStudentRestaurantGraph } from './helpers/firestoreData';
 import { createUserRegistration } from './helpers/userRegistrations';
+import { useI18n } from './i18n/I18nContext';
 
-function getAuthErrorMessage(error) {
+function getAuthErrorMessage(error, t) {
   switch (error?.code) {
     case 'auth/invalid-email':
-      return 'L\'email no te un format valid.';
+      return t('auth.invalidEmail');
     case 'auth/missing-password':
-      return 'Has d\'introduir la contrasenya.';
+      return t('auth.missingPassword');
     case 'auth/invalid-credential':
     case 'auth/user-not-found':
     case 'auth/wrong-password':
-      return 'L\'email o la contrasenya no son correctes.';
+      return t('auth.invalidCredentials');
     case 'auth/too-many-requests':
-      return 'Hi ha hagut massa intents. Torna-ho a provar mes tard.';
+      return t('auth.tooManyRequests');
     default:
-      return 'No s\'ha pogut iniciar sessio. Torna-ho a provar.';
+      return t('auth.loginFailed');
   }
 }
 
@@ -39,6 +40,7 @@ function normalizeEmail(value) {
 }
 
 function App() {
+  const { t } = useI18n();
   const [activeView, setActiveView] = useState('home');
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [studentDetailOrigin, setStudentDetailOrigin] = useState('students');
@@ -110,12 +112,24 @@ function App() {
     };
   }, [currentUser]);
 
-  function handleNavigate(view) {
+  async function handleNavigate(view) {
     if (view === 'edit-profile') {
       if (currentStudentProfile) {
-        setSelectedStudentId(currentStudentProfile.id);
+        let selectedProfile = currentStudentProfile;
+
+        try {
+          const { students } = await loadStudentRestaurantGraph();
+          selectedProfile = students.find((entry) => entry.id === currentStudentProfile.id)
+            ?? students.find((entry) =>
+              normalizeEmail(entry.Email) === normalizeEmail(currentUser?.email)
+            )
+            ?? currentStudentProfile;
+          setCurrentStudentProfile(selectedProfile);
+        } catch (error) {}
+
+        setSelectedStudentId(selectedProfile.id);
         setStudentFormMode('edit');
-        setStudentFormInitialData(currentStudentProfile);
+        setStudentFormInitialData(selectedProfile);
         setActiveView('edit-student');
       }
       return;
@@ -231,7 +245,7 @@ function App() {
       setAuthViewMode('status');
       setActiveView('auth');
     } catch (error) {
-      setAuthErrorMessage(getAuthErrorMessage(error));
+      setAuthErrorMessage(getAuthErrorMessage(error, t));
     } finally {
       setIsAuthSubmitting(false);
     }
@@ -246,7 +260,7 @@ function App() {
       setAuthViewMode('login');
       setActiveView('home');
     } catch (error) {
-      setAuthErrorMessage('No s\'ha pogut tancar la sessio. Torna-ho a provar.');
+      setAuthErrorMessage(t('auth.logoutFailed'));
     } finally {
       setIsAuthSubmitting(false);
     }
@@ -256,7 +270,7 @@ function App() {
     await createUserRegistration({ email, name });
   }
 
-  let screen = <HomeScreen />;
+  let screen = <HomeScreen onNavigate={handleNavigate} />;
 
   if (activeView === 'restaurants') {
     screen = <RestaurantsScreen onOpenRestaurantDetails={handleOpenRestaurantDetails} />;
@@ -333,11 +347,16 @@ function App() {
       isAdministrator
       || normalizeEmail(studentFormInitialData.Email) === normalizeEmail(currentUser?.email)
     );
+  const isEditingOwnStudentProfile = activeView === 'edit-student'
+    && studentFormInitialData
+    && !isAdministrator
+    && normalizeEmail(studentFormInitialData.Email) === normalizeEmail(currentUser?.email);
 
   if (activeView === 'edit-student' && studentFormInitialData && canEditSelectedStudent) {
     screen = (
       <AddStudentScreen
         mode="edit"
+        canChangePassword={!isAdministrator}
         isAdministrator={isAdministrator}
         student={studentFormInitialData}
         onSaved={(studentId) => handleOpenStudentDetails(studentId, 'students')}
@@ -355,7 +374,9 @@ function App() {
         activeView === 'student-detail'
           ? 'students'
           : activeView === 'edit-student'
-          ? 'students'
+          ? isEditingOwnStudentProfile
+            ? 'edit-profile'
+            : 'students'
           : activeView === 'edit-restaurant'
           ? 'restaurants'
           : activeView === 'restaurant-detail'
@@ -364,6 +385,8 @@ function App() {
       }
       isAdministrator={isAdministrator}
       isAuthenticated={Boolean(currentUser)}
+      currentStudentProfile={currentStudentProfile}
+      currentUserEmail={currentUser?.email ?? ''}
       hasStudentProfile={Boolean(currentStudentProfile)}
       onAuthAction={handleAuthAction}
       onNavigate={handleNavigate}

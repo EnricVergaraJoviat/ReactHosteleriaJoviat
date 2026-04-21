@@ -40,6 +40,44 @@
   padding: 1.5rem;
 }
 
+.manage-registrations__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: fit-content;
+  margin: 0 auto 1.5rem;
+  padding: 0.35rem;
+  border: 1px solid rgba(109, 85, 50, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 12px 30px rgba(72, 53, 24, 0.08);
+}
+
+.manage-registrations__toggle-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.55rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #3f372e;
+  padding: 0.65rem 0.95rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.manage-registrations__toggle-button--active {
+  background: #111111;
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(17, 17, 17, 0.14);
+}
+
 .manage-registrations__status {
   margin: 0;
   color: #3b342d;
@@ -79,6 +117,20 @@
 .manage-registrations__card-content p {
   margin: 0.4rem 0 0;
   color: #57504a;
+}
+
+.manage-registrations__card-content {
+  min-width: 0;
+}
+
+.manage-registrations__meta {
+  font-size: 0.92rem;
+}
+
+.manage-registrations__request-description {
+  max-width: 620px;
+  line-height: 1.55;
+  white-space: pre-wrap;
 }
 
 .manage-registrations__actions,
@@ -154,6 +206,19 @@
   .manage-registrations__panel,
   .manage-registrations__dialog {
     border-radius: 22px;
+  }
+
+  .manage-registrations__toggle {
+    width: 100%;
+    max-width: 360px;
+    gap: 0.3rem;
+  }
+
+  .manage-registrations__toggle-button {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.62rem 0.5rem;
+    font-size: 0.68rem;
   }
 
   .manage-registrations__card {

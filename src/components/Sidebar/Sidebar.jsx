@@ -1,6 +1,8 @@
 import './Sidebar.css';
 import { ReactComponent as RestaurantsMenuIcon } from '../../assets/icons/restaurants.svg';
 import { ReactComponent as AddRestaurantMenuIcon } from '../../assets/icons/add-restaurant.svg';
+import joviatNetworkingLogo from '../../assets/images/logo_joviat_networking_white.png';
+import { useI18n } from '../../i18n/I18nContext';
 
 function SidebarIcon({ children }) {
   return (
@@ -22,12 +24,12 @@ function SidebarAssetIcon({ icon: Icon, className = '' }) {
 
 const MENU_ITEMS = [
   {
-    label: 'Visualitzar Restaurants',
+    labelKey: 'nav.restaurants',
     view: 'restaurants',
     icon: <SidebarAssetIcon icon={RestaurantsMenuIcon} className="sidebar__icon--restaurant" />,
   },
   {
-    label: 'Visualitzar alumnes',
+    labelKey: 'nav.students',
     view: 'students',
     icon: (
       <SidebarIcon>
@@ -46,12 +48,12 @@ const MENU_ITEMS = [
 
 const ADMIN_MENU_ITEMS = [
   {
-    label: 'Afegir Restaurant',
+    labelKey: 'nav.addRestaurant',
     view: 'add-restaurant',
     icon: <SidebarAssetIcon icon={AddRestaurantMenuIcon} className="sidebar__icon--add-restaurant" />,
   },
   {
-    label: 'Afegir Alumne',
+    labelKey: 'nav.addStudent',
     view: 'add-student',
     icon: (
       <SidebarIcon>
@@ -67,7 +69,7 @@ const ADMIN_MENU_ITEMS = [
     ),
   },
   {
-    label: 'Gestionar altes',
+    labelKey: 'nav.manageRegistrations',
     view: 'manage-registrations',
     icon: (
       <SidebarIcon>
@@ -94,7 +96,7 @@ const ADMIN_MENU_ITEMS = [
 
 const STUDENT_MENU_ITEMS = [
   {
-    label: 'Editar perfil',
+    labelKey: 'nav.editProfile',
     view: 'edit-profile',
     icon: (
       <SidebarIcon>
@@ -129,6 +131,7 @@ function Sidebar({
   onClose,
   onNavigate,
 }) {
+  const { language, languages, setLanguage, t } = useI18n();
   const secondaryMenuItems = isAuthenticated
     ? isAdministrator
       ? ADMIN_MENU_ITEMS
@@ -147,15 +150,35 @@ function Sidebar({
         <button
           className="sidebar-backdrop"
           type="button"
-          aria-label="Tancar menu"
+          aria-label={t('nav.menu.close')}
           onClick={onClose}
         />
       ) : null}
-      <aside className={sidebarClassName} aria-label="Menu principal">
+      <aside className={sidebarClassName} aria-label={t('nav.main')}>
         <nav className="sidebar__nav">
           <div className="sidebar__brand">
-            <p className="sidebar__brand-section">Culinary</p>
-            <p className="sidebar__label">Alumni Network</p>
+            <img
+              className="sidebar__brand-logo"
+              src={joviatNetworkingLogo}
+              alt="Joviat Networking"
+            />
+            <p className="sidebar__label">alumni network</p>
+            <div className="sidebar__language-switcher" aria-label={t('language.label')}>
+              {languages.map((languageCode) => (
+                <button
+                  key={languageCode}
+                  className={`sidebar__language-button${
+                    language === languageCode ? ' sidebar__language-button--active' : ''
+                  }`}
+                  type="button"
+                  aria-label={t(`language.${languageCode}`)}
+                  aria-pressed={language === languageCode}
+                  onClick={() => setLanguage(languageCode)}
+                >
+                  {languageCode.toUpperCase()}
+                </button>
+              ))}
+            </div>
           </div>
           <ul className="sidebar__list">
             {MENU_ITEMS.map((item) => (
@@ -168,7 +191,7 @@ function Sidebar({
                   onClick={() => onNavigate(item.view)}
                 >
                   {item.icon}
-                  <span className="sidebar__link-text">{item.label}</span>
+                  <span className="sidebar__link-text">{t(item.labelKey)}</span>
                 </button>
               </li>
             ))}
@@ -187,7 +210,7 @@ function Sidebar({
                       onClick={() => onNavigate(item.view)}
                     >
                       {item.icon}
-                      <span className="sidebar__link-text">{item.label}</span>
+                      <span className="sidebar__link-text">{t(item.labelKey)}</span>
                     </button>
                   </li>
                 ))}

@@ -28,6 +28,62 @@
   justify-content: flex-end;
 }
 
+.site-header__user {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.site-header__user--authenticated {
+  flex-direction: column;
+  gap: 0.32rem;
+}
+
+.site-header__avatar {
+  display: block;
+  width: 2.45rem;
+  height: 2.45rem;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  background: #f0d8b2;
+  padding: 0;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.site-header__avatar:hover {
+  border-color: #ffffff;
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.16),
+    0 10px 22px rgba(0, 0, 0, 0.28);
+  transform: translateY(-1px) scale(1.04);
+}
+
+.site-header__avatar:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.site-header__avatar:focus-visible {
+  outline: 3px solid rgba(240, 216, 178, 0.8);
+  outline-offset: 3px;
+}
+
+.site-header__email {
+  max-width: min(16rem, 38vw);
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.68rem;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .site-header__home-button {
   border: 0;
   background: transparent;
@@ -136,5 +192,15 @@
 
   .site-header__auth-button {
     padding: 0;
+  }
+
+  .site-header__avatar {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .site-header__email {
+    max-width: 9.2rem;
+    font-size: 0.64rem;
   }
 }

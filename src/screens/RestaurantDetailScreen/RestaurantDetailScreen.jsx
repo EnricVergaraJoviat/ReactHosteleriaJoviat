@@ -1,22 +1,12 @@
 import { useEffect, useState } from 'react';
-import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
+import { joviatMapIcon } from '../../helpers/joviatMapIcon';
 import { deleteRestaurant } from '../../helpers/restaurantDeletion';
 import SmartImage from '../../components/SmartImage/SmartImage';
+import { useI18n } from '../../i18n/I18nContext';
 import 'leaflet/dist/leaflet.css';
 import './RestaurantDetailScreen.css';
-
-delete L.Icon.Default.prototype._getIconUrl;
-
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-});
 
 function parseLocation(location) {
   if (!location) {
@@ -44,41 +34,98 @@ function parseLocation(location) {
   return null;
 }
 
-function formatBusinessStatus(status) {
+function formatBusinessStatus(status, t) {
   const normalizedStatus = typeof status === 'string' ? status.trim().toUpperCase() : '';
 
   switch (normalizedStatus) {
     case 'OPERATIONAL':
-      return 'Operatiu';
+      return t('detail.operational');
     case 'CLOSED_TEMPORARILY':
-      return 'Tancat temporalment';
+      return t('detail.closedTemporarily');
     case 'CLOSED_PERMANENTLY':
-      return 'Tancat permanentment';
+      return t('detail.closedPermanently');
     default:
       return status || '';
   }
 }
 
-function ContactItem({ label, value, href, children }) {
+function DetailIcon({ type }) {
+  switch (type) {
+    case 'edit':
+      return (
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M4.8 16.9 16.2 5.5a2.1 2.1 0 0 1 3 0l.3.3a2.1 2.1 0 0 1 0 3L8.1 20.2l-4 .8.7-4.1Zm2 1.1.5-.1L18.1 7.1l-.2-.2L7.1 17.7l-.3.3Z"
+            fill="currentColor"
+          />
+        </svg>
+      );
+    case 'delete':
+      return (
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M8.5 4.5 9.4 3h5.2l.9 1.5H20v2H4v-2h4.5Zm-2.3 4h11.6l-.7 11.1A1.5 1.5 0 0 1 15.6 21H8.4a1.5 1.5 0 0 1-1.5-1.4L6.2 8.5Zm3.1 2 .4 8h1.7l-.3-8H9.3Zm3.6 0-.3 8h1.7l.4-8h-1.8Z"
+            fill="currentColor"
+          />
+        </svg>
+      );
+    case 'phone':
+      return (
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M6.7 4.2 9 3.5a1.5 1.5 0 0 1 1.8.9l1 2.3a1.5 1.5 0 0 1-.4 1.7l-1.1 1a10.7 10.7 0 0 0 4.3 4.3l1-1.1a1.5 1.5 0 0 1 1.7-.4l2.3 1a1.5 1.5 0 0 1 .9 1.8l-.7 2.3a2.2 2.2 0 0 1-2.2 1.6C10.6 18.9 5.1 13.4 5.1 6.4a2.2 2.2 0 0 1 1.6-2.2Z"
+            fill="currentColor"
+          />
+        </svg>
+      );
+    case 'email':
+      return (
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm14 3.2-6.4 4.4a1 1 0 0 1-1.2 0L5 8.2V17h14V8.2ZM6.3 7l5.7 3.9L17.7 7H6.3Z"
+            fill="currentColor"
+          />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
+function ContactItem({ label, value, href, icon, children }) {
+  const { t } = useI18n();
+
   return (
     <div className="restaurant-detail__contact-item">
       <p className="restaurant-detail__contact-label">{label}</p>
       {children ? children : value ? (
         href ? (
           <a
-            className="restaurant-detail__contact-value restaurant-detail__contact-value--link"
+            className="restaurant-detail__contact-value restaurant-detail__contact-value--link restaurant-detail__contact-value--with-icon"
             href={href}
             target="_blank"
             rel="noreferrer"
           >
-            {value}
+            {icon ? (
+              <span className="restaurant-detail__contact-value-icon" aria-hidden="true">
+                <DetailIcon type={icon} />
+              </span>
+            ) : null}
+            <span>{value}</span>
           </a>
         ) : (
-          <p className="restaurant-detail__contact-value">{value}</p>
+          <p className={`restaurant-detail__contact-value${icon ? ' restaurant-detail__contact-value--with-icon' : ''}`}>
+            {icon ? (
+              <span className="restaurant-detail__contact-value-icon" aria-hidden="true">
+                <DetailIcon type={icon} />
+              </span>
+            ) : null}
+            <span>{value}</span>
+          </p>
         )
       ) : (
         <p className="restaurant-detail__contact-value restaurant-detail__contact-value--muted">
-          No disponible
+          {t('common.notAvailable')}
         </p>
       )}
     </div>
@@ -86,18 +133,19 @@ function ContactItem({ label, value, href, children }) {
 }
 
 function RatingStars({ value }) {
+  const { t } = useI18n();
   const numericValue = Number(value);
 
   if (Number.isNaN(numericValue)) {
     return (
       <p className="restaurant-detail__contact-value restaurant-detail__contact-value--muted">
-        No disponible
+        {t('common.notAvailable')}
       </p>
     );
   }
 
   return (
-    <div className="restaurant-detail__rating" aria-label={`Rating ${numericValue} de 5`}>
+    <div className="restaurant-detail__rating" aria-label={t('detail.ratingLabel', { value: numericValue })}>
       <div className="restaurant-detail__rating-stars" aria-hidden="true">
         {Array.from({ length: 5 }, (_, index) => {
           const starNumber = index + 1;
@@ -121,6 +169,17 @@ function RatingStars({ value }) {
   );
 }
 
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24">
+      <path
+        d="M10.7 5.3 4 12l6.7 6.7 1.4-1.4L7.8 13H20v-2H7.8l4.3-4.3-1.4-1.4Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 function RestaurantDetailScreen({
   restaurantId,
   isAdministrator,
@@ -129,6 +188,7 @@ function RestaurantDetailScreen({
   onEdit,
   onOpenStudentDetails,
 }) {
+  const { t } = useI18n();
   const [restaurant, setRestaurant] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -146,11 +206,11 @@ function RestaurantDetailScreen({
 
         if (isMounted) {
           setRestaurant(selectedRestaurant);
-          setError(selectedRestaurant ? '' : 'No s\'ha trobat la fitxa del restaurant.');
+          setError(selectedRestaurant ? '' : t('detail.restaurantMissing'));
         }
       } catch (loadError) {
         if (isMounted) {
-          setError('No s\'ha pogut carregar la fitxa del restaurant.');
+          setError(t('detail.restaurantLoadError'));
         }
       } finally {
         if (isMounted) {
@@ -164,7 +224,7 @@ function RestaurantDetailScreen({
     return () => {
       isMounted = false;
     };
-  }, [restaurantId]);
+  }, [restaurantId, t]);
 
   function handleStartDelete() {
     setActionMessage('');
@@ -192,7 +252,7 @@ function RestaurantDetailScreen({
       setIsDeleteDialogOpen(false);
       onDeleted?.(restaurant.id);
     } catch (deleteError) {
-      setActionMessage('No s\'ha pogut eliminar el restaurant. Torna-ho a provar.');
+      setActionMessage(t('detail.restaurantDeleteError'));
     } finally {
       setIsDeleting(false);
     }
@@ -207,7 +267,7 @@ function RestaurantDetailScreen({
     return (
       <section className="restaurant-detail">
         <p className="restaurant-detail__status" role="status">
-          Carregant fitxa del restaurant...
+          {t('detail.restaurantLoading')}
         </p>
       </section>
     );
@@ -217,10 +277,13 @@ function RestaurantDetailScreen({
     return (
       <section className="restaurant-detail">
         <button className="restaurant-detail__back" type="button" onClick={onBack}>
-          Tornar
+          <span className="restaurant-detail__back-icon" aria-hidden="true">
+            <BackIcon />
+          </span>
+          {t('common.back')}
         </button>
         <p className="restaurant-detail__status restaurant-detail__status--error" role="alert">
-          {error || 'No s\'ha trobat la fitxa del restaurant.'}
+          {error || t('detail.restaurantMissing')}
         </p>
       </section>
     );
@@ -232,7 +295,10 @@ function RestaurantDetailScreen({
     <section className="restaurant-detail">
       <div className="restaurant-detail__header">
         <button className="restaurant-detail__back" type="button" onClick={onBack}>
-          Tornar
+          <span className="restaurant-detail__back-icon" aria-hidden="true">
+            <BackIcon />
+          </span>
+          {t('common.back')}
         </button>
       </div>
 
@@ -243,14 +309,14 @@ function RestaurantDetailScreen({
             src={restaurant.PhotoURL}
             type="restaurant"
             label={restaurant.Name}
-            alt={restaurant.Name ?? 'Restaurant'}
+            alt={restaurant.Name ?? t('common.restaurant')}
           />
         </div>
         <div className="restaurant-detail__hero-body">
-          <p className="restaurant-detail__eyebrow">Fitxa de restaurant</p>
-          <h1>{restaurant.Name ?? 'Sense nom'}</h1>
+          <p className="restaurant-detail__eyebrow">{t('detail.restaurantSheet')}</p>
+          <h1>{restaurant.Name ?? t('common.noName')}</h1>
           <p className="restaurant-detail__address">
-            {restaurant.Address ?? 'Adreca no disponible'}
+            {restaurant.Address ?? t('common.addressUnavailable')}
           </p>
           {isAdministrator ? (
             <div className="restaurant-detail__admin-actions">
@@ -259,14 +325,20 @@ function RestaurantDetailScreen({
                 type="button"
                 onClick={handleEdit}
               >
-                Editar
+                <span className="restaurant-detail__action-icon" aria-hidden="true">
+                  <DetailIcon type="edit" />
+                </span>
+                {t('common.edit')}
               </button>
               <button
                 className="restaurant-detail__action restaurant-detail__action--danger"
                 type="button"
                 onClick={handleStartDelete}
               >
-                Eliminar
+                <span className="restaurant-detail__action-icon" aria-hidden="true">
+                  <DetailIcon type="delete" />
+                </span>
+                {t('common.delete')}
               </button>
             </div>
           ) : null}
@@ -279,7 +351,7 @@ function RestaurantDetailScreen({
       </div>
 
       <section className="restaurant-detail__panel">
-        <h2>Ubicacio</h2>
+        <h2>{t('detail.location')}</h2>
         {coordinates ? (
           <div className="restaurant-detail__map-wrap">
             <MapContainer
@@ -292,30 +364,32 @@ function RestaurantDetailScreen({
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              <Marker position={coordinates}>
-                <Popup>{restaurant.Name ?? 'Sense nom'}</Popup>
+              <Marker icon={joviatMapIcon} position={coordinates}>
+                <Popup>{restaurant.Name ?? t('common.noName')}</Popup>
               </Marker>
             </MapContainer>
           </div>
         ) : (
           <div className="restaurant-detail__map-empty">
-            No hi ha ubicacio disponible per mostrar al mapa.
+            {t('detail.noLocation')}
           </div>
         )}
       </section>
 
       <section className="restaurant-detail__panel">
-        <h2>Contacte</h2>
+        <h2>{t('common.contact')}</h2>
         <div className="restaurant-detail__contacts">
           <ContactItem
-            label="Phone"
+            label={t('common.phone')}
             value={restaurant.Phone}
             href={restaurant.Phone ? `tel:${restaurant.Phone}` : ''}
+            icon="phone"
           />
           <ContactItem
             label="Email"
             value={restaurant.Email}
             href={restaurant.Email ? `mailto:${restaurant.Email}` : ''}
+            icon="email"
           />
           <ContactItem
             label="Web"
@@ -335,7 +409,7 @@ function RestaurantDetailScreen({
                     />
                   </svg>
                 </span>
-                <span>Visitar web</span>
+                <span>{t('detail.visitWeb')}</span>
               </a>
             ) : null}
           </ContactItem>
@@ -357,7 +431,7 @@ function RestaurantDetailScreen({
                     />
                   </svg>
                 </span>
-                <span>Obrir fitxa a Google Maps</span>
+                <span>{t('detail.openGoogleMaps')}</span>
               </a>
             ) : null}
           </ContactItem>
@@ -367,19 +441,19 @@ function RestaurantDetailScreen({
             <RatingStars value={restaurant.Rating} />
           </ContactItem>
           <ContactItem
-            label="Estat del negoci"
-            value={formatBusinessStatus(restaurant.BusinessStatus)}
+            label={t('common.businessStatus')}
+            value={formatBusinessStatus(restaurant.BusinessStatus, t)}
           />
         </div>
       </section>
 
       <section className="restaurant-detail__panel">
         <div className="restaurant-detail__panel-heading">
-          <h2>Alumnes</h2>
+          <h2>{t('common.students')}</h2>
           <p>
             {restaurant.linkedStudents?.length
-              ? 'Llistat d\'alumnes vinculats a aquest restaurant.'
-              : 'Encara no hi ha alumnes vinculats a aquest restaurant.'}
+              ? t('detail.restaurantStudentsText')
+              : t('detail.restaurantStudentsEmpty')}
           </p>
         </div>
 
@@ -393,34 +467,27 @@ function RestaurantDetailScreen({
                     src={student.PhotoURL}
                     type="student"
                     label={student.Name}
-                    alt={student.Name ?? 'Alumne'}
+                    alt={student.Name ?? t('common.student')}
                   />
                 </div>
                 <div className="restaurant-detail__student-body">
-                  <div className="restaurant-detail__student-topline">
-                    <h3>{student.Name ?? 'Sense nom'}</h3>
-                    <button
-                      className="restaurant-detail__details"
-                      type="button"
-                      aria-label={`Obrir fitxa de ${student.Name ?? 'alumne'}`}
-                      onClick={() => onOpenStudentDetails(student.id, 'restaurant-detail')}
-                    >
-                      <svg aria-hidden="true" viewBox="0 0 24 24">
-                        <path
-                          d="M12 5c5.5 0 9.5 5.9 9.7 6.2a1.4 1.4 0 0 1 0 1.6C21.5 13.1 17.5 19 12 19S2.5 13.1 2.3 12.8a1.4 1.4 0 0 1 0-1.6C2.5 10.9 6.5 5 12 5Zm0 2C8.4 7 5.4 10.4 4.4 12 5.4 13.6 8.4 17 12 17s6.6-3.4 7.6-5C18.6 10.4 15.6 7 12 7Zm0 1.8a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4Zm0 2a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z"
-                          fill="currentColor"
-                        />
-                      </svg>
-                    </button>
-                  </div>
+                  <h3>{student.Name ?? t('common.noName')}</h3>
                   <p className="restaurant-detail__student-role">
-                    {student.role || 'Rol no disponible'}
+                    {student.role || t('common.roleUnavailable')}
                   </p>
-                  <p className={`restaurant-detail__student-status ${student.currentJob ? '' : 'restaurant-detail__student-status--muted'}`}>
+                  <p className={`restaurant-detail__student-status${student.currentJob ? '' : ' restaurant-detail__student-status--muted'}`}>
                     {student.currentJob
-                      ? 'Treballa actualment en aquest restaurant.'
-                      : 'Ara mateix no hi treballa.'}
+                      ? t('common.currentJob')
+                      : t('common.previousExperience')}
                   </p>
+                  <button
+                    className="restaurant-detail__details"
+                    type="button"
+                    aria-label={t('students.openDetails', { name: student.Name ?? t('common.student') })}
+                    onClick={() => onOpenStudentDetails(student.id, 'restaurant-detail')}
+                  >
+                    {t('common.details')}
+                  </button>
                 </div>
               </article>
             ))}
@@ -442,9 +509,9 @@ function RestaurantDetailScreen({
             aria-describedby="restaurant-delete-description"
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 id="restaurant-delete-title">Vols eliminar aquest restaurant?</h2>
+            <h2 id="restaurant-delete-title">{t('detail.deleteRestaurantTitle')}</h2>
             <p id="restaurant-delete-description">
-              S&apos;eliminara la fitxa del restaurant i tambe totes les relacions vinculades de la col.leccio Rest-Alum.
+              {t('detail.deleteRestaurantDescription')}
             </p>
             <div className="restaurant-detail__dialog-actions">
               <button
@@ -453,7 +520,7 @@ function RestaurantDetailScreen({
                 onClick={handleCancelDelete}
                 disabled={isDeleting}
               >
-                Cancel.lar
+                {t('common.cancel')}
               </button>
               <button
                 className="restaurant-detail__action restaurant-detail__action--danger"
@@ -461,7 +528,7 @@ function RestaurantDetailScreen({
                 onClick={handleConfirmDelete}
                 disabled={isDeleting}
               >
-                {isDeleting ? 'Eliminant...' : 'Confirmar eliminacio'}
+                {isDeleting ? t('detail.deleting') : t('detail.confirmDelete')}
               </button>
             </div>
           </div>

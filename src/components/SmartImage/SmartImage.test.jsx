@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import SmartImage from './SmartImage';
 
 test('falls back to a generated placeholder when the remote image fails', () => {
@@ -22,7 +22,7 @@ test('falls back to a generated placeholder when the remote image fails', () => 
 });
 
 test('student fallback placeholder uses the chef icon asset', () => {
-  render(
+  const { container } = render(
     <SmartImage
       src=""
       type="student"
@@ -36,4 +36,46 @@ test('student fallback placeholder uses the chef icon asset', () => {
 
   expect(image.getAttribute('src')).toMatch(/^data:image\/svg\+xml;charset=UTF-8,/);
   expect(svgContent).toMatch(/scale\(0\.58\)/i);
+  expect(container.querySelector('.smart-image__loader')).not.toBeInTheDocument();
+});
+
+test('hides the loader when the browser already has the image loaded', async () => {
+  const completeDescriptor = Object.getOwnPropertyDescriptor(
+    HTMLImageElement.prototype,
+    'complete'
+  );
+  const naturalWidthDescriptor = Object.getOwnPropertyDescriptor(
+    HTMLImageElement.prototype,
+    'naturalWidth'
+  );
+
+  Object.defineProperty(HTMLImageElement.prototype, 'complete', {
+    configurable: true,
+    get: () => true,
+  });
+  Object.defineProperty(HTMLImageElement.prototype, 'naturalWidth', {
+    configurable: true,
+    get: () => 320,
+  });
+
+  const { container } = render(
+    <SmartImage
+      src="https://images.example/alumne.jpg"
+      type="student"
+      label="Aina Serra"
+      alt="Aina Serra"
+    />
+  );
+
+  await waitFor(() => {
+    expect(container.querySelector('.smart-image__loader')).not.toBeInTheDocument();
+  });
+
+  if (completeDescriptor) {
+    Object.defineProperty(HTMLImageElement.prototype, 'complete', completeDescriptor);
+  }
+
+  if (naturalWidthDescriptor) {
+    Object.defineProperty(HTMLImageElement.prototype, 'naturalWidth', naturalWidthDescriptor);
+  }
 });

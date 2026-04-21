@@ -168,6 +168,18 @@
   text-transform: uppercase;
 }
 
+.add-student-form__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.add-student-form__label-icon {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+
 .add-student-form__required {
   color: #c12e2e;
   margin-left: 0.15rem;
@@ -187,7 +199,8 @@
 }
 
 .add-student-form__field input,
-.add-student-form__field select {
+.add-student-form__field select,
+.add-student-form__field textarea {
   width: 100%;
   min-height: 64px;
   padding: 0.95rem 1.15rem;
@@ -199,14 +212,57 @@
   font-size: 1rem;
 }
 
+.add-student-form__field textarea {
+  min-height: 140px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.add-student-form__password-input-wrap {
+  position: relative;
+}
+
+.add-student-form__password-input-wrap input {
+  padding-right: 3.35rem;
+}
+
+.add-student-form__password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #6f655a;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.add-student-form__password-toggle:hover {
+  background: rgba(17, 17, 17, 0.06);
+  color: #111111;
+}
+
+.add-student-form__password-toggle svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
 .add-student-form__field input::placeholder,
-.add-student-form__field select::placeholder {
+.add-student-form__field select::placeholder,
+.add-student-form__field textarea::placeholder {
   color: #b3aa9c;
   opacity: 1;
 }
 
 .add-student-form__field input:focus,
-.add-student-form__field select:focus {
+.add-student-form__field select:focus,
+.add-student-form__field textarea:focus {
   outline: 2px solid rgba(141, 95, 28, 0.18);
   border-color: #a77a3a;
 }
@@ -234,11 +290,15 @@
 
 .add-student-form__panel-heading h2 {
   margin: 0;
-  color: #1c1711;
+  color: #6f655a;
   font-size: clamp(1.1rem, 2vw, 1.4rem);
   letter-spacing: -0.03em;
   text-transform: none;
   font-weight: 800;
+}
+
+.add-student-form__panel-heading .add-student-form__section-title {
+  color: #111111;
 }
 
 .add-student-form__section-title {
@@ -282,11 +342,21 @@
 }
 
 .add-student-form__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.48rem;
   min-width: 180px;
   padding: 0.95rem 1.4rem;
   background: #8d5f1c;
   color: #fff8f0;
   box-shadow: 0 14px 30px rgba(141, 95, 28, 0.24);
+}
+
+.add-student-form__button-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 auto;
 }
 
 .add-student-form__add-button:hover,
@@ -369,10 +439,88 @@
   align-items: flex-end;
 }
 
+.add-student-form__password-panel {
+  background: #fffaf0;
+}
+
+.add-student-form__password-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(180px, auto);
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.add-student-form__password-action {
+  min-height: 64px;
+  border: none;
+  border-radius: 14px;
+  background: #111111;
+  color: #ffffff;
+  padding: 0.95rem 1.2rem;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.add-student-form__password-action:hover {
+  transform: translateY(-1px);
+}
+
+.add-student-form__password-action:disabled {
+  cursor: wait;
+  opacity: 0.7;
+  transform: none;
+}
+
 .add-student-form__restaurant-add-column {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.add-student-form__restaurant-request {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(141, 95, 28, 0.16);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.add-student-form__restaurant-request p {
+  margin: 0 0 0.9rem;
+  color: #4f4335;
+  line-height: 1.55;
+}
+
+.add-student-form__dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(17, 17, 17, 0.34);
+}
+
+.add-student-form__dialog {
+  width: min(100%, 520px);
+  border-radius: 28px;
+  background: rgba(255, 252, 246, 0.98);
+  padding: 1.6rem;
+  box-shadow: 0 28px 70px rgba(17, 17, 17, 0.18);
+}
+
+.add-student-form__dialog h2 {
+  margin: 0 0 1rem;
+  color: #111111;
+}
+
+.add-student-form__dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.2rem;
 }
 
 .add-student-form__checkbox--inline {
@@ -392,6 +540,7 @@
 .add-student-form__actions {
   display: flex;
   justify-content: flex-end;
+  gap: 1rem;
   margin-top: 1.5rem;
 }
 
@@ -435,6 +584,19 @@
 
   .add-student-form__restaurant-add-row--actions {
     grid-template-columns: 1fr;
+  }
+
+  .add-student-form__password-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .add-student-form__dialog {
+    border-radius: 22px;
+    padding: 1.25rem;
+  }
+
+  .add-student-form__dialog-actions {
+    flex-direction: column;
   }
 
   .add-student-form__restaurant-add-inline {

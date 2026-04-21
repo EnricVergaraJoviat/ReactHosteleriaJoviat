@@ -9,6 +9,8 @@ function AppShell({
   activeView,
   isAdministrator,
   isAuthenticated,
+  currentStudentProfile,
+  currentUserEmail,
   hasStudentProfile,
   onAuthAction,
   onNavigate,
@@ -34,9 +36,13 @@ function AppShell({
     <div className="app-shell">
       <Header
         logoSrc={joviatLogo}
+        currentStudentProfile={currentStudentProfile}
+        currentUserEmail={currentUserEmail}
+        isAdministrator={isAdministrator}
         isAuthenticated={isAuthenticated}
         isMenuOpen={isMenuOpen}
         onAuthAction={onAuthAction}
+        onEditProfile={() => handleNavigate('edit-profile')}
         showMenuButton={!isDesktop}
         onHomeClick={() => handleNavigate('home')}
         onMenuToggle={() => setIsMenuOpen((current) => !current)}

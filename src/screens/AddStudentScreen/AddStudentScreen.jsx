@@ -5,6 +5,7 @@ import {
   getAuth,
   sendPasswordResetEmail,
   signOut,
+  updatePassword,
 } from 'firebase/auth';
 import {
   addDoc,
@@ -18,7 +19,10 @@ import {
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { app, auth, db, storage } from '../../helpers/firebase';
 import { getFallbackImage } from '../../helpers/imageFallbacks';
+import { useI18n } from '../../i18n/I18nContext';
 import './AddStudentScreen.css';
+
+const RESTAURANT_REGISTRATIONS_COLLECTION = 'RestaruantsRegistrations';
 
 function normalizeFileName(fileName) {
   return fileName
@@ -48,7 +52,89 @@ async function createStudentAuthUser(email, password) {
   }
 }
 
-function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdministrator = false }) {
+function PasswordVisibilityIcon({ isVisible }) {
+  if (isVisible) {
+    return (
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path
+          d="M3.5 3.5 20.5 20.5M10.6 10.6A2 2 0 0 0 13.4 13.4M8.2 5.3A9.8 9.8 0 0 1 12 4.5c5.2 0 8.8 4.7 9.7 6a2.3 2.3 0 0 1 0 3 14.8 14.8 0 0 1-2.6 2.9M15.8 18.7a10 10 0 0 1-3.8.8c-5.2 0-8.8-4.7-9.7-6a2.3 2.3 0 0 1 0-3 15.7 15.7 0 0 1 3.1-3.3"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" focusable="false">
+      <path
+        d="M2.3 10.5c.9-1.3 4.5-6 9.7-6s8.8 4.7 9.7 6a2.3 2.3 0 0 1 0 3c-.9 1.3-4.5 6-9.7 6s-8.8-4.7-9.7-6a2.3 2.3 0 0 1 0-3Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function FieldIcon({ name }) {
+  const iconPaths = {
+    status: 'M12 3.5 19 7v5.2c0 4.4-3 7.4-7 8.3-4-0.9-7-3.9-7-8.3V7l7-3.5ZM9.2 12.1l1.8 1.8 3.9-4',
+    user: 'M12 12.2a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4.7 20.2c1-3.2 3.7-5.2 7.3-5.2s6.3 2 7.3 5.2',
+    email: 'M4.5 6.5h15v11h-15v-11ZM5 7l7 6 7-6',
+    lock: 'M7.5 10V7.8a4.5 4.5 0 0 1 9 0V10M6.3 10h11.4v9.5H6.3V10ZM12 14v2',
+    phone: 'M7.1 4.6 9.4 4l1.2 4-1.6.9a10.6 10.6 0 0 0 5.1 5.1l.9-1.6 4 1.2-.6 2.3c-.2.7-.9 1.2-1.6 1.1A14.5 14.5 0 0 1 6 6.2c-.1-.7.4-1.4 1.1-1.6Z',
+    linkedin: 'M5 9.5v9M5 6.2v.1M9.5 18.5v-9M9.5 13.3c.4-2.2 1.8-3.9 4-3.9 2.7 0 4 1.8 4 4.7v4.4',
+  };
+
+  return (
+    <svg className="add-student-form__label-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d={iconPaths[name]}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function SaveIcon() {
+  return (
+    <svg className="add-student-form__button-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M5 4.5h11l3 3v12H5v-15ZM8 4.5v5h7v-5M8 19.5v-6h8v6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function AddStudentScreen({
+  mode = 'create',
+  student = null,
+  onSaved,
+  isAdministrator = false,
+  canChangePassword = false,
+}) {
+  const { t } = useI18n();
   const isEditMode = mode === 'edit' && Boolean(student?.id);
   const [formData, setFormData] = useState({
     name: '',
@@ -74,9 +160,25 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
   const [isLoadingRestaurants, setIsLoadingRestaurants] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [passwordErrorMessage, setPasswordErrorMessage] = useState('');
+  const [passwordFormData, setPasswordFormData] = useState({
+    password: '',
+    passwordConfirmation: '',
+  });
+  const [visiblePasswordFields, setVisiblePasswordFields] = useState({
+    password: false,
+    passwordConfirmation: false,
+  });
   const [restaurantError, setRestaurantError] = useState('');
+  const [restaurantRequestDescription, setRestaurantRequestDescription] = useState('');
+  const [restaurantRequestError, setRestaurantRequestError] = useState('');
+  const [restaurantRequestMessage, setRestaurantRequestMessage] = useState('');
+  const [isRestaurantRequestDialogOpen, setIsRestaurantRequestDialogOpen] = useState(false);
+  const [isSubmittingRestaurantRequest, setIsSubmittingRestaurantRequest] = useState(false);
   const [newRestaurant, setNewRestaurant] = useState({
     restaurantId: '',
     role: '',
@@ -110,8 +212,22 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
     );
     setRestaurantSearch('');
     setRestaurantError('');
+    setRestaurantRequestDescription('');
+    setRestaurantRequestError('');
+    setRestaurantRequestMessage('');
+    setIsRestaurantRequestDialogOpen(false);
     setErrorMessage('');
     setSuccessMessage('');
+    setPasswordMessage('');
+    setPasswordErrorMessage('');
+    setPasswordFormData({
+      password: '',
+      passwordConfirmation: '',
+    });
+    setVisiblePasswordFields({
+      password: false,
+      passwordConfirmation: false,
+    });
     setNewRestaurant({
       restaurantId: '',
       role: '',
@@ -136,7 +252,7 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
         }
       } catch (error) {
         if (isMounted) {
-          setErrorMessage('No s\'ha pogut carregar el llistat de restaurants.');
+          setErrorMessage(t('forms.loadRestaurantListError'));
         }
       } finally {
         if (isMounted) {
@@ -150,7 +266,7 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [t]);
 
   const filteredRestaurants = useMemo(() => {
     const normalizedSearch = restaurantSearch.trim().toLowerCase();
@@ -169,6 +285,23 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
     setFormData((current) => ({
       ...current,
       [name]: value,
+    }));
+  }
+
+  function handlePasswordFormChange(event) {
+    const { name, value } = event.target;
+    setPasswordErrorMessage('');
+    setPasswordMessage('');
+    setPasswordFormData((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  }
+
+  function togglePasswordVisibility(field) {
+    setVisiblePasswordFields((current) => ({
+      ...current,
+      [field]: !current[field],
     }));
   }
 
@@ -223,12 +356,12 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
     setRestaurantError('');
 
     if (!newRestaurant.restaurantId.trim()) {
-      setRestaurantError('Selecciona un restaurant.');
+      setRestaurantError(t('forms.selectRestaurantError'));
       return;
     }
 
     if (restaurantLinks.some((entry) => entry.restaurantId === newRestaurant.restaurantId)) {
-      setRestaurantError('Aquest restaurant ja està afegit.');
+      setRestaurantError(t('forms.restaurantAlreadyAdded'));
       return;
     }
 
@@ -254,6 +387,47 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
     );
   }
 
+  function handleOpenRestaurantRequestDialog() {
+    setRestaurantRequestDescription('');
+    setRestaurantRequestError('');
+    setRestaurantRequestMessage('');
+    setIsRestaurantRequestDialogOpen(true);
+  }
+
+  async function handleSubmitRestaurantRequest() {
+    const trimmedDescription = restaurantRequestDescription.trim();
+    const trimmedName = formData.name.trim() || student?.Name || t('registrations.userNoName');
+    const trimmedEmail = formData.email.trim() || student?.Email || student?.email || '';
+
+    setRestaurantRequestError('');
+    setRestaurantRequestMessage('');
+
+    if (!trimmedDescription) {
+      setRestaurantRequestError(t('forms.restaurantRequestDescriptionRequired'));
+      return;
+    }
+
+    setIsSubmittingRestaurantRequest(true);
+
+    try {
+      await addDoc(collection(db, RESTAURANT_REGISTRATIONS_COLLECTION), {
+        Name: trimmedName,
+        Email: trimmedEmail,
+        Description: trimmedDescription,
+        id_alumni: student?.id ? doc(db, 'Alumni', student.id) : null,
+        createdAt: serverTimestamp(),
+      });
+
+      setRestaurantRequestDescription('');
+      setIsRestaurantRequestDialogOpen(false);
+      setRestaurantRequestMessage(t('forms.restaurantRequestSent'));
+    } catch (error) {
+      setRestaurantRequestError(t('forms.restaurantRequestError'));
+    } finally {
+      setIsSubmittingRestaurantRequest(false);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setErrorMessage('');
@@ -264,12 +438,12 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
     const trimmedEmail = formData.email.trim();
 
     if (!isEditMode && !trimmedPassword) {
-      setErrorMessage('La contrassenya es obligatoria.');
+      setErrorMessage(t('forms.passwordRequired'));
       return;
     }
 
     if (!trimmedEmail) {
-      setErrorMessage('El correu electronic es obligatori.');
+      setErrorMessage(t('forms.emailRequired'));
       return;
     }
 
@@ -281,7 +455,7 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
     const seenRestaurantIds = new Set();
     for (const entry of completedLinks) {
       if (entry.restaurantId && seenRestaurantIds.has(entry.restaurantId)) {
-        setErrorMessage('No pots repetir el mateix restaurant mes d\'una vegada.');
+        setErrorMessage(t('forms.duplicateRestaurant'));
         return;
       }
 
@@ -339,7 +513,7 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
           )
         );
 
-        setSuccessMessage('L\'alumne s\'ha actualitzat correctament.');
+        setSuccessMessage(t('forms.studentUpdated'));
         onSaved?.(student.id);
       } else {
         await createStudentAuthUser(trimmedEmail, trimmedPassword);
@@ -385,22 +559,22 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
           currentJob: true,
         });
         setRestaurantError('');
-        setSuccessMessage('L\'alumne s\'ha desat correctament.');
+        setSuccessMessage(t('forms.studentSaved'));
       }
     } catch (error) {
       if (error?.code === 'auth/email-already-in-use') {
-        setErrorMessage('Ja hi ha un usuari a la base de dades amb aquest email.');
+        setErrorMessage(t('forms.emailAlreadyInUse'));
         return;
       }
       if (error?.code === 'auth/invalid-email') {
-        setErrorMessage('El correu electronic introduit no es valid.');
+        setErrorMessage(t('forms.invalidEmail'));
         return;
       }
       if (error?.code === 'auth/weak-password') {
-        setErrorMessage('La contrassenya ha de tenir com a minim 6 caracters.');
+        setErrorMessage(t('forms.weakPassword'));
         return;
       }
-      setErrorMessage('No s\'ha pogut desar l\'alumne. Torna-ho a provar.');
+      setErrorMessage(t('forms.studentSaveError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -412,7 +586,7 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
     setSuccessMessage('');
 
     if (!trimmedEmail) {
-      setErrorMessage('Cal que l\'alumne tingui un correu electronic informat per recuperar la contrassenya.');
+      setErrorMessage(t('forms.passwordResetMissingEmail'));
       return;
     }
 
@@ -420,30 +594,90 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
 
     try {
       await sendPasswordResetEmail(auth, trimmedEmail);
-      setSuccessMessage('S\'ha enviat el correu per recuperar la contrassenya.');
+      setSuccessMessage(t('forms.passwordResetSent'));
     } catch (error) {
       if (error?.code === 'auth/invalid-email') {
-        setErrorMessage('El correu electronic introduit no es valid.');
+        setErrorMessage(t('forms.invalidEmail'));
       } else if (error?.code === 'auth/user-not-found') {
-        setErrorMessage('No existeix cap usuari d\'Authentication amb aquest correu.');
+        setErrorMessage(t('forms.authUserNotFound'));
       } else {
-        setErrorMessage('No s\'ha pogut enviar el correu de recuperacio de contrassenya.');
+        setErrorMessage(t('forms.passwordResetError'));
       }
     } finally {
       setIsResettingPassword(false);
     }
   }
 
-  const pageTitle = isEditMode ? 'Editar Alumne' : 'Afegir Alumne';
+  async function handleChangeOwnPassword() {
+    const trimmedPassword = passwordFormData.password.trim();
+    const trimmedPasswordConfirmation = passwordFormData.passwordConfirmation.trim();
+    setPasswordErrorMessage('');
+    setPasswordMessage('');
+
+    if (!trimmedPassword || !trimmedPasswordConfirmation) {
+      setPasswordErrorMessage(t('forms.enterPasswordTwice'));
+      return;
+    }
+
+    if (trimmedPassword.length < 6) {
+      setPasswordErrorMessage(t('forms.passwordTooShort'));
+      return;
+    }
+
+    if (trimmedPassword !== trimmedPasswordConfirmation) {
+      setPasswordErrorMessage(t('forms.passwordMismatch'));
+      return;
+    }
+
+    if (!auth.currentUser) {
+      setPasswordErrorMessage(t('forms.loginRequiredForPassword'));
+      return;
+    }
+
+    setIsChangingPassword(true);
+
+    try {
+      await updatePassword(auth.currentUser, trimmedPassword);
+
+      if (student?.id) {
+        await updateDoc(doc(db, 'Alumni', student.id), {
+          Password: trimmedPassword,
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      setPasswordFormData({
+        password: '',
+        passwordConfirmation: '',
+      });
+      setVisiblePasswordFields({
+        password: false,
+        passwordConfirmation: false,
+      });
+      setPasswordMessage(t('forms.passwordChanged'));
+    } catch (error) {
+      if (error?.code === 'auth/requires-recent-login') {
+        setPasswordErrorMessage(t('forms.recentLoginRequired'));
+      } else if (error?.code === 'auth/weak-password') {
+        setPasswordErrorMessage(t('forms.passwordTooShort'));
+      } else {
+        setPasswordErrorMessage(t('forms.passwordChangeError'));
+      }
+    } finally {
+      setIsChangingPassword(false);
+    }
+  }
+
+  const pageTitle = isEditMode ? t('forms.editStudent') : t('forms.addStudent');
   const pageDescription = isEditMode
-    ? 'Actualitza la informacio de l\'alumne i els restaurants vinculats des del mateix formulari.'
-    : 'Els camps marcats amb * corresponen al correu electronic i la contrasenya; són obligatoris.';
-  const submitLabel = isEditMode ? 'Desar canvis' : 'Desar alumne';
+    ? t('forms.studentEditDescription')
+    : t('forms.studentCreateDescription');
+  const submitLabel = isEditMode ? t('common.saveChanges') : t('forms.saveStudent');
 
   const restaurantListContent = restaurantLinks.length
     ? restaurantLinks.map((entry) => {
         const restaurant = restaurants.find((item) => item.id === entry.restaurantId);
-        const restaurantName = restaurant?.Name ?? 'Restaurant';
+        const restaurantName = restaurant?.Name ?? t('common.restaurant');
 
         return (
           <article
@@ -458,12 +692,12 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
                   type="button"
                   onClick={() => handleRemoveRestaurant(entry.restaurantId)}
                 >
-                  Eliminar
+                  {t('common.delete')}
                 </button>
               ) : null}
             </div>
             <p className="add-student-form__restaurant-entry-role">
-              {entry.role || 'Rol no disponible'}
+              {entry.role || t('common.roleUnavailable')}
             </p>
             <span
               className={`add-student-form__restaurant-entry-badge ${
@@ -472,21 +706,21 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
                   : 'add-student-form__restaurant-entry-badge--previous'
               }`}
             >
-              {entry.currentJob ? 'Actualment' : 'Anteriorment'}
+              {entry.currentJob ? t('common.currently') : t('common.previously')}
             </span>
           </article>
         );
       })
     : (
       <p className="add-student-form__status add-student-form__status--empty">
-        Encara no s&apos;han afegit restaurants.
+        {t('forms.noRestaurantsAdded')}
       </p>
     );
 
   return (
     <section className="add-student-screen">
       <div className="add-student-screen__intro">
-        <p className="add-student-screen__eyebrow">Administracio</p>
+        <p className="add-student-screen__eyebrow">{t('common.administration')}</p>
         <h1>{pageTitle}</h1>
         <p className="add-student-screen__description">
           {pageDescription}
@@ -500,19 +734,19 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
               <div className="add-student-form__upload-preview-wrapper">
                 <img
                   src={photoPreviewUrl}
-                  alt={formData.name || 'Foto de l\'alumne'}
+                  alt={formData.name || t('forms.photo')}
                   className="add-student-form__upload-preview"
                 />
               </div>
-              <span className="add-student-form__upload-label">Pujar foto</span>
+              <span className="add-student-form__upload-label">{t('forms.uploadPhoto')}</span>
               <span className="add-student-form__upload-name">
-                {photoName || 'Puja una imatge'}
+                {photoName || t('forms.uploadImage')}
               </span>
             </label>
             <input
               id="student-photo"
               className="add-student-form__file-input"
-              aria-label="Foto"
+              aria-label={t('forms.photo')}
               name="photo"
               type="file"
               accept="image/*"
@@ -520,28 +754,34 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
             />
 
             <label className="add-student-form__field" htmlFor="student-status">
-              <span>Estat de l&apos;alumne</span>
+              <span className="add-student-form__label">
+                <FieldIcon name="status" />
+                {t('forms.studentStatus')}
+              </span>
               <select
                 id="student-status"
                 name="status"
                 value={formData.status}
                 onChange={handleFormChange}
               >
-                <option value="alumne">Alumne</option>
-                <option value="exalumne">Exalumne</option>
+                <option value="alumne">{t('common.student')}</option>
+                <option value="exalumne">{t('common.exStudent')}</option>
               </select>
             </label>
           </section>
 
           <section className="add-student-form__card add-student-form__card--main">
-            <p className="add-student-form__section-title">Informacio primaria</p>
+            <p className="add-student-form__section-title">{t('forms.primaryInfo')}</p>
 
             <div className="add-student-form__grid">
               <label
                 className="add-student-form__field add-student-form__field--full"
                 htmlFor="student-name"
               >
-                <span>Nom complet</span>
+                <span className="add-student-form__label">
+                  <FieldIcon name="user" />
+                  {t('forms.fullName')}
+                </span>
                 <input
                   id="student-name"
                   name="name"
@@ -553,8 +793,9 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
               </label>
 
               <label className="add-student-form__field" htmlFor="student-email">
-                <span>
-                  Correu electronic <span className="add-student-form__required">*</span>
+                <span className="add-student-form__label">
+                  <FieldIcon name="email" />
+                  {t('common.email')} <span className="add-student-form__required">*</span>
                 </span>
                 <input
                   id="student-email"
@@ -569,8 +810,9 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
 
               {!isEditMode ? (
                 <label className="add-student-form__field" htmlFor="student-password">
-                  <span>
-                    Contrasenya <span className="add-student-form__required">*</span>
+                  <span className="add-student-form__label">
+                    <FieldIcon name="lock" />
+                    {t('auth.password')} <span className="add-student-form__required">*</span>
                   </span>
                   <input
                     id="student-password"
@@ -585,7 +827,10 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
               ) : null}
 
               <label className="add-student-form__field" htmlFor="student-phone">
-                <span>Telefon de contacte</span>
+                <span className="add-student-form__label">
+                  <FieldIcon name="phone" />
+                  {t('forms.contactPhone')}
+                </span>
                 <input
                   id="student-phone"
                   name="phone"
@@ -600,7 +845,10 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
                 className="add-student-form__field add-student-form__field--full"
                 htmlFor="student-linkedin"
               >
-                <span>Perfil LinkedIn</span>
+                <span className="add-student-form__label">
+                  <FieldIcon name="linkedin" />
+                  {t('forms.linkedinProfile')}
+                </span>
                 <input
                   id="student-linkedin"
                   name="linkedIn"
@@ -614,24 +862,104 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
           </section>
         </div>
 
+        {isEditMode && canChangePassword ? (
+          <section className="add-student-form__panel add-student-form__card add-student-form__password-panel">
+            <div className="add-student-form__panel-heading">
+              <div>
+                <p className="add-student-form__section-title">{t('forms.changePassword')}</p>
+              </div>
+            </div>
+            <div className="add-student-form__password-grid">
+              <label className="add-student-form__field" htmlFor="student-new-password">
+                <span className="add-student-form__label">
+                  <FieldIcon name="lock" />
+                  {t('forms.newPassword')}
+                </span>
+                <div className="add-student-form__password-input-wrap">
+                  <input
+                    id="student-new-password"
+                    autoComplete="new-password"
+                    name="password"
+                    type={visiblePasswordFields.password ? 'text' : 'password'}
+                    value={passwordFormData.password}
+                    placeholder={t('forms.minPassword')}
+                    onChange={handlePasswordFormChange}
+                  />
+                  <button
+                    className="add-student-form__password-toggle"
+                    type="button"
+                    aria-label={visiblePasswordFields.password ? t('forms.hidePassword') : t('forms.showPassword')}
+                    onClick={() => togglePasswordVisibility('password')}
+                  >
+                    <PasswordVisibilityIcon isVisible={visiblePasswordFields.password} />
+                  </button>
+                </div>
+              </label>
+              <label className="add-student-form__field" htmlFor="student-new-password-confirmation">
+                <span className="add-student-form__label">
+                  <FieldIcon name="lock" />
+                  {t('forms.repeatPassword')}
+                </span>
+                <div className="add-student-form__password-input-wrap">
+                  <input
+                    id="student-new-password-confirmation"
+                    autoComplete="new-password"
+                    name="passwordConfirmation"
+                    type={visiblePasswordFields.passwordConfirmation ? 'text' : 'password'}
+                    value={passwordFormData.passwordConfirmation}
+                    placeholder={t('forms.repeatPasswordPlaceholder')}
+                    onChange={handlePasswordFormChange}
+                  />
+                  <button
+                    className="add-student-form__password-toggle"
+                    type="button"
+                    aria-label={visiblePasswordFields.passwordConfirmation ? t('forms.hideRepeatPassword') : t('forms.showRepeatPassword')}
+                    onClick={() => togglePasswordVisibility('passwordConfirmation')}
+                  >
+                    <PasswordVisibilityIcon isVisible={visiblePasswordFields.passwordConfirmation} />
+                  </button>
+                </div>
+              </label>
+              <button
+                className="add-student-form__password-action"
+                type="button"
+                onClick={handleChangeOwnPassword}
+                disabled={isChangingPassword || isSubmitting}
+              >
+                {isChangingPassword ? t('forms.saving') : t('forms.changePassword')}
+              </button>
+            </div>
+            {passwordErrorMessage ? (
+              <p className="add-student-form__feedback add-student-form__feedback--error" role="alert">
+                {passwordErrorMessage}
+              </p>
+            ) : null}
+            {passwordMessage ? (
+              <p className="add-student-form__feedback add-student-form__feedback--success" role="status">
+                {passwordMessage}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
         <section className="add-student-form__panel add-student-form__card">
           <div className="add-student-form__panel-heading">
             <div>
-              <p className="add-student-form__section-title">Trajectoria professional</p>
-              <h2>Restaurants</h2>
+              <p className="add-student-form__section-title">{t('forms.professionalPath')}</p>
+              <h2>{t('common.restaurants')}</h2>
             </div>
           </div>
 
           {isLoadingRestaurants ? (
             <p className="add-student-form__status" role="status">
-              Carregant restaurants...
+              {t('forms.loadingRestaurants')}
             </p>
           ) : restaurantListContent}
 
           <div className="add-student-form__restaurant-add">
             <div className="add-student-form__restaurant-add-row">
               <label className="add-student-form__field" htmlFor="restaurant-select">
-                <span>Restaurant</span>
+                <span>{t('common.restaurant')}</span>
                 <select
                   id="restaurant-select"
                   value={newRestaurant.restaurantId}
@@ -639,22 +967,22 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
                     handleNewRestaurantChange('restaurantId', event.target.value)
                   }
                 >
-                  <option value="">Selecciona un restaurant</option>
+                  <option value="">{t('forms.selectRestaurant')}</option>
                   {filteredRestaurants.map((restaurant) => (
                     <option key={restaurant.id} value={restaurant.id}>
-                      {restaurant.Name ?? 'Sense nom'}
+                      {restaurant.Name ?? t('common.noName')}
                     </option>
                   ))}
                 </select>
               </label>
 
               <label className="add-student-form__field" htmlFor="restaurant-filter">
-                <span>Filtrar restaurants pel nom</span>
+                <span>{t('forms.filterRestaurants')}</span>
                 <input
                   id="restaurant-filter"
                   type="text"
                   value={restaurantSearch}
-                  placeholder="Escriu el nom del restaurant"
+                  placeholder={t('restaurants.placeholder')}
                   onChange={(event) => setRestaurantSearch(event.target.value)}
                 />
               </label>
@@ -663,12 +991,12 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
             <div className="add-student-form__restaurant-add-row add-student-form__restaurant-add-row--actions">
               <div className="add-student-form__restaurant-add-column">
                 <label className="add-student-form__field" htmlFor="restaurant-role">
-                  <span>Rol</span>
+                  <span>{t('forms.role')}</span>
                   <input
                     id="restaurant-role"
                     type="text"
                     value={newRestaurant.role}
-                    placeholder="Cap de sala, cuina, practiques..."
+                    placeholder={t('forms.rolePlaceholder')}
                     onChange={(event) =>
                       handleNewRestaurantChange('role', event.target.value)
                     }
@@ -682,7 +1010,7 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
                       handleNewRestaurantChange('currentJob', event.target.checked)
                     }
                   />
-                  Està treballant actualment en aquest restaurant
+                  {t('forms.currentJobCheckbox')}
                 </label>
               </div>
               <button
@@ -690,7 +1018,7 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
                 type="button"
                 onClick={handleAddRestaurant}
               >
-                Afegir restaurant
+                {t('forms.addRestaurantButton')}
               </button>
             </div>
 
@@ -703,6 +1031,24 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
               </p>
             ) : null}
           </div>
+
+          {isEditMode ? (
+            <div className="add-student-form__restaurant-request">
+              <p>{t('forms.restaurantRequestPrompt')}</p>
+              <button
+                className="add-student-form__add-button"
+                type="button"
+                onClick={handleOpenRestaurantRequestDialog}
+              >
+                {t('forms.restaurantRequestButton')}
+              </button>
+              {restaurantRequestMessage ? (
+                <p className="add-student-form__feedback add-student-form__feedback--success" role="status">
+                  {restaurantRequestMessage}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         {errorMessage ? (
@@ -728,14 +1074,63 @@ function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdminist
               onClick={handlePasswordReset}
               disabled={isResettingPassword || isSubmitting}
             >
-              {isResettingPassword ? 'Enviant correu...' : 'Recuperar contrassenya'}
+              {isResettingPassword ? t('forms.sendingEmail') : t('forms.resetPassword')}
             </button>
           ) : null}
           <button className="add-student-form__submit" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Desant...' : submitLabel}
+            <SaveIcon />
+            {isSubmitting ? t('common.saving') : submitLabel}
           </button>
         </div>
       </form>
+
+      {isRestaurantRequestDialogOpen ? (
+        <div className="add-student-form__dialog-layer">
+          <div
+            className="add-student-form__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="restaurant-request-title"
+          >
+            <h2 id="restaurant-request-title">{t('forms.restaurantRequestTitle')}</h2>
+            <label className="add-student-form__field" htmlFor="restaurant-request-description">
+              <span>{t('forms.restaurantRequestDescription')}</span>
+              <textarea
+                id="restaurant-request-description"
+                value={restaurantRequestDescription}
+                placeholder={t('forms.restaurantRequestPlaceholder')}
+                onChange={(event) => {
+                  setRestaurantRequestDescription(event.target.value);
+                  setRestaurantRequestError('');
+                }}
+              />
+            </label>
+            {restaurantRequestError ? (
+              <p className="add-student-form__feedback add-student-form__feedback--error" role="alert">
+                {restaurantRequestError}
+              </p>
+            ) : null}
+            <div className="add-student-form__dialog-actions">
+              <button
+                className="add-student-form__secondary-action"
+                type="button"
+                onClick={() => setIsRestaurantRequestDialogOpen(false)}
+                disabled={isSubmittingRestaurantRequest}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                className="add-student-form__submit"
+                type="button"
+                onClick={handleSubmitRestaurantRequest}
+                disabled={isSubmittingRestaurantRequest}
+              >
+                {isSubmittingRestaurantRequest ? t('common.saving') : t('forms.restaurantRequestSubmit')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

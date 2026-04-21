@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import SmartImage from '../../components/SmartImage/SmartImage';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import { deleteStudentAccount } from '../../helpers/studentDeletion';
+import { useI18n } from '../../i18n/I18nContext';
 import './StudentDetailScreen.css';
 
 function formatLink(value, prefix) {
@@ -16,24 +17,104 @@ function formatLink(value, prefix) {
   return `${prefix}${value}`;
 }
 
-function ContactItem({ label, value, href }) {
+function DetailIcon({ type }) {
+  switch (type) {
+    case 'edit':
+      return (
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M4.8 16.9 16.2 5.5a2.1 2.1 0 0 1 3 0l.3.3a2.1 2.1 0 0 1 0 3L8.1 20.2l-4 .8.7-4.1Zm2 1.1.5-.1L18.1 7.1l-.2-.2L7.1 17.7l-.3.3Z"
+            fill="currentColor"
+          />
+        </svg>
+      );
+    case 'delete':
+      return (
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M8.5 4.5 9.4 3h5.2l.9 1.5H20v2H4v-2h4.5Zm-2.3 4h11.6l-.7 11.1A1.5 1.5 0 0 1 15.6 21H8.4a1.5 1.5 0 0 1-1.5-1.4L6.2 8.5Zm3.1 2 .4 8h1.7l-.3-8H9.3Zm3.6 0-.3 8h1.7l.4-8h-1.8Z"
+            fill="currentColor"
+          />
+        </svg>
+      );
+    case 'email':
+      return (
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm14 3.2-6.4 4.4a1 1 0 0 1-1.2 0L5 8.2V17h14V8.2ZM6.3 7l5.7 3.9L17.7 7H6.3Z"
+            fill="currentColor"
+          />
+        </svg>
+      );
+    case 'phone':
+      return (
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M6.7 4.2 9 3.5a1.5 1.5 0 0 1 1.8.9l1 2.3a1.5 1.5 0 0 1-.4 1.7l-1.1 1a10.7 10.7 0 0 0 4.3 4.3l1-1.1a1.5 1.5 0 0 1 1.7-.4l2.3 1a1.5 1.5 0 0 1 .9 1.8l-.7 2.3a2.2 2.2 0 0 1-2.2 1.6C10.6 18.9 5.1 13.4 5.1 6.4a2.2 2.2 0 0 1 1.6-2.2Z"
+            fill="currentColor"
+          />
+        </svg>
+      );
+    case 'linkedin':
+      return (
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M6.5 8.8H3.8V20h2.7V8.8ZM5.2 4A1.6 1.6 0 1 0 5.2 7.2A1.6 1.6 0 0 0 5.2 4Zm6.2 4.8H8.8V20h2.7v-5.9c0-1.6.8-2.6 2.1-2.6 1.2 0 1.8.8 1.8 2.5v6H18v-6.6c0-3-1.6-4.8-4.1-4.8-1.2 0-2 .5-2.5 1.2v-1Z"
+            fill="currentColor"
+          />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
+function ContactItem({ label, value, href, icon, displayValue }) {
+  const { t } = useI18n();
+
   return (
     <div className="student-detail__contact-item">
       <p className="student-detail__contact-label">{label}</p>
       {value ? (
         href ? (
-          <a className="student-detail__contact-value student-detail__contact-value--link" href={href} target="_blank" rel="noreferrer">
-            {value}
+          <a
+            className="student-detail__contact-value student-detail__contact-value--link student-detail__contact-value--with-icon"
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <span className="student-detail__contact-value-icon" aria-hidden="true">
+              <DetailIcon type={icon} />
+            </span>
+            <span>{displayValue ?? value}</span>
           </a>
         ) : (
-          <p className="student-detail__contact-value">{value}</p>
+          <p className={`student-detail__contact-value${icon ? ' student-detail__contact-value--with-icon' : ''}`}>
+            {icon ? (
+              <span className="student-detail__contact-value-icon" aria-hidden="true">
+                <DetailIcon type={icon} />
+              </span>
+            ) : null}
+            <span>{displayValue ?? value}</span>
+          </p>
         )
       ) : (
         <p className="student-detail__contact-value student-detail__contact-value--muted">
-          No disponible
+          {t('common.notAvailable')}
         </p>
       )}
     </div>
+  );
+}
+
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24">
+      <path
+        d="M10.7 5.3 4 12l6.7 6.7 1.4-1.4L7.8 13H20v-2H7.8l4.3-4.3-1.4-1.4Z"
+        fill="currentColor"
+      />
+    </svg>
   );
 }
 
@@ -47,6 +128,7 @@ function StudentDetailScreen({
   onEdit,
   onOpenRestaurantDetails,
 }) {
+  const { t } = useI18n();
   const [student, setStudent] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -67,11 +149,11 @@ function StudentDetailScreen({
 
         if (isMounted) {
           setStudent(selectedStudent);
-          setError(selectedStudent ? '' : 'No s\'ha trobat la fitxa de l\'alumne.');
+          setError(selectedStudent ? '' : t('detail.studentMissing'));
         }
       } catch (loadError) {
         if (isMounted) {
-          setError('No s\'ha pogut carregar la fitxa de l\'alumne.');
+          setError(t('detail.studentLoadError'));
         }
       } finally {
         if (isMounted) {
@@ -85,7 +167,7 @@ function StudentDetailScreen({
     return () => {
       isMounted = false;
     };
-  }, [studentId]);
+  }, [studentId, t]);
 
   function handleStartDelete() {
     setActionMessage('');
@@ -114,11 +196,9 @@ function StudentDetailScreen({
       onDeleted?.(student.id);
     } catch (deleteError) {
       if (deleteError?.message === 'missing-student-auth-data') {
-        setActionMessage(
-          'No s\'ha pogut eliminar l\'usuari d\'Authentication perque falten les credencials de l\'alumne.'
-        );
+        setActionMessage(t('detail.studentDeleteAuthError'));
       } else {
-        setActionMessage('No s\'ha pogut eliminar l\'alumne. Torna-ho a provar.');
+        setActionMessage(t('detail.studentDeleteError'));
       }
     } finally {
       setIsDeleting(false);
@@ -133,7 +213,7 @@ function StudentDetailScreen({
   if (isLoading) {
     return (
       <section className="student-detail">
-        <p className="student-detail__status" role="status">Carregant fitxa de l&apos;alumne...</p>
+        <p className="student-detail__status" role="status">{t('detail.studentLoading')}</p>
       </section>
     );
   }
@@ -142,10 +222,13 @@ function StudentDetailScreen({
     return (
       <section className="student-detail">
         <button className="student-detail__back" type="button" onClick={onBack}>
-          Tornar al llistat
+          <span className="student-detail__back-icon" aria-hidden="true">
+            <BackIcon />
+          </span>
+          {t('common.backToList')}
         </button>
         <p className="student-detail__status student-detail__status--error" role="alert">
-          {error || 'No s\'ha trobat la fitxa de l\'alumne.'}
+          {error || t('detail.studentMissing')}
         </p>
       </section>
     );
@@ -165,7 +248,10 @@ function StudentDetailScreen({
     <section className="student-detail">
       <div className="student-detail__header">
         <button className="student-detail__back" type="button" onClick={onBack}>
-          Tornar al llistat
+          <span className="student-detail__back-icon" aria-hidden="true">
+            <BackIcon />
+          </span>
+          {t('common.backToList')}
         </button>
       </div>
 
@@ -177,16 +263,16 @@ function StudentDetailScreen({
               src={student.PhotoURL}
               type="student"
               label={student.Name}
-              alt={student.Name ?? 'Alumne'}
+              alt={student.Name ?? t('common.student')}
             />
           </div>
           <p className="student-detail__student-status">
-            {student.isExAlumni ? 'Exalumne' : 'Alumne'}
+            {student.isExAlumni ? t('common.exStudent') : t('common.student')}
           </p>
         </div>
         <div className="student-detail__hero-body">
-          <p className="student-detail__eyebrow">Fitxa d&apos;alumne</p>
-          <h1>{student.Name ?? 'Sense nom'}</h1>
+          <p className="student-detail__eyebrow">{t('detail.studentSheet')}</p>
+          <h1>{student.Name ?? t('common.noName')}</h1>
           {canEditStudent || canDeleteStudent ? (
             <div className="student-detail__admin-actions">
               {canEditStudent ? (
@@ -195,7 +281,10 @@ function StudentDetailScreen({
                   type="button"
                   onClick={handleEdit}
                 >
-                  Editar
+                  <span className="student-detail__action-icon" aria-hidden="true">
+                    <DetailIcon type="edit" />
+                  </span>
+                  {t('common.edit')}
                 </button>
               ) : null}
               {canDeleteStudent ? (
@@ -204,7 +293,10 @@ function StudentDetailScreen({
                   type="button"
                   onClick={handleStartDelete}
                 >
-                  Eliminar
+                  <span className="student-detail__action-icon" aria-hidden="true">
+                    <DetailIcon type="delete" />
+                  </span>
+                  {t('common.delete')}
                 </button>
               ) : null}
             </div>
@@ -219,22 +311,26 @@ function StudentDetailScreen({
 
       {isAuthenticated ? (
         <section className="student-detail__panel">
-          <h2>Contacte</h2>
+          <h2>{t('common.contact')}</h2>
           <div className="student-detail__contacts">
             <ContactItem
               label="Email"
               value={student.Email}
               href={student.Email ? `mailto:${student.Email}` : ''}
+              icon="email"
             />
             <ContactItem
-              label="Phone"
+              label={t('common.phone')}
               value={student.Phone}
               href={student.Phone ? `tel:${student.Phone}` : ''}
+              icon="phone"
             />
             <ContactItem
               label="LinkedIn"
               value={student.LinkedIn}
               href={student.LinkedIn ? formatLink(student.LinkedIn, 'https://') : ''}
+              icon="linkedin"
+              displayValue="URL"
             />
           </div>
         </section>
@@ -242,11 +338,11 @@ function StudentDetailScreen({
 
       <section className="student-detail__panel">
         <div className="student-detail__panel-heading">
-          <h2>Restaurants</h2>
+          <h2>{t('common.restaurants')}</h2>
           <p>
             {student.linkedRestaurants?.length
-              ? 'Restaurants on ha treballat o treballa actualment.'
-              : 'Encara no hi ha restaurants vinculats a aquest alumne.'}
+              ? t('detail.studentRestaurantsText')
+              : t('detail.studentRestaurantsEmpty')}
           </p>
         </div>
 
@@ -260,34 +356,25 @@ function StudentDetailScreen({
                     src={restaurant.PhotoURL}
                     type="restaurant"
                     label={restaurant.Name}
-                    alt={restaurant.Name ?? 'Restaurant'}
+                    alt={restaurant.Name ?? t('common.restaurant')}
                   />
                 </div>
                 <div className="student-detail__restaurant-body">
-                  <div className="student-detail__restaurant-topline">
-                    <h3>{restaurant.Name ?? 'Sense nom'}</h3>
-                    <div className="student-detail__restaurant-actions">
-                      {restaurant.currentJob ? (
-                        <span className="student-detail__badge">Actualment</span>
-                      ) : null}
-                      <button
-                        className="student-detail__details"
-                        type="button"
-                        aria-label={`Obrir fitxa de ${restaurant.Name ?? 'restaurant'}`}
-                        onClick={() => onOpenRestaurantDetails(restaurant.id, 'student-detail')}
-                      >
-                        <svg aria-hidden="true" viewBox="0 0 24 24">
-                          <path
-                            d="M12 5c5.5 0 9.5 5.9 9.7 6.2a1.4 1.4 0 0 1 0 1.6C21.5 13.1 17.5 19 12 19S2.5 13.1 2.3 12.8a1.4 1.4 0 0 1 0-1.6C2.5 10.9 6.5 5 12 5Zm0 2C8.4 7 5.4 10.4 4.4 12 5.4 13.6 8.4 17 12 17s6.6-3.4 7.6-5C18.6 10.4 15.6 7 12 7Zm0 1.8a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4Zm0 2a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z"
-                            fill="currentColor"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+                  <h3>{restaurant.Name ?? t('common.noName')}</h3>
                   <p className="student-detail__restaurant-address">
-                    {restaurant.Address ?? 'Adreca no disponible'}
+                    {restaurant.Address ?? t('common.addressUnavailable')}
                   </p>
+                  <p className={`student-detail__restaurant-status${restaurant.currentJob ? '' : ' student-detail__restaurant-status--muted'}`}>
+                    {restaurant.currentJob ? t('common.currentJob') : t('common.previousExperience')}
+                  </p>
+                  <button
+                    className="student-detail__details"
+                    type="button"
+                    aria-label={t('restaurants.openDetails', { name: restaurant.Name ?? t('common.restaurant') })}
+                    onClick={() => onOpenRestaurantDetails(restaurant.id, 'student-detail')}
+                  >
+                    {t('common.details')}
+                  </button>
                 </div>
               </article>
             ))}
@@ -309,9 +396,9 @@ function StudentDetailScreen({
             aria-describedby="student-delete-description"
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 id="student-delete-title">Vols eliminar aquest alumne?</h2>
+            <h2 id="student-delete-title">{t('detail.deleteStudentTitle')}</h2>
             <p id="student-delete-description">
-              S&apos;eliminara la foto de l&apos;alumne, les relacions amb restaurants, la fitxa d&apos;Alumni i el compte d&apos;Authentication.
+              {t('detail.deleteStudentDescription')}
             </p>
             <div className="student-detail__dialog-actions">
               <button
@@ -320,7 +407,7 @@ function StudentDetailScreen({
                 onClick={handleCancelDelete}
                 disabled={isDeleting}
               >
-                Cancel.lar
+                {t('common.cancel')}
               </button>
               <button
                 className="student-detail__action student-detail__action--danger"
@@ -328,7 +415,7 @@ function StudentDetailScreen({
                 onClick={handleConfirmDelete}
                 disabled={isDeleting}
               >
-                {isDeleting ? 'Eliminant...' : 'Confirmar eliminacio'}
+                {isDeleting ? t('detail.deleting') : t('detail.confirmDelete')}
               </button>
             </div>
           </div>

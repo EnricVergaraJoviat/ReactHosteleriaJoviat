@@ -157,7 +157,7 @@
 }
 
 .auth-screen__request-feedback {
-  margin: 0;
+  margin: 1rem 0 1.25rem;
   line-height: 1.5;
 }
 

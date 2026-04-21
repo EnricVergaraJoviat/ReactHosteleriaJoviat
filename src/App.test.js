@@ -9,6 +9,7 @@ import {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
 } from 'firebase/auth';
 import {
   addDoc,
@@ -23,6 +24,7 @@ import App from './App';
 import { copyPlacePhotoToStorage } from 'firebase/functions';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { deleteApp, initializeApp } from 'firebase/app';
+import { auth } from './helpers/firebase';
 
 jest.mock('./helpers/firebase', () => ({
   app: { options: { projectId: 'reacthosteleriajoviat' } },
@@ -40,6 +42,7 @@ jest.mock('firebase/auth', () => ({
   sendPasswordResetEmail: jest.fn(),
   signInWithEmailAndPassword: jest.fn(),
   signOut: jest.fn(),
+  updatePassword: jest.fn(),
 }));
 
 jest.mock('firebase/firestore', () => ({
@@ -189,6 +192,9 @@ beforeEach(() => {
   createUserWithEmailAndPassword.mockResolvedValue({ user: { uid: 'student-new' } });
   sendPasswordResetEmail.mockReset();
   sendPasswordResetEmail.mockResolvedValue();
+  updatePassword.mockReset();
+  updatePassword.mockResolvedValue();
+  delete auth.currentUser;
   deleteUser.mockReset();
   deleteUser.mockResolvedValue();
   getAuth.mockReset();
@@ -286,7 +292,7 @@ beforeEach(() => {
       };
     }
 
-    if (collectionName === 'UserRegistrations') {
+    if (collectionName === 'UserRegistrations' || collectionName === 'RestaruantsRegistrations') {
       return {
         docs: [],
       };
@@ -345,11 +351,12 @@ beforeEach(() => {
 test('renders the Joviat home screen', () => {
   render(<App />);
   expect(screen.getByAltText(/logo joviat/i)).toBeInTheDocument();
-  expect(screen.getByText(/visualitzar restaurants/i)).toBeInTheDocument();
-  expect(screen.getByText(/visualitzar alumnes/i)).toBeInTheDocument();
+  expect(screen.getByText(/cicle formatiu hoteleria/i)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /explorar restaurants/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /explorar alumnes/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /^login$/i })).toBeInTheDocument();
   expect(
-    screen.getByText(/pagina principal en construccio/i)
+    screen.getByText(/descobreix fins on arriba la xarxa de la joviat/i)
   ).toBeInTheDocument();
 });
 
@@ -559,16 +566,16 @@ test('allows a visitor to request access from the login dialog', async () => {
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /solicita acceso/i }));
+    await userEvent.click(screen.getByRole('button', { name: /sol.licita acces/i }));
   });
 
-  expect(await screen.findByRole('heading', { name: /solicitar acceso/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /sol.licitar acces/i })).toBeInTheDocument();
 
   const emailInputs = screen.getAllByLabelText(/email/i);
   await act(async () => {
     await userEvent.type(emailInputs[emailInputs.length - 1], 'pepito@joviat.cat');
-    await userEvent.type(screen.getByLabelText(/nombre y apellidos/i), 'Pepito Perez');
-    await userEvent.click(screen.getByRole('button', { name: /solicitar acceso/i }));
+    await userEvent.type(screen.getByLabelText(/nom i cognoms/i), 'Pepito Perez');
+    await userEvent.click(screen.getByRole('button', { name: /sol.licitar acces/i }));
   });
 
   expect(addDoc).toHaveBeenCalledWith('UserRegistrations', {
@@ -577,8 +584,85 @@ test('allows a visitor to request access from the login dialog', async () => {
     createdAt: 'SERVER_TIMESTAMP',
   });
   expect(
-    await screen.findByText(/hem registrat la teva sol.licitud d'acces/i)
+    await screen.findByText(/s'ha enviat la sol.licitud d'acces/i)
   ).toBeInTheDocument();
+  expect(screen.queryByLabelText(/nom i cognoms/i)).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /sol.licitar acces/i })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /tancar/i })).toBeInTheDocument();
+});
+
+test('warns when requesting access with an existing alumni email', async () => {
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^login$/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /sol.licita acces/i }));
+  });
+
+  const emailInputs = screen.getAllByLabelText(/email/i);
+  await act(async () => {
+    await userEvent.type(emailInputs[emailInputs.length - 1], 'aina@joviat.cat');
+    await userEvent.type(screen.getByLabelText(/nom i cognoms/i), 'Aina Serra');
+    await userEvent.click(screen.getByRole('button', { name: /sol.licitar acces/i }));
+  });
+
+  expect(addDoc).not.toHaveBeenCalled();
+  expect(
+    await screen.findByText(/aquest email ja existeix com a alumni/i)
+  ).toBeInTheDocument();
+  expect(screen.queryByLabelText(/nom i cognoms/i)).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /tancar/i })).toBeInTheDocument();
+});
+
+test('warns when requesting access with a pending registration email', async () => {
+  getDocs.mockImplementation(async (collectionName) => {
+    if (collectionName === 'UserRegistrations') {
+      return {
+        docs: [
+          {
+            id: 'registration-1',
+            data: () => ({
+              Email: 'pendent@joviat.cat',
+              Name: 'Usuari Pendent',
+            }),
+          },
+        ],
+      };
+    }
+
+    if (collectionName === 'Alumni') {
+      return { docs: [] };
+    }
+
+    return { docs: [] };
+  });
+
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^login$/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /sol.licita acces/i }));
+  });
+
+  const emailInputs = screen.getAllByLabelText(/email/i);
+  await act(async () => {
+    await userEvent.type(emailInputs[emailInputs.length - 1], 'pendent@joviat.cat');
+    await userEvent.type(screen.getByLabelText(/nom i cognoms/i), 'Usuari Pendent');
+    await userEvent.click(screen.getByRole('button', { name: /sol.licitar acces/i }));
+  });
+
+  expect(addDoc).not.toHaveBeenCalled();
+  expect(
+    await screen.findByText(/aquest email ja te una sol.licitud pendent/i)
+  ).toBeInTheDocument();
+  expect(screen.queryByLabelText(/nom i cognoms/i)).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /tancar/i })).toBeInTheDocument();
 });
 
 test('allows an administrator to accept a pending registration', async () => {
@@ -665,12 +749,12 @@ test('allows an administrator to accept a pending registration', async () => {
   expect(createUserWithEmailAndPassword).toHaveBeenCalledWith(
     expect.objectContaining({ appInstance: expect.any(Object) }),
     'pepito@joviat.cat',
-    '1234'
+    'joviat123'
   );
   expect(addDoc).toHaveBeenCalledWith('Alumni', {
     Name: 'Pepito Perez',
     Email: 'pepito@joviat.cat',
-    Password: '1234',
+    Password: 'joviat123',
     isExAlumni: false,
     createdAt: 'SERVER_TIMESTAMP',
   });
@@ -679,6 +763,280 @@ test('allows an administrator to accept a pending registration', async () => {
     path: 'UserRegistrations/registration-1',
   });
   expect(await screen.findByText(/s'ha donat d'alta pepito perez/i)).toBeInTheDocument();
+});
+
+test('asks for confirmation before canceling a pending registration', async () => {
+  let authListener;
+  onAuthStateChanged.mockImplementation((auth, callback) => {
+    authListener = callback;
+    callback(null);
+    return jest.fn();
+  });
+  signInWithEmailAndPassword.mockImplementation(async () => {
+    authListener({ email: 'evergara@joviat.cat' });
+  });
+  getDocs.mockImplementation(async (collectionName) => {
+    if (collectionName === 'Administrator') {
+      return {
+        docs: [
+          {
+            id: 'admin-1',
+            data: () => ({
+              Email: 'evergara@joviat.cat',
+            }),
+          },
+        ],
+      };
+    }
+
+    if (collectionName === 'UserRegistrations') {
+      return {
+        docs: [
+          {
+            id: 'registration-1',
+            data: () => ({
+              Email: 'pepito@joviat.cat',
+              Name: 'Pepito Perez',
+            }),
+          },
+        ],
+      };
+    }
+
+    return { docs: [] };
+  });
+
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^login$/i }));
+  });
+
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(/email/i), 'evergara@joviat.cat');
+    await userEvent.type(screen.getByLabelText(/contrasenya/i), '123456');
+    await userEvent.click(screen.getByRole('button', { name: /fer login/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /gestionar altes/i }));
+  });
+
+  expect(await screen.findByText(/pepito perez/i)).toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /cancelar/i }));
+  });
+
+  expect(deleteDoc).not.toHaveBeenCalled();
+  expect(
+    await screen.findByText(/estas segur que vols cancel.lar la peticio d'alta de pepito perez/i)
+  ).toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /cancel.lar peticio/i }));
+  });
+
+  expect(deleteDoc).toHaveBeenCalledWith({
+    id: 'registration-1',
+    path: 'UserRegistrations/registration-1',
+  });
+  expect(
+    await screen.findByText(/s'ha cancel.lat la sol.licitud de pepito perez/i)
+  ).toBeInTheDocument();
+});
+
+test('allows an administrator to delete a pending restaurant registration', async () => {
+  let authListener;
+  onAuthStateChanged.mockImplementation((auth, callback) => {
+    authListener = callback;
+    callback(null);
+    return jest.fn();
+  });
+  signInWithEmailAndPassword.mockImplementation(async () => {
+    authListener({ email: 'evergara@joviat.cat' });
+  });
+  getDocs.mockImplementation(async (collectionName) => {
+    if (collectionName === 'Administrator') {
+      return {
+        docs: [
+          {
+            id: 'admin-1',
+            data: () => ({
+              Email: 'evergara@joviat.cat',
+            }),
+          },
+        ],
+      };
+    }
+
+    if (collectionName === 'UserRegistrations') {
+      return { docs: [] };
+    }
+
+    if (collectionName === 'RestaruantsRegistrations') {
+      return {
+        docs: [
+          {
+            id: 'restaurant-registration-1',
+            data: () => ({
+              Name: 'Aina Serra',
+              Email: 'aina@joviat.cat',
+              Description: 'Restaurant La Fonda, Manresa',
+            }),
+          },
+        ],
+      };
+    }
+
+    return { docs: [] };
+  });
+
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^login$/i }));
+  });
+
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(/email/i), 'evergara@joviat.cat');
+    await userEvent.type(screen.getByLabelText(/contrasenya/i), '123456');
+    await userEvent.click(screen.getByRole('button', { name: /fer login/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /gestionar altes/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click(await screen.findByRole('button', { name: /visualitzar altes restaurants/i }));
+  });
+
+  expect(await screen.findByText(/aina serra/i)).toBeInTheDocument();
+  expect(screen.getByText(/restaurant la fonda/i)).toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(screen.getAllByRole('button', { name: /eliminar petici/i })[0]);
+  });
+
+  expect(
+    await screen.findByText(/realment vols eliminar la petici/i)
+  ).toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^no$/i }));
+  });
+
+  expect(deleteDoc).not.toHaveBeenCalled();
+  expect(screen.getByText(/restaurant la fonda/i)).toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(screen.getAllByRole('button', { name: /eliminar petici/i })[0]);
+  });
+
+  await act(async () => {
+    const deleteButtons = screen.getAllByRole('button', { name: /eliminar petici/i });
+    await userEvent.click(deleteButtons[deleteButtons.length - 1]);
+  });
+
+  expect(deleteDoc).toHaveBeenCalledWith({
+    id: 'restaurant-registration-1',
+    path: 'RestaruantsRegistrations/restaurant-registration-1',
+  });
+  expect(await screen.findByText(/s'ha eliminat la petici/i)).toBeInTheDocument();
+});
+
+test('warns when accepting a registration whose alumni email already exists', async () => {
+  let authListener;
+  onAuthStateChanged.mockImplementation((auth, callback) => {
+    authListener = callback;
+    callback(null);
+    return jest.fn();
+  });
+  signInWithEmailAndPassword.mockImplementation(async () => {
+    authListener({ email: 'evergara@joviat.cat' });
+  });
+  getDocs.mockImplementation(async (collectionName) => {
+    if (collectionName === 'Administrator') {
+      return {
+        docs: [
+          {
+            id: 'admin-1',
+            data: () => ({
+              Email: 'evergara@joviat.cat',
+            }),
+          },
+        ],
+      };
+    }
+
+    if (collectionName === 'UserRegistrations') {
+      return {
+        docs: [
+          {
+            id: 'registration-1',
+            data: () => ({
+              Email: 'pepito@joviat.cat',
+              Name: 'Pepito Perez',
+            }),
+          },
+        ],
+      };
+    }
+
+    if (collectionName === 'Alumni') {
+      return {
+        docs: [
+          {
+            id: 'student-existing',
+            data: () => ({
+              Email: 'pepito@joviat.cat',
+              Name: 'Pepito Perez',
+            }),
+          },
+        ],
+      };
+    }
+
+    if (collectionName === 'Rest-Alum' || collectionName === 'Restaurant') {
+      return { docs: [] };
+    }
+
+    return { docs: [] };
+  });
+
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^login$/i }));
+  });
+
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(/email/i), 'evergara@joviat.cat');
+    await userEvent.type(screen.getByLabelText(/contrasenya/i), '123456');
+    await userEvent.click(screen.getByRole('button', { name: /fer login/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /gestionar altes/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click(await screen.findByRole('button', { name: /acceptar/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click(await screen.findByRole('button', { name: /^si$/i }));
+  });
+
+  expect(createUserWithEmailAndPassword).not.toHaveBeenCalled();
+  expect(addDoc).not.toHaveBeenCalledWith('Alumni', expect.anything());
+  expect(deleteDoc).not.toHaveBeenCalledWith({
+    id: 'registration-1',
+    path: 'UserRegistrations/registration-1',
+  });
+  expect(await screen.findByText(/aquest usuari ja estava creat/i)).toBeInTheDocument();
+  expect(screen.queryByText(/estas segur que vols donar d'alta/i)).not.toBeInTheDocument();
 });
 
 test('does not show administrator options for a logged user outside Administrator', async () => {
@@ -1070,7 +1428,7 @@ test('opens the student detail card from the students list', async () => {
   expect(screen.queryByText(/600123123/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/linkedin.com\/in\/aina-serra/i)).not.toBeInTheDocument();
   expect(screen.getByText(/carrer de can sunyer, 48, girona/i)).toBeInTheDocument();
-  expect(screen.getByText(/^actualment$/i)).toBeInTheDocument();
+  expect(screen.getByText(/^treballa actualment$/i)).toBeInTheDocument();
 });
 
 test('shows the contact section in the student detail when the user is logged in', async () => {
@@ -1203,9 +1561,13 @@ test('shows the contact section in the student detail when the user is logged in
 
   expect(await screen.findByRole('heading', { name: /aina serra/i })).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: /^contacte$/i })).toBeInTheDocument();
-  expect(screen.getByText(/aina@joviat.cat/i)).toBeInTheDocument();
+  expect(screen.getAllByText(/aina@joviat.cat/i).length).toBeGreaterThanOrEqual(1);
   expect(screen.getByText(/600123123/i)).toBeInTheDocument();
-  expect(screen.getByText(/linkedin.com\/in\/aina-serra/i)).toBeInTheDocument();
+  expect(screen.queryByText(/linkedin.com\/in\/aina-serra/i)).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /url/i })).toHaveAttribute(
+    'href',
+    'https://linkedin.com/in/aina-serra'
+  );
   expect(screen.getByRole('button', { name: /^editar$/i })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /^eliminar$/i })).not.toBeInTheDocument();
 });
@@ -1790,9 +2152,10 @@ test('does not show the password recovery button for a non administrator editing
 
   expect(await screen.findByRole('heading', { name: /editar alumne/i })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /recuperar contrassenya/i })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /modificar password/i })).toBeInTheDocument();
 });
 
-test('shows editar perfil in the menu for a logged student and opens their own edit form', async () => {
+test('opens the logged student edit form from the header avatar', async () => {
   let authListener;
   onAuthStateChanged.mockImplementation((auth, callback) => {
     authListener = callback;
@@ -1865,16 +2228,142 @@ test('shows editar perfil in the menu for a logged student and opens their own e
     await userEvent.click(screen.getByRole('button', { name: /fer login/i }));
   });
 
-  expect(await screen.findByRole('button', { name: /editar perfil/i })).toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: /obrir la meva fitxa/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /editar perfil/i })).toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /editar perfil/i }));
+    await userEvent.click(screen.getByRole('button', { name: /obrir la meva fitxa/i }));
   });
 
   expect(await screen.findByRole('heading', { name: /editar alumne/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /editar perfil/i })).toHaveClass('sidebar__link--active');
+  expect(screen.getByRole('button', { name: /visualitzar alumnes/i })).not.toHaveClass('sidebar__link--active');
+  expect(screen.getByRole('button', { name: /visualitzar restaurants/i })).not.toHaveClass('sidebar__link--active');
   expect(screen.getByLabelText(/nom complet/i)).toHaveValue('Aina Serra');
   expect(screen.getByLabelText(/correu electronic/i)).toHaveValue('aina@joviat.cat');
+  expect(screen.getByAltText(/aina serra/i)).toHaveAttribute(
+    'src',
+    'https://i.pravatar.cc/320?img=12'
+  );
   expect(screen.queryByRole('button', { name: /recuperar contrassenya/i })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /modificar password/i })).toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /donar d'alta restaurant/i }));
+  });
+
+  await act(async () => {
+    await userEvent.type(
+      screen.getByLabelText(/descrip/i),
+      'Restaurant La Fonda, Manresa'
+    );
+    await userEvent.click(screen.getByRole('button', { name: /enviar petici/i }));
+  });
+
+  expect(addDoc).toHaveBeenCalledWith('RestaruantsRegistrations', {
+    Name: 'Aina Serra',
+    Email: 'aina@joviat.cat',
+    Description: 'Restaurant La Fonda, Manresa',
+    id_alumni: { id: 'student-1', path: 'Alumni/student-1' },
+    createdAt: 'SERVER_TIMESTAMP',
+  });
+  expect(await screen.findByText(/s'ha enviat la petici/i)).toBeInTheDocument();
+});
+
+test('allows a logged student to change their password from editar perfil', async () => {
+  let authListener;
+  onAuthStateChanged.mockImplementation((authValue, callback) => {
+    authListener = callback;
+    callback(null);
+    return jest.fn();
+  });
+  signInWithEmailAndPassword.mockImplementation(async () => {
+    const user = { email: 'aina@joviat.cat', uid: 'auth-student-1' };
+    auth.currentUser = user;
+    authListener(user);
+  });
+
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^login$/i }));
+  });
+
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(/email/i), 'aina@joviat.cat');
+    await userEvent.type(screen.getByLabelText(/contrasenya/i), '123456');
+    await userEvent.click(screen.getByRole('button', { name: /fer login/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click((await screen.findAllByRole('button', { name: /editar perfil/i }))[0]);
+  });
+
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(/^nou password$/i), 'noupass123');
+    await userEvent.type(screen.getByLabelText(/^repetir password$/i), 'noupass123');
+    await userEvent.click(screen.getByRole('button', { name: /modificar password/i }));
+  });
+
+  expect(updatePassword).toHaveBeenCalledWith(
+    { email: 'aina@joviat.cat', uid: 'auth-student-1' },
+    'noupass123'
+  );
+  expect(updateDoc).toHaveBeenCalledWith(
+    { id: 'student-1', path: 'Alumni/student-1' },
+    {
+      Password: 'noupass123',
+      updatedAt: 'SERVER_TIMESTAMP',
+    }
+  );
+  expect(await screen.findByText(/password modificat correctament/i)).toBeInTheDocument();
+});
+
+test('does not change the student password when both password fields do not match', async () => {
+  let authListener;
+  onAuthStateChanged.mockImplementation((authValue, callback) => {
+    authListener = callback;
+    callback(null);
+    return jest.fn();
+  });
+  signInWithEmailAndPassword.mockImplementation(async () => {
+    const user = { email: 'aina@joviat.cat', uid: 'auth-student-1' };
+    auth.currentUser = user;
+    authListener(user);
+  });
+
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^login$/i }));
+  });
+
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(/email/i), 'aina@joviat.cat');
+    await userEvent.type(screen.getByLabelText(/contrasenya/i), '123456');
+    await userEvent.click(screen.getByRole('button', { name: /fer login/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click((await screen.findAllByRole('button', { name: /editar perfil/i }))[0]);
+  });
+
+  const passwordInput = screen.getByLabelText(/^nou password$/i);
+
+  await act(async () => {
+    await userEvent.type(passwordInput, 'noupass123');
+    await userEvent.type(screen.getByLabelText(/^repetir password$/i), 'diferent123');
+    await userEvent.click(screen.getByRole('button', { name: /modificar password/i }));
+  });
+
+  expect(updatePassword).not.toHaveBeenCalled();
+  expect(screen.getByText(/els passwords no coincideixen/i)).toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^mostrar password$/i }));
+  });
+
+  expect(passwordInput).toHaveAttribute('type', 'text');
 });
 
 test('allows an administrator to delete a student from detail view without leaving the admin session', async () => {
@@ -2086,7 +2575,7 @@ test('opens the restaurant detail card from the restaurants list', async () => {
 
   await act(async () => {
     await userEvent.click(
-      await screen.findByRole('button', { name: /obrir fitxa de el celler de can roca/i })
+      (await screen.findAllByRole('button', { name: /obrir fitxa de el celler de can roca/i }))[0]
     );
   });
 
@@ -2107,7 +2596,7 @@ test('opens the restaurant detail card from the restaurants list', async () => {
   expect(screen.getByLabelText(/rating 4.9 de 5/i)).toBeInTheDocument();
   expect(screen.getByText(/operatiu/i)).toBeInTheDocument();
   expect(screen.getByText(/cap de partida/i)).toBeInTheDocument();
-  expect(screen.getByText(/treballa actualment en aquest restaurant/i)).toBeInTheDocument();
+  expect(screen.getByText(/^treballa actualment$/i)).toBeInTheDocument();
 });
 
 test('allows an administrator to delete a restaurant from its detail card', async () => {
@@ -2212,7 +2701,7 @@ test('allows an administrator to delete a restaurant from its detail card', asyn
 
   await act(async () => {
     await userEvent.click(
-      await screen.findByRole('button', { name: /obrir fitxa de el celler de can roca/i })
+      (await screen.findAllByRole('button', { name: /obrir fitxa de el celler de can roca/i }))[0]
     );
   });
 
@@ -2326,7 +2815,7 @@ test('allows an administrator to edit a restaurant from its detail card using th
 
   await act(async () => {
     await userEvent.click(
-      await screen.findByRole('button', { name: /obrir fitxa de el celler de can roca/i })
+      (await screen.findAllByRole('button', { name: /obrir fitxa de el celler de can roca/i }))[0]
     );
   });
 
@@ -2448,7 +2937,7 @@ test('opens the restaurant detail card from the student detail', async () => {
 
   await act(async () => {
     await userEvent.click(
-      await screen.findByRole('button', { name: /obrir fitxa de el celler de can roca/i })
+      (await screen.findAllByRole('button', { name: /obrir fitxa de el celler de can roca/i }))[0]
     );
   });
 
@@ -2474,7 +2963,7 @@ test('opens the student detail card from the restaurant detail', async () => {
 
   await act(async () => {
     await userEvent.click(
-      await screen.findByRole('button', { name: /obrir fitxa de el celler de can roca/i })
+      (await screen.findAllByRole('button', { name: /obrir fitxa de el celler de can roca/i }))[0]
     );
   });
 
@@ -2509,9 +2998,10 @@ test('navigates to the restaurants screen and returns home from the logo', async
     await screen.findByRole('heading', { name: /^restaurants$/i })
   ).toBeInTheDocument();
   expect(screen.getByTestId('restaurants-map')).toBeInTheDocument();
-  expect((await screen.findAllByText(/el celler de can roca/i)).length).toBeGreaterThanOrEqual(2);
-  expect((await screen.findAllByText(/1 alumni associat/i)).length).toBeGreaterThanOrEqual(2);
-  expect((await screen.findAllByText(/0 alumni associats/i)).length).toBeGreaterThanOrEqual(1);
+  expect(screen.getByRole('button', { name: /veure mapa/i })).toHaveAttribute('aria-pressed', 'true');
+  expect(
+    screen.queryByRole('navigation', { name: /paginacio de restaurants/i })
+  ).not.toBeInTheDocument();
   expect(collection).toHaveBeenCalledWith({}, 'Restaurant');
   expect(collection).toHaveBeenCalledWith({}, 'Rest-Alum');
   expect(getDocs).toHaveBeenCalledWith('Restaurant');
@@ -2524,11 +3014,11 @@ test('navigates to the restaurants screen and returns home from the logo', async
   });
 
   expect(
-    await screen.findByText(/pagina principal en construccio/i)
+    await screen.findByText(/descobreix fins on arriba la xarxa de la joviat/i)
   ).toBeInTheDocument();
 });
 
-test('shows a richer popup card on restaurant map pins and opens the detail from there', async () => {
+test('shows the restaurant card on restaurant map pins and opens the detail from there', async () => {
   render(<App />);
 
   await act(async () => {
@@ -2537,13 +3027,15 @@ test('shows a richer popup card on restaurant map pins and opens the detail from
     );
   });
 
-  expect((await screen.findAllByText(/alumnes associats/i)).length).toBeGreaterThan(0);
-  expect(screen.getAllByText(/el celler de can roca/i).length).toBeGreaterThan(0);
+  expect((await screen.findAllByText(/el celler de can roca/i)).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/carrer de can sunyer/i).length).toBeGreaterThan(0);
   expect(screen.getAllByText(/1 alumni associat/i).length).toBeGreaterThan(0);
-  expect(screen.getAllByRole('button', { name: /veure detall/i }).length).toBeGreaterThan(0);
+  expect(screen.getAllByRole('button', { name: /obrir fitxa de .* des del mapa/i }).length).toBeGreaterThan(0);
 
   await act(async () => {
-    await userEvent.click(screen.getAllByRole('button', { name: /veure detall/i })[0]);
+    await userEvent.click(
+      screen.getAllByRole('button', { name: /obrir fitxa de .* des del mapa/i })[0]
+    );
   });
 
   expect(
@@ -2608,6 +3100,10 @@ test('paginates the restaurants list in groups of 8 below the search field', asy
     await userEvent.click(
       screen.getByRole('button', { name: /visualitzar restaurants/i })
     );
+  });
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /veure llistat/i }));
   });
 
   const searchInput = await screen.findByLabelText(/cercar restaurant/i);
