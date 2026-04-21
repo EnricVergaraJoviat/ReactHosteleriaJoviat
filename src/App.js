@@ -3,15 +3,19 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebas
 import { collection, getDocs } from 'firebase/firestore';
 import AppShell from './components/AppShell/AppShell';
 import AdminScreen from './screens/AdminScreen/AdminScreen';
+import AddRestaurantScreen from './screens/AddRestaurantScreen/AddRestaurantScreen';
 import AddStudentScreen from './screens/AddStudentScreen/AddStudentScreen';
 import { auth } from './helpers/firebase';
 import { db } from './helpers/firebase';
 import AuthScreen from './screens/AuthScreen/AuthScreen';
 import HomeScreen from './screens/HomeScreen/HomeScreen';
+import ManageRegistrationsScreen from './screens/ManageRegistrationsScreen/ManageRegistrationsScreen';
 import RestaurantDetailScreen from './screens/RestaurantDetailScreen/RestaurantDetailScreen';
 import RestaurantsScreen from './screens/RestaurantsScreen/RestaurantsScreen';
 import StudentDetailScreen from './screens/StudentDetailScreen/StudentDetailScreen';
 import StudentsScreen from './screens/StudentsScreen/StudentsScreen';
+import { loadStudentRestaurantGraph } from './helpers/firestoreData';
+import { createUserRegistration } from './helpers/userRegistrations';
 
 function getAuthErrorMessage(error) {
   switch (error?.code) {
@@ -30,17 +34,26 @@ function getAuthErrorMessage(error) {
   }
 }
 
+function normalizeEmail(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
 function App() {
   const [activeView, setActiveView] = useState('home');
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [studentDetailOrigin, setStudentDetailOrigin] = useState('students');
+  const [studentFormMode, setStudentFormMode] = useState('create');
+  const [studentFormInitialData, setStudentFormInitialData] = useState(null);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState('');
   const [restaurantDetailOrigin, setRestaurantDetailOrigin] = useState('restaurants');
+  const [restaurantFormMode, setRestaurantFormMode] = useState('create');
+  const [restaurantFormInitialData, setRestaurantFormInitialData] = useState(null);
   const [authViewMode, setAuthViewMode] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
   const [authErrorMessage, setAuthErrorMessage] = useState('');
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
   const [isAdministrator, setIsAdministrator] = useState(false);
+  const [currentStudentProfile, setCurrentStudentProfile] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -54,14 +67,18 @@ function App() {
   useEffect(() => {
     let isCancelled = false;
 
-    async function loadAdministratorState() {
+    async function loadUserAccessState() {
       if (!currentUser?.email) {
         setIsAdministrator(false);
+        setCurrentStudentProfile(null);
         return;
       }
 
       try {
-        const snapshot = await getDocs(collection(db, 'Administrator'));
+        const [snapshot, { students }] = await Promise.all([
+          getDocs(collection(db, 'Administrator')),
+          loadStudentRestaurantGraph(),
+        ]);
         const normalizedUserEmail = currentUser.email.trim().toLowerCase();
         const administratorExists = snapshot.docs.some((entry) => {
           const emailValue = entry.data()?.Email;
@@ -70,18 +87,23 @@ function App() {
             emailValue.trim().toLowerCase() === normalizedUserEmail
           );
         });
+        const studentProfile = students.find((entry) =>
+          normalizeEmail(entry.Email) === normalizedUserEmail
+        ) ?? null;
 
         if (!isCancelled) {
           setIsAdministrator(administratorExists);
+          setCurrentStudentProfile(studentProfile);
         }
       } catch (error) {
         if (!isCancelled) {
           setIsAdministrator(false);
+          setCurrentStudentProfile(null);
         }
       }
     }
 
-    loadAdministratorState();
+    loadUserAccessState();
 
     return () => {
       isCancelled = true;
@@ -89,9 +111,24 @@ function App() {
   }, [currentUser]);
 
   function handleNavigate(view) {
+    if (view === 'edit-profile') {
+      if (currentStudentProfile) {
+        setSelectedStudentId(currentStudentProfile.id);
+        setStudentFormMode('edit');
+        setStudentFormInitialData(currentStudentProfile);
+        setActiveView('edit-student');
+      }
+      return;
+    }
+
     setActiveView(view);
 
-    if (view !== 'student-detail' && view !== 'restaurant-detail') {
+    if (
+      view !== 'student-detail'
+      && view !== 'restaurant-detail'
+      && view !== 'edit-student'
+      && view !== 'edit-restaurant'
+    ) {
       setSelectedStudentId('');
     }
 
@@ -99,9 +136,19 @@ function App() {
       setStudentDetailOrigin('students');
     }
 
-    if (view !== 'restaurant-detail') {
+    if (view !== 'restaurant-detail' && view !== 'edit-restaurant') {
       setSelectedRestaurantId('');
       setRestaurantDetailOrigin('restaurants');
+    }
+
+    if (view !== 'add-student' && view !== 'edit-student') {
+      setStudentFormMode('create');
+      setStudentFormInitialData(null);
+    }
+
+    if (view !== 'add-restaurant' && view !== 'edit-restaurant') {
+      setRestaurantFormMode('create');
+      setRestaurantFormInitialData(null);
     }
   }
 
@@ -111,10 +158,62 @@ function App() {
     setActiveView('student-detail');
   }
 
+  async function handleEditStudent(studentId) {
+    try {
+      const { students } = await loadStudentRestaurantGraph();
+      const selectedStudent = students.find((entry) => entry.id === studentId) ?? null;
+
+      if (!selectedStudent) {
+        return;
+      }
+
+      const canEditStudent = isAdministrator
+        || (
+          normalizeEmail(currentUser?.email)
+          && normalizeEmail(selectedStudent.Email) === normalizeEmail(currentUser?.email)
+        );
+
+      if (!canEditStudent) {
+        setActiveView('student-detail');
+        return;
+      }
+
+      setSelectedStudentId(studentId);
+      setStudentFormMode('edit');
+      setStudentFormInitialData(selectedStudent);
+      setActiveView('edit-student');
+    } catch (error) {
+      setActiveView('student-detail');
+    }
+  }
+
   function handleOpenRestaurantDetails(restaurantId, origin) {
     setSelectedRestaurantId(restaurantId);
     setRestaurantDetailOrigin(origin);
     setActiveView('restaurant-detail');
+  }
+
+  async function handleEditRestaurant(restaurantId) {
+    if (!isAdministrator) {
+      setActiveView('restaurant-detail');
+      return;
+    }
+
+    try {
+      const { restaurants } = await loadStudentRestaurantGraph();
+      const selectedRestaurant = restaurants.find((entry) => entry.id === restaurantId) ?? null;
+
+      if (!selectedRestaurant) {
+        return;
+      }
+
+      setSelectedRestaurantId(restaurantId);
+      setRestaurantFormMode('edit');
+      setRestaurantFormInitialData(selectedRestaurant);
+      setActiveView('edit-restaurant');
+    } catch (error) {
+      setActiveView('restaurant-detail');
+    }
   }
 
   function handleAuthAction() {
@@ -153,6 +252,10 @@ function App() {
     }
   }
 
+  async function handleRequestAccess({ email, name }) {
+    await createUserRegistration({ email, name });
+  }
+
   let screen = <HomeScreen />;
 
   if (activeView === 'restaurants') {
@@ -166,8 +269,13 @@ function App() {
   if (activeView === 'student-detail' && selectedStudentId) {
     screen = (
       <StudentDetailScreen
+        isAuthenticated={Boolean(currentUser)}
+        isAdministrator={isAdministrator}
+        currentUserEmail={currentUser?.email ?? ''}
         studentId={selectedStudentId}
         onBack={() => handleNavigate(studentDetailOrigin)}
+        onDeleted={() => handleNavigate('students')}
+        onEdit={handleEditStudent}
         onOpenRestaurantDetails={handleOpenRestaurantDetails}
       />
     );
@@ -176,8 +284,11 @@ function App() {
   if (activeView === 'restaurant-detail' && selectedRestaurantId) {
     screen = (
       <RestaurantDetailScreen
+        isAdministrator={isAdministrator}
         restaurantId={selectedRestaurantId}
         onBack={() => handleNavigate(restaurantDetailOrigin)}
+        onDeleted={() => handleNavigate('restaurants')}
+        onEdit={handleEditRestaurant}
         onOpenStudentDetails={handleOpenStudentDetails}
       />
     );
@@ -194,19 +305,48 @@ function App() {
         onClearError={() => setAuthErrorMessage('')}
         onLogin={handleLogin}
         onLogout={handleLogout}
+        onRequestAccess={handleRequestAccess}
       />
     );
   }
 
   if (isAdministrator && activeView === 'add-student') {
-    screen = <AddStudentScreen />;
+    screen = <AddStudentScreen mode="create" isAdministrator={isAdministrator} />;
   }
 
-  if (
-    isAdministrator &&
-    ['add-restaurant', 'manage-registrations'].includes(activeView)
-  ) {
-    screen = <AdminScreen view={activeView} />;
+  if (isAdministrator && activeView === 'add-restaurant') {
+    screen = <AddRestaurantScreen mode="create" />;
+  }
+
+  if (isAdministrator && activeView === 'edit-restaurant' && restaurantFormInitialData) {
+    screen = (
+      <AddRestaurantScreen
+        mode="edit"
+        restaurant={restaurantFormInitialData}
+        onSaved={(restaurantId) => handleOpenRestaurantDetails(restaurantId, 'restaurants')}
+      />
+    );
+  }
+
+  const canEditSelectedStudent = studentFormInitialData
+    && (
+      isAdministrator
+      || normalizeEmail(studentFormInitialData.Email) === normalizeEmail(currentUser?.email)
+    );
+
+  if (activeView === 'edit-student' && studentFormInitialData && canEditSelectedStudent) {
+    screen = (
+      <AddStudentScreen
+        mode="edit"
+        isAdministrator={isAdministrator}
+        student={studentFormInitialData}
+        onSaved={(studentId) => handleOpenStudentDetails(studentId, 'students')}
+      />
+    );
+  }
+
+  if (isAdministrator && activeView === 'manage-registrations') {
+    screen = <ManageRegistrationsScreen />;
   }
 
   return (
@@ -214,12 +354,17 @@ function App() {
       activeView={
         activeView === 'student-detail'
           ? 'students'
+          : activeView === 'edit-student'
+          ? 'students'
+          : activeView === 'edit-restaurant'
+          ? 'restaurants'
           : activeView === 'restaurant-detail'
             ? 'restaurants'
             : activeView
       }
       isAdministrator={isAdministrator}
       isAuthenticated={Boolean(currentUser)}
+      hasStudentProfile={Boolean(currentStudentProfile)}
       onAuthAction={handleAuthAction}
       onNavigate={handleNavigate}
     >

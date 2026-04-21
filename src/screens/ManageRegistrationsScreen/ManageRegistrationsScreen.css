@@ -1,0 +1,171 @@
+.manage-registrations {
+  min-height: calc(100vh - 91px);
+  padding: 2rem 1.5rem 4rem;
+}
+
+.manage-registrations__intro,
+.manage-registrations__panel {
+  width: min(960px, 100%);
+  margin: 0 auto;
+}
+
+.manage-registrations__eyebrow {
+  margin: 0 0 0.75rem;
+  color: #8d5f1c;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.manage-registrations__intro h1 {
+  margin: 0;
+  color: #111111;
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  line-height: 0.98;
+}
+
+.manage-registrations__description {
+  max-width: 720px;
+  margin: 1.1rem 0 0;
+  color: #2f2a24;
+  line-height: 1.7;
+}
+
+.manage-registrations__panel {
+  margin-top: 2rem;
+  border-radius: 28px;
+  background: rgba(255, 252, 246, 0.96);
+  box-shadow: 0 24px 60px rgba(17, 17, 17, 0.12);
+  padding: 1.5rem;
+}
+
+.manage-registrations__status {
+  margin: 0;
+  color: #3b342d;
+  line-height: 1.6;
+}
+
+.manage-registrations__status--error {
+  color: #9a2f2f;
+}
+
+.manage-registrations__status--success {
+  color: #1f6b42;
+}
+
+.manage-registrations__list {
+  display: grid;
+  gap: 1rem;
+}
+
+.manage-registrations__card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: 22px;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  background: #ffffff;
+}
+
+.manage-registrations__card-content h2 {
+  margin: 0;
+  color: #111111;
+  font-size: 1.15rem;
+}
+
+.manage-registrations__card-content p {
+  margin: 0.4rem 0 0;
+  color: #57504a;
+}
+
+.manage-registrations__actions,
+.manage-registrations__dialog-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.manage-registrations__button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.85rem 1.1rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.manage-registrations__button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.manage-registrations__button--accept {
+  background: #111111;
+  color: #ffffff;
+}
+
+.manage-registrations__button--reject,
+.manage-registrations__button--ghost {
+  background: #f0dcc1;
+  color: #111111;
+}
+
+.manage-registrations__dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: rgba(17, 17, 17, 0.34);
+  padding: 1.5rem;
+}
+
+.manage-registrations__dialog {
+  width: min(100%, 480px);
+  border-radius: 28px;
+  background: rgba(255, 252, 246, 0.98);
+  box-shadow: 0 28px 70px rgba(17, 17, 17, 0.18);
+  padding: 1.6rem;
+}
+
+.manage-registrations__dialog h2 {
+  margin: 0;
+  color: #111111;
+}
+
+.manage-registrations__dialog p {
+  margin: 0.9rem 0 0;
+  color: #3b342d;
+  line-height: 1.6;
+}
+
+.manage-registrations__dialog-actions {
+  margin-top: 1.4rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .manage-registrations {
+    padding: 1rem 1rem 3rem;
+  }
+
+  .manage-registrations__panel,
+  .manage-registrations__dialog {
+    border-radius: 22px;
+  }
+
+  .manage-registrations__card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .manage-registrations__actions {
+    width: 100%;
+  }
+
+  .manage-registrations__button {
+    flex: 1;
+  }
+}

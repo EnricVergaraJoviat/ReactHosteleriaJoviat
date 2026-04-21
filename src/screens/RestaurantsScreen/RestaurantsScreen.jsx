@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-markercluster';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import SmartImage from '../../components/SmartImage/SmartImage';
+import LinkedStudentsPreview from '../../components/LinkedStudentsPreview/LinkedStudentsPreview';
+import { ReactComponent as SearchIcon } from '../../assets/icons/search.svg';
 import 'leaflet/dist/leaflet.css';
+import 'react-leaflet-markercluster/styles';
 import './RestaurantsScreen.css';
+
+const RESTAURANTS_PER_PAGE = 8;
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -43,8 +49,12 @@ function parseLocation(location) {
   return null;
 }
 
-function formatLinkedStudents(count) {
-  return `${count} alumni associat${count === 1 ? '' : 's'}`;
+function createClusterIcon(cluster) {
+  return L.divIcon({
+    html: `<span>${cluster.getChildCount()}</span>`,
+    className: 'restaurants-map__cluster',
+    iconSize: L.point(52, 52, true),
+  });
 }
 
 function MapBounds({ locations }) {
@@ -71,6 +81,7 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     let isMounted = true;
@@ -105,6 +116,25 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
   const filteredRestaurants = restaurants.filter((restaurant) =>
     (restaurant.Name ?? '').toLowerCase().includes(normalizedSearchTerm)
   );
+  const totalPages = Math.ceil(filteredRestaurants.length / RESTAURANTS_PER_PAGE);
+  const visibleRestaurants = filteredRestaurants.slice(
+    (currentPage - 1) * RESTAURANTS_PER_PAGE,
+    currentPage * RESTAURANTS_PER_PAGE
+  );
+  const rangeStart = filteredRestaurants.length === 0
+    ? 0
+    : ((currentPage - 1) * RESTAURANTS_PER_PAGE) + 1;
+  const rangeEnd = Math.min(currentPage * RESTAURANTS_PER_PAGE, filteredRestaurants.length);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [normalizedSearchTerm]);
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const restaurantsWithCoordinates = filteredRestaurants
     .map((restaurant) => ({
@@ -126,6 +156,9 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
           Cercar restaurant
         </label>
         <div className="restaurants-search__field">
+          <span className="restaurants-search__icon" aria-hidden="true">
+            <SearchIcon focusable="false" />
+          </span>
           <input
             id="restaurants-search"
             className="restaurants-search__input"
@@ -187,11 +220,49 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
               <MapBounds
                 locations={restaurantsWithCoordinates.map((restaurant) => restaurant.coordinates)}
               />
-              {restaurantsWithCoordinates.map((restaurant) => (
-                <Marker key={restaurant.id ?? restaurant.Name} position={restaurant.coordinates}>
-                  <Popup>{restaurant.Name ?? 'Sense nom'}</Popup>
-                </Marker>
-              ))}
+              <MarkerClusterGroup
+                chunkedLoading
+                iconCreateFunction={createClusterIcon}
+                showCoverageOnHover={false}
+              >
+                {restaurantsWithCoordinates.map((restaurant) => (
+                  <Marker key={restaurant.id ?? restaurant.Name} position={restaurant.coordinates}>
+                    <Popup>
+                      <article className="restaurants-map__popup">
+                        <h2 className="restaurants-map__popup-title">
+                          {restaurant.Name ?? 'Sense nom'}
+                        </h2>
+                        <div className="restaurants-map__popup-content">
+                          <div className="restaurants-map__popup-image-wrap">
+                            <SmartImage
+                              className="restaurants-map__popup-image"
+                              src={restaurant.PhotoURL}
+                              type="restaurant"
+                              label={restaurant.Name}
+                              alt={restaurant.Name ?? 'Restaurant'}
+                            />
+                          </div>
+                          <div className="restaurants-map__popup-copy">
+                            <p className="restaurants-map__popup-eyebrow">Alumnes associats</p>
+                            <LinkedStudentsPreview
+                              students={restaurant.linkedStudents ?? []}
+                              count={restaurant.linkedStudentCount ?? 0}
+                              className="restaurants-map__popup-students"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          className="restaurants-map__popup-button"
+                          type="button"
+                          onClick={() => onOpenRestaurantDetails(restaurant.id, 'restaurants')}
+                        >
+                          Veure detall
+                        </button>
+                      </article>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MarkerClusterGroup>
             </MapContainer>
           ) : (
             <div className="restaurants-map__empty">
@@ -201,8 +272,56 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
         </section>
       ) : null}
 
+      {!isLoading && !error && filteredRestaurants.length > RESTAURANTS_PER_PAGE ? (
+        <nav className="restaurants-pagination" aria-label="Paginacio de restaurants">
+          <p className="restaurants-pagination__summary">
+            {rangeStart} a {rangeEnd} de {filteredRestaurants.length} restaurants
+          </p>
+          <div className="restaurants-pagination__controls">
+            <button
+              className="restaurants-pagination__arrow"
+              type="button"
+              aria-label="Pagina anterior"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            >
+              ‹
+            </button>
+            <div className="restaurants-pagination__pages">
+              {Array.from({ length: totalPages }, (_, index) => {
+                const pageNumber = index + 1;
+
+                return (
+                  <button
+                    key={pageNumber}
+                    className={`restaurants-pagination__page${
+                      pageNumber === currentPage ? ' restaurants-pagination__page--active' : ''
+                    }`}
+                    type="button"
+                    aria-label={`Anar a la pagina ${pageNumber}`}
+                    aria-current={pageNumber === currentPage ? 'page' : undefined}
+                    onClick={() => setCurrentPage(pageNumber)}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              className="restaurants-pagination__arrow"
+              type="button"
+              aria-label="Pagina seguent"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            >
+              ›
+            </button>
+          </div>
+        </nav>
+      ) : null}
+
       <div className="restaurants-grid">
-        {filteredRestaurants.map((restaurant) => (
+        {visibleRestaurants.map((restaurant) => (
           <article className="restaurant-card" key={restaurant.id ?? restaurant.Name}>
             <div className="restaurant-card__image-wrap">
               <SmartImage
@@ -232,9 +351,11 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
                   </svg>
                 </button>
               </div>
-              <p className="restaurant-card__meta">
-                {formatLinkedStudents(restaurant.linkedStudentCount ?? 0)}
-              </p>
+              <LinkedStudentsPreview
+                students={restaurant.linkedStudents ?? []}
+                count={restaurant.linkedStudentCount ?? 0}
+                className="restaurant-card__meta"
+              />
             </div>
           </article>
         ))}

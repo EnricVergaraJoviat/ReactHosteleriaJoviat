@@ -1,0 +1,316 @@
+.add-restaurant-screen {
+  padding: 2rem 1.5rem 4rem;
+}
+
+.add-restaurant-screen__intro,
+.add-restaurant-form {
+  width: min(980px, 100%);
+  margin: 0 auto;
+}
+
+.add-restaurant-screen__intro {
+  margin-bottom: 1.5rem;
+}
+
+.add-restaurant-screen__eyebrow {
+  margin: 0 0 0.75rem;
+  color: #8d5f1c;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.add-restaurant-screen__intro h1 {
+  margin: 0;
+  color: #111111;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1;
+}
+
+.add-restaurant-screen__description {
+  max-width: 780px;
+  margin: 1rem 0 0;
+  color: #5f5343;
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.add-restaurant-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.add-restaurant-form__card {
+  padding: 2rem;
+  border-radius: 28px;
+  background: #fffdf5;
+  box-shadow: 0 24px 60px rgba(89, 74, 37, 0.08);
+}
+
+.add-restaurant-form__card--search {
+  background: linear-gradient(180deg, #fffaf0 0%, #fffdf8 100%);
+}
+
+.add-restaurant-form__panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.add-restaurant-form__panel-heading h2 {
+  margin: 0;
+  color: #1c1711;
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  font-weight: 800;
+}
+
+.add-restaurant-form__panel-heading p {
+  margin: 0.35rem 0 0;
+  color: #6f655a;
+}
+
+.add-restaurant-form__grid,
+.add-restaurant-form__search-row {
+  display: grid;
+  gap: 1rem 1.25rem;
+}
+
+.add-restaurant-form__grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.add-restaurant-form__search-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.add-restaurant-form__search-row--results {
+  margin-top: 1rem;
+}
+
+.add-restaurant-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.add-restaurant-form__field--grow {
+  min-width: 0;
+}
+
+.add-restaurant-form__field--full {
+  grid-column: 1 / -1;
+}
+
+.add-restaurant-form__field span {
+  color: #64553f;
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.add-restaurant-form__field input,
+.add-restaurant-form__field select {
+  width: 100%;
+  min-height: 64px;
+  padding: 0.95rem 1.15rem;
+  border: 1px solid rgba(228, 222, 214, 0.9);
+  border-radius: 14px;
+  background: rgba(255, 253, 250, 0.96);
+  color: #1c1711;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.add-restaurant-form__field input::placeholder {
+  color: #b3aa9c;
+  opacity: 1;
+}
+
+.add-restaurant-form__field input:focus,
+.add-restaurant-form__field select:focus {
+  outline: 2px solid rgba(141, 95, 28, 0.18);
+  border-color: #a77a3a;
+}
+
+.add-restaurant-form__action,
+.add-restaurant-form__submit {
+  border: none;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.add-restaurant-form__action {
+  min-height: 56px;
+  padding: 0.95rem 1.4rem;
+  background: #8d5f1c;
+  color: #fff8f0;
+  box-shadow: 0 14px 30px rgba(141, 95, 28, 0.2);
+}
+
+.add-restaurant-form__action--secondary {
+  background: #fffdf5;
+  color: #8d5f1c;
+  border: 1px solid rgba(141, 95, 28, 0.2);
+  box-shadow: 0 4px 10px rgba(17, 17, 17, 0.08);
+}
+
+.add-restaurant-form__submit {
+  min-width: 180px;
+  padding: 0.95rem 1.4rem;
+  background: #8d5f1c;
+  color: #fff8f0;
+  box-shadow: 0 14px 30px rgba(141, 95, 28, 0.24);
+}
+
+.add-restaurant-form__action:hover,
+.add-restaurant-form__submit:hover {
+  transform: translateY(-1px);
+}
+
+.add-restaurant-form__action:disabled,
+.add-restaurant-form__submit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.add-restaurant-form__selected,
+.add-restaurant-form__status,
+.add-restaurant-form__feedback {
+  margin-top: 1rem;
+  border-radius: 18px;
+  padding: 0.9rem 1rem;
+}
+
+.add-restaurant-form__selected {
+  background: rgba(255, 251, 244, 0.75);
+  color: #5b4c38;
+}
+
+.add-restaurant-form__selected strong,
+.add-restaurant-form__selected p {
+  margin: 0;
+}
+
+.add-restaurant-form__selected p {
+  margin-top: 0.35rem;
+}
+
+.add-restaurant-form__status {
+  background: rgba(255, 251, 244, 0.75);
+  color: #5b4c38;
+}
+
+.add-restaurant-form__feedback--error {
+  background: rgba(183, 54, 54, 0.1);
+  color: #8f2020;
+}
+
+.add-restaurant-form__feedback--success {
+  background: rgba(56, 130, 78, 0.12);
+  color: #215f34;
+}
+
+.add-restaurant-form__feedback--warning {
+  background: rgba(201, 132, 31, 0.14);
+  color: #7a4d08;
+  border: 1px solid rgba(201, 132, 31, 0.2);
+}
+
+.add-restaurant-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.add-restaurant-form__preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.add-restaurant-form__preview-card {
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(141, 95, 28, 0.14);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.add-restaurant-form__preview-heading {
+  padding: 1rem 1rem 0;
+}
+
+.add-restaurant-form__preview-heading h3 {
+  margin: 0;
+  color: #1c1711;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.add-restaurant-form__photo-preview,
+.add-restaurant-form__map {
+  display: block;
+  width: 100%;
+  height: 280px;
+}
+
+.add-restaurant-form__map-embed {
+  display: block;
+  width: 100%;
+  height: 280px;
+  border: 0;
+  border-radius: 18px;
+}
+
+.add-restaurant-form__photo-preview {
+  object-fit: cover;
+  background: #f5efe4;
+}
+
+.add-restaurant-form__map-wrap {
+  padding: 1rem;
+}
+
+.add-restaurant-form__map {
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.add-restaurant-form__preview-empty {
+  margin: 0;
+  padding: 1rem;
+  color: #6f655a;
+  line-height: 1.6;
+}
+
+@media (max-width: 760px) {
+  .add-restaurant-screen {
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .add-restaurant-form__card {
+    padding: 1.35rem;
+    border-radius: 22px;
+  }
+
+  .add-restaurant-form__grid,
+  .add-restaurant-form__preview-grid,
+  .add-restaurant-form__search-row {
+    grid-template-columns: 1fr;
+  }
+
+  .add-restaurant-form__actions,
+  .add-restaurant-form__panel-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import SmartImage from '../../components/SmartImage/SmartImage';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
+import { deleteStudentAccount } from '../../helpers/studentDeletion';
 import './StudentDetailScreen.css';
 
 function formatLink(value, prefix) {
@@ -36,10 +37,25 @@ function ContactItem({ label, value, href }) {
   );
 }
 
-function StudentDetailScreen({ studentId, onBack, onOpenRestaurantDetails }) {
+function StudentDetailScreen({
+  studentId,
+  isAuthenticated,
+  isAdministrator,
+  currentUserEmail,
+  onBack,
+  onDeleted,
+  onEdit,
+  onOpenRestaurantDetails,
+}) {
   const [student, setStudent] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [actionMessage, setActionMessage] = useState('');
+  const normalizedCurrentUserEmail = typeof currentUserEmail === 'string'
+    ? currentUserEmail.trim().toLowerCase()
+    : '';
 
   useEffect(() => {
     let isMounted = true;
@@ -71,6 +87,49 @@ function StudentDetailScreen({ studentId, onBack, onOpenRestaurantDetails }) {
     };
   }, [studentId]);
 
+  function handleStartDelete() {
+    setActionMessage('');
+    setIsDeleteDialogOpen(true);
+  }
+
+  function handleCancelDelete() {
+    if (isDeleting) {
+      return;
+    }
+
+    setIsDeleteDialogOpen(false);
+  }
+
+  async function handleConfirmDelete() {
+    if (!student) {
+      return;
+    }
+
+    setActionMessage('');
+    setIsDeleting(true);
+
+    try {
+      await deleteStudentAccount(student);
+      setIsDeleteDialogOpen(false);
+      onDeleted?.(student.id);
+    } catch (deleteError) {
+      if (deleteError?.message === 'missing-student-auth-data') {
+        setActionMessage(
+          'No s\'ha pogut eliminar l\'usuari d\'Authentication perque falten les credencials de l\'alumne.'
+        );
+      } else {
+        setActionMessage('No s\'ha pogut eliminar l\'alumne. Torna-ho a provar.');
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  function handleEdit() {
+    setActionMessage('');
+    onEdit?.(student.id);
+  }
+
   if (isLoading) {
     return (
       <section className="student-detail">
@@ -92,6 +151,16 @@ function StudentDetailScreen({ studentId, onBack, onOpenRestaurantDetails }) {
     );
   }
 
+  const normalizedStudentEmail = typeof student.Email === 'string'
+    ? student.Email.trim().toLowerCase()
+    : '';
+  const canEditStudent = isAdministrator || (
+    normalizedCurrentUserEmail
+    && normalizedStudentEmail
+    && normalizedCurrentUserEmail === normalizedStudentEmail
+  );
+  const canDeleteStudent = isAdministrator;
+
   return (
     <section className="student-detail">
       <div className="student-detail__header">
@@ -101,41 +170,75 @@ function StudentDetailScreen({ studentId, onBack, onOpenRestaurantDetails }) {
       </div>
 
       <div className="student-detail__hero">
-        <div className="student-detail__photo-wrap">
-          <SmartImage
-            className="student-detail__photo"
-            src={student.PhotoURL}
-            type="student"
-            label={student.Name}
-            alt={student.Name ?? 'Alumne'}
-          />
+        <div className="student-detail__photo-column">
+          <div className="student-detail__photo-wrap">
+            <SmartImage
+              className="student-detail__photo"
+              src={student.PhotoURL}
+              type="student"
+              label={student.Name}
+              alt={student.Name ?? 'Alumne'}
+            />
+          </div>
+          <p className="student-detail__student-status">
+            {student.isExAlumni ? 'Exalumne' : 'Alumne'}
+          </p>
         </div>
         <div className="student-detail__hero-body">
           <p className="student-detail__eyebrow">Fitxa d&apos;alumne</p>
           <h1>{student.Name ?? 'Sense nom'}</h1>
+          {canEditStudent || canDeleteStudent ? (
+            <div className="student-detail__admin-actions">
+              {canEditStudent ? (
+                <button
+                  className="student-detail__action student-detail__action--secondary"
+                  type="button"
+                  onClick={handleEdit}
+                >
+                  Editar
+                </button>
+              ) : null}
+              {canDeleteStudent ? (
+                <button
+                  className="student-detail__action student-detail__action--danger"
+                  type="button"
+                  onClick={handleStartDelete}
+                >
+                  Eliminar
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {actionMessage ? (
+            <p className="student-detail__action-message" role="status">
+              {actionMessage}
+            </p>
+          ) : null}
         </div>
       </div>
 
-      <section className="student-detail__panel">
-        <h2>Contacte</h2>
-        <div className="student-detail__contacts">
-          <ContactItem
-            label="Email"
-            value={student.Email}
-            href={student.Email ? `mailto:${student.Email}` : ''}
-          />
-          <ContactItem
-            label="Phone"
-            value={student.Phone}
-            href={student.Phone ? `tel:${student.Phone}` : ''}
-          />
-          <ContactItem
-            label="LinkedIn"
-            value={student.LinkedIn}
-            href={student.LinkedIn ? formatLink(student.LinkedIn, 'https://') : ''}
-          />
-        </div>
-      </section>
+      {isAuthenticated ? (
+        <section className="student-detail__panel">
+          <h2>Contacte</h2>
+          <div className="student-detail__contacts">
+            <ContactItem
+              label="Email"
+              value={student.Email}
+              href={student.Email ? `mailto:${student.Email}` : ''}
+            />
+            <ContactItem
+              label="Phone"
+              value={student.Phone}
+              href={student.Phone ? `tel:${student.Phone}` : ''}
+            />
+            <ContactItem
+              label="LinkedIn"
+              value={student.LinkedIn}
+              href={student.LinkedIn ? formatLink(student.LinkedIn, 'https://') : ''}
+            />
+          </div>
+        </section>
+      ) : null}
 
       <section className="student-detail__panel">
         <div className="student-detail__panel-heading">
@@ -191,6 +294,46 @@ function StudentDetailScreen({ studentId, onBack, onOpenRestaurantDetails }) {
           </div>
         ) : null}
       </section>
+
+      {isDeleteDialogOpen ? (
+        <div
+          className="student-detail__dialog-backdrop"
+          role="presentation"
+          onClick={handleCancelDelete}
+        >
+          <div
+            className="student-detail__dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="student-delete-title"
+            aria-describedby="student-delete-description"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="student-delete-title">Vols eliminar aquest alumne?</h2>
+            <p id="student-delete-description">
+              S&apos;eliminara la foto de l&apos;alumne, les relacions amb restaurants, la fitxa d&apos;Alumni i el compte d&apos;Authentication.
+            </p>
+            <div className="student-detail__dialog-actions">
+              <button
+                className="student-detail__action student-detail__action--secondary"
+                type="button"
+                onClick={handleCancelDelete}
+                disabled={isDeleting}
+              >
+                Cancel.lar
+              </button>
+              <button
+                className="student-detail__action student-detail__action--danger"
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Eliminant...' : 'Confirmar eliminacio'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

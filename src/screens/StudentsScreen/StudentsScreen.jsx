@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import SmartImage from '../../components/SmartImage/SmartImage';
+import { ReactComponent as SearchIcon } from '../../assets/icons/search.svg';
+import { ReactComponent as StudentRestaurantsIcon } from '../../assets/icons/student-restaurants.svg';
 import './StudentsScreen.css';
+
+const STUDENTS_PER_PAGE = 8;
 
 function StudentsScreen({ onOpenStudentDetails }) {
   const [students, setStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     let isMounted = true;
@@ -42,16 +47,31 @@ function StudentsScreen({ onOpenStudentDetails }) {
   const filteredStudents = students.filter((student) =>
     (student.Name ?? '').toLowerCase().includes(normalizedSearchTerm)
   );
+  const totalPages = Math.ceil(filteredStudents.length / STUDENTS_PER_PAGE);
+  const visibleStudents = filteredStudents.slice(
+    (currentPage - 1) * STUDENTS_PER_PAGE,
+    currentPage * STUDENTS_PER_PAGE
+  );
+  const rangeStart = filteredStudents.length === 0
+    ? 0
+    : ((currentPage - 1) * STUDENTS_PER_PAGE) + 1;
+  const rangeEnd = Math.min(currentPage * STUDENTS_PER_PAGE, filteredStudents.length);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [normalizedSearchTerm]);
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   return (
     <section className="students-screen">
       <div className="students-screen__intro">
         <p className="students-screen__eyebrow">Alumnes</p>
         <h1>Llistat d&apos;alumnes</h1>
-        <p className="students-screen__description">
-          Dades carregades des de la col·lecció <strong>Alumni</strong> de
-          Cloud Firestore. Des del llistat pots obrir la fitxa completa de cada alumne.
-        </p>
       </div>
 
       <div className="students-search">
@@ -59,6 +79,9 @@ function StudentsScreen({ onOpenStudentDetails }) {
           Cercar alumne
         </label>
         <div className="students-search__field">
+          <span className="students-search__icon" aria-hidden="true">
+            <SearchIcon focusable="false" />
+          </span>
           <input
             id="students-search"
             className="students-search__input"
@@ -79,6 +102,54 @@ function StudentsScreen({ onOpenStudentDetails }) {
           ) : null}
         </div>
       </div>
+
+      {!isLoading && !error && filteredStudents.length > STUDENTS_PER_PAGE ? (
+        <nav className="students-pagination" aria-label="Paginacio d'alumnes">
+          <p className="students-pagination__summary">
+            {rangeStart} a {rangeEnd} de {filteredStudents.length} alumnes
+          </p>
+          <div className="students-pagination__controls">
+            <button
+              className="students-pagination__arrow"
+              type="button"
+              aria-label="Pagina anterior"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            >
+              ‹
+            </button>
+            <div className="students-pagination__pages">
+              {Array.from({ length: totalPages }, (_, index) => {
+                const pageNumber = index + 1;
+
+                return (
+                  <button
+                    key={pageNumber}
+                    className={`students-pagination__page${
+                      pageNumber === currentPage ? ' students-pagination__page--active' : ''
+                    }`}
+                    type="button"
+                    aria-label={`Anar a la pagina ${pageNumber}`}
+                    aria-current={pageNumber === currentPage ? 'page' : undefined}
+                    onClick={() => setCurrentPage(pageNumber)}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              className="students-pagination__arrow"
+              type="button"
+              aria-label="Pagina seguent"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            >
+              ›
+            </button>
+          </div>
+        </nav>
+      ) : null}
 
       {isLoading ? (
         <p className="students-screen__status" role="status">
@@ -103,7 +174,7 @@ function StudentsScreen({ onOpenStudentDetails }) {
       ) : null}
 
       <div className="students-grid">
-        {filteredStudents.map((student) => (
+        {visibleStudents.map((student) => (
           <article className="student-card" key={student.id ?? student.Name}>
             <div className="student-card__image-wrap">
               <SmartImage
@@ -115,31 +186,30 @@ function StudentsScreen({ onOpenStudentDetails }) {
               />
             </div>
             <div className="student-card__body">
-              <div className="student-card__header">
-                <div>
-                  <h2>{student.Name ?? 'Sense nom'}</h2>
-                </div>
-                <button
-                  className="student-card__details"
-                  type="button"
-                  aria-label={`Obrir fitxa de ${student.Name ?? 'l alumne'}`}
-                  onClick={() => onOpenStudentDetails(student.id)}
-                >
-                  <svg aria-hidden="true" viewBox="0 0 24 24">
-                    <path
-                      d="M12 5c5.5 0 9.5 5.9 9.7 6.2a1.4 1.4 0 0 1 0 1.6C21.5 13.1 17.5 19 12 19S2.5 13.1 2.3 12.8a1.4 1.4 0 0 1 0-1.6C2.5 10.9 6.5 5 12 5Zm0 2C8.4 7 5.4 10.4 4.4 12 5.4 13.6 8.4 17 12 17s6.6-3.4 7.6-5C18.6 10.4 15.6 7 12 7Zm0 1.8a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4Zm0 2a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <p className="student-card__meta">
-                {student.linkedRestaurantCount > 0
-                  ? `${student.linkedRestaurantCount} restaurant${
-                    student.linkedRestaurantCount === 1 ? '' : 's'
-                  } associat${student.linkedRestaurantCount === 1 ? '' : 's'}`
-                  : 'Sense restaurants associats'}
+              <h2>{student.Name ?? 'Sense nom'}</h2>
+              <p className="student-card__status">
+                {student.isExAlumni ? 'Exalumne' : 'Alumne'}
               </p>
+              <div className="student-card__meta">
+                <span className="student-card__meta-icon" aria-hidden="true">
+                  <StudentRestaurantsIcon focusable="false" />
+                </span>
+                <span>
+                  {student.linkedRestaurantCount > 0
+                    ? `${student.linkedRestaurantCount} restaurant${
+                      student.linkedRestaurantCount === 1 ? '' : 's'
+                    } associat${student.linkedRestaurantCount === 1 ? '' : 's'}`
+                    : '0 restaurants associats'}
+                </span>
+              </div>
+              <button
+                className="student-card__details"
+                type="button"
+                aria-label={`Obrir fitxa de ${student.Name ?? 'l alumne'}`}
+                onClick={() => onOpenStudentDetails(student.id)}
+              >
+                Veure detalls
+              </button>
             </div>
           </article>
         ))}

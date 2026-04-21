@@ -8,17 +8,27 @@
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
 }
 
-.site-header__brand {
+.site-header__content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 0 auto;
-  max-width: 1200px;
   width: 100%;
 }
 
+.site-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.site-header__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .site-header__home-button {
-  margin-left: auto;
   border: 0;
   background: transparent;
   padding: 0;
@@ -73,4 +83,58 @@
   background: transparent;
   font-size: 2.1rem;
   line-height: 0.8;
+}
+
+.site-header__auth-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.62rem;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  padding: 0;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.84rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.site-header__auth-button:hover {
+  color: #ffffff;
+  opacity: 0.8;
+  transform: translateY(-1px);
+}
+
+.site-header__auth-icon {
+  width: 0.98rem;
+  height: 1.18rem;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.site-header__auth-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.site-header__auth-button:hover .site-header__auth-icon {
+  transform: scale(1.14);
+}
+
+@media (max-width: 640px) {
+  .site-header {
+    padding: 1rem;
+  }
+
+  .site-header__content {
+    gap: 0.75rem;
+  }
+
+  .site-header__auth-button {
+    padding: 0;
+  }
 }

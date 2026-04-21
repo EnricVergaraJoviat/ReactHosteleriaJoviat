@@ -29,6 +29,12 @@
   align-items: end;
 }
 
+.student-detail__photo-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
 .student-detail__photo-wrap {
   aspect-ratio: 1 / 1;
   overflow: hidden;
@@ -42,6 +48,19 @@
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.student-detail__student-status {
+  align-self: center;
+  margin: 0;
+  background: transparent;
+  color: #6d5532;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .student-detail__eyebrow {
@@ -62,6 +81,51 @@
   color: #111111;
   font-size: clamp(2.2rem, 5vw, 4rem);
   line-height: 0.95;
+}
+
+.student-detail__admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+}
+
+.student-detail__action {
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  min-width: 140px;
+  padding: 0.85rem 1.2rem;
+  transition: transform 160ms ease, opacity 160ms ease, box-shadow 160ms ease;
+}
+
+.student-detail__action:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.student-detail__action:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.student-detail__action--secondary {
+  background: #e7d8be;
+  box-shadow: 0 10px 24px rgba(72, 53, 24, 0.14);
+  color: #3f2b18;
+}
+
+.student-detail__action--danger {
+  background: #962f2f;
+  box-shadow: 0 14px 30px rgba(150, 47, 47, 0.18);
+  color: #fff9f6;
+}
+
+.student-detail__action-message {
+  margin: 1rem 0 0;
+  color: #5b5348;
+  line-height: 1.5;
 }
 
 .student-detail__panel {
@@ -212,6 +276,45 @@
   margin-top: 1.5rem;
 }
 
+.student-detail__dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 17, 17, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  z-index: 30;
+}
+
+.student-detail__dialog {
+  width: min(520px, 100%);
+  border-radius: 28px;
+  background: #fffaf2;
+  box-shadow: 0 30px 80px rgba(17, 17, 17, 0.24);
+  padding: 1.5rem;
+}
+
+.student-detail__dialog h2 {
+  margin: 0;
+  color: #111111;
+  font-size: 1.6rem;
+}
+
+.student-detail__dialog p {
+  margin: 0.9rem 0 0;
+  color: #544b40;
+  line-height: 1.6;
+}
+
+.student-detail__dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 1.4rem;
+}
+
 @media (max-width: 760px) {
   .student-detail {
     padding-top: 2rem;
@@ -219,5 +322,14 @@
 
   .student-detail__hero {
     grid-template-columns: 1fr;
+  }
+
+  .student-detail__admin-actions,
+  .student-detail__dialog-actions {
+    flex-direction: column;
+  }
+
+  .student-detail__action {
+    width: 100%;
   }
 }

@@ -1,13 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { deleteApp, initializeApp } from 'firebase/app';
+import {
+  createUserWithEmailAndPassword,
+  getAuth,
+  sendPasswordResetEmail,
+  signOut,
+} from 'firebase/auth';
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDocs,
   serverTimestamp,
+  updateDoc,
 } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { db, storage } from '../../helpers/firebase';
+import { app, auth, db, storage } from '../../helpers/firebase';
 import { getFallbackImage } from '../../helpers/imageFallbacks';
 import './AddStudentScreen.css';
 
@@ -21,7 +30,26 @@ function normalizeFileName(fileName) {
     .toLowerCase();
 }
 
-function AddStudentScreen() {
+async function createStudentAuthUser(email, password) {
+  const secondaryApp = initializeApp(
+    app.options,
+    `student-create-${email}-${Date.now()}`
+  );
+  const secondaryAuth = getAuth(secondaryApp);
+
+  try {
+    return await createUserWithEmailAndPassword(secondaryAuth, email, password);
+  } finally {
+    try {
+      await signOut(secondaryAuth);
+    } catch (error) {}
+
+    await deleteApp(secondaryApp);
+  }
+}
+
+function AddStudentScreen({ mode = 'create', student = null, onSaved, isAdministrator = false }) {
+  const isEditMode = mode === 'edit' && Boolean(student?.id);
   const [formData, setFormData] = useState({
     name: '',
     status: 'alumne',
@@ -36,6 +64,7 @@ function AddStudentScreen() {
     () => getFallbackImage('student', formData.name),
     [formData.name]
   );
+  const existingPhotoPreview = student?.PhotoURL ?? '';
   const previewUrlRef = useRef(fallbackPreview);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState(fallbackPreview);
   const hasObjectUrl = typeof URL?.createObjectURL === 'function';
@@ -44,6 +73,7 @@ function AddStudentScreen() {
   const [restaurantLinks, setRestaurantLinks] = useState([]);
   const [isLoadingRestaurants, setIsLoadingRestaurants] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [restaurantError, setRestaurantError] = useState('');
@@ -52,6 +82,42 @@ function AddStudentScreen() {
     role: '',
     currentJob: true,
   });
+
+  useEffect(() => {
+    if (!isEditMode || !student) {
+      return;
+    }
+
+    setFormData({
+      name: student.Name ?? '',
+      status: student.isExAlumni ? 'exalumne' : 'alumne',
+      email: student.Email ?? student.email ?? '',
+      phone: student.Phone ?? student.phone ?? '',
+      linkedIn: student.LinkedIn ?? student.linkedIn ?? '',
+      password: '',
+    });
+    setPhotoFile(null);
+    setPhotoName('');
+    setPhotoPreviewUrl(student.PhotoURL || getFallbackImage('student', student.Name));
+    previewUrlRef.current = student.PhotoURL || getFallbackImage('student', student.Name);
+    setRestaurantLinks(
+      (student.linkedRestaurants ?? []).map((entry) => ({
+        restaurantId: entry.id,
+        role: entry.role ?? '',
+        currentJob: Boolean(entry.currentJob),
+        relationId: entry.relationId ?? '',
+      }))
+    );
+    setRestaurantSearch('');
+    setRestaurantError('');
+    setErrorMessage('');
+    setSuccessMessage('');
+    setNewRestaurant({
+      restaurantId: '',
+      role: '',
+      currentJob: true,
+    });
+  }, [isEditMode, student]);
 
   useEffect(() => {
     let isMounted = true;
@@ -106,7 +172,7 @@ function AddStudentScreen() {
     }));
   }
 
-  function updatePreview(file) {
+  function updatePreview(file, defaultPreview = fallbackPreview) {
     if (
       hasObjectUrl &&
       previewUrlRef.current &&
@@ -117,7 +183,7 @@ function AddStudentScreen() {
 
     const nextUrl = file && hasObjectUrl
       ? URL.createObjectURL(file)
-      : fallbackPreview;
+      : defaultPreview;
     previewUrlRef.current = nextUrl;
     setPhotoPreviewUrl(nextUrl);
   }
@@ -131,19 +197,19 @@ function AddStudentScreen() {
 
   useEffect(() => {
     if (!photoFile) {
-      updatePreview(null);
+      updatePreview(null, isEditMode && existingPhotoPreview ? existingPhotoPreview : fallbackPreview);
     }
+  }, [existingPhotoPreview, fallbackPreview, isEditMode, photoFile]);
 
-    return () => {
-      if (
-        hasObjectUrl &&
-        previewUrlRef.current &&
-        previewUrlRef.current.startsWith('blob:')
-      ) {
-        URL.revokeObjectURL(previewUrlRef.current);
-      }
-    };
-  }, [fallbackPreview, photoFile]);
+  useEffect(() => () => {
+    if (
+      hasObjectUrl &&
+      previewUrlRef.current &&
+      previewUrlRef.current.startsWith('blob:')
+    ) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+  }, [hasObjectUrl]);
 
   function handleNewRestaurantChange(field, value) {
     setRestaurantError('');
@@ -193,18 +259,17 @@ function AddStudentScreen() {
     setErrorMessage('');
     setSuccessMessage('');
 
-    if (!formData.name.trim()) {
-      setErrorMessage('El nom de l\'alumne es obligatori.');
-      return;
-    }
+    const trimmedName = formData.name.trim();
+    const trimmedPassword = formData.password.trim();
+    const trimmedEmail = formData.email.trim();
 
-    if (!formData.password.trim()) {
+    if (!isEditMode && !trimmedPassword) {
       setErrorMessage('La contrassenya es obligatoria.');
       return;
     }
 
-    if (!photoFile) {
-      setErrorMessage('Has de seleccionar una foto de l\'alumne.');
+    if (!trimmedEmail) {
+      setErrorMessage('El correu electronic es obligatori.');
       return;
     }
 
@@ -228,61 +293,152 @@ function AddStudentScreen() {
     setIsSubmitting(true);
 
     try {
-      const safeFileName = normalizeFileName(photoFile.name || 'photo');
-      const storagePath = `alumni/${Date.now()}-${safeFileName}`;
-      const storageReference = ref(storage, storagePath);
+      let photoUrl = student?.PhotoURL ?? '';
 
-      await uploadBytes(storageReference, photoFile);
-      const photoUrl = await getDownloadURL(storageReference);
+      if (photoFile) {
+        const safeFileName = normalizeFileName(photoFile.name || 'photo');
+        const storagePath = `alumni/${Date.now()}-${safeFileName}`;
+        const storageReference = ref(storage, storagePath);
 
-      const studentReference = await addDoc(collection(db, 'Alumni'), {
-        Name: formData.name.trim(),
-        PhotoURL: photoUrl,
-        Email: formData.email.trim(),
-        Phone: formData.phone.trim(),
-        LinkedIn: formData.linkedIn.trim(),
-        Password: formData.password.trim(),
-        isExAlumni: formData.status === 'exalumne',
-        createdAt: serverTimestamp(),
-      });
+        await uploadBytes(storageReference, photoFile);
+        photoUrl = await getDownloadURL(storageReference);
+      }
 
-      await Promise.all(
-        completedLinks.map((entry) =>
-          addDoc(collection(db, 'Rest-Alum'), {
-            id_alumni: doc(db, 'Alumni', studentReference.id),
-            id_restaurant: doc(db, 'Restaurant', entry.restaurantId),
-            rol: entry.role,
-            current_job: entry.currentJob,
-            createdAt: serverTimestamp(),
+      if (isEditMode && student?.id) {
+        const studentReference = doc(db, 'Alumni', student.id);
+
+        await updateDoc(studentReference, {
+          Name: trimmedName,
+          PhotoURL: photoUrl,
+          Email: trimmedEmail,
+          Phone: formData.phone.trim(),
+          LinkedIn: formData.linkedIn.trim(),
+          isExAlumni: formData.status === 'exalumne',
+          updatedAt: serverTimestamp(),
+        });
+
+        const relationsSnapshot = await getDocs(collection(db, 'Rest-Alum'));
+        const relationDeletes = relationsSnapshot.docs
+          .filter((entry) => {
+            const data = entry.data();
+            return data?.id_alumni?.id === student.id || data?.id_alumni?.path === `Alumni/${student.id}`;
           })
-        )
-      );
+          .map((entry) => deleteDoc(doc(db, 'Rest-Alum', entry.id)));
 
-      setFormData({
-        name: '',
-        status: 'alumne',
-        email: '',
-        phone: '',
-        linkedIn: '',
-        password: '',
-      });
-      setPhotoFile(null);
-      setPhotoName('');
-      setRestaurantLinks([]);
-      setRestaurantSearch('');
-      setNewRestaurant({
-        restaurantId: '',
-        role: '',
-        currentJob: true,
-      });
-      setRestaurantError('');
-      setSuccessMessage('L\'alumne s\'ha desat correctament.');
+        await Promise.all(relationDeletes);
+
+        await Promise.all(
+          completedLinks.map((entry) =>
+            addDoc(collection(db, 'Rest-Alum'), {
+              id_alumni: studentReference,
+              id_restaurant: doc(db, 'Restaurant', entry.restaurantId),
+              rol: entry.role,
+              current_job: entry.currentJob,
+              createdAt: serverTimestamp(),
+            })
+          )
+        );
+
+        setSuccessMessage('L\'alumne s\'ha actualitzat correctament.');
+        onSaved?.(student.id);
+      } else {
+        await createStudentAuthUser(trimmedEmail, trimmedPassword);
+
+        const studentReference = await addDoc(collection(db, 'Alumni'), {
+          Name: trimmedName,
+          PhotoURL: photoUrl,
+          Email: trimmedEmail,
+          Phone: formData.phone.trim(),
+          LinkedIn: formData.linkedIn.trim(),
+          Password: trimmedPassword,
+          isExAlumni: formData.status === 'exalumne',
+          createdAt: serverTimestamp(),
+        });
+
+        await Promise.all(
+          completedLinks.map((entry) =>
+            addDoc(collection(db, 'Rest-Alum'), {
+              id_alumni: doc(db, 'Alumni', studentReference.id),
+              id_restaurant: doc(db, 'Restaurant', entry.restaurantId),
+              rol: entry.role,
+              current_job: entry.currentJob,
+              createdAt: serverTimestamp(),
+            })
+          )
+        );
+
+        setFormData({
+          name: '',
+          status: 'alumne',
+          email: '',
+          phone: '',
+          linkedIn: '',
+          password: '',
+        });
+        setPhotoFile(null);
+        setPhotoName('');
+        setRestaurantLinks([]);
+        setRestaurantSearch('');
+        setNewRestaurant({
+          restaurantId: '',
+          role: '',
+          currentJob: true,
+        });
+        setRestaurantError('');
+        setSuccessMessage('L\'alumne s\'ha desat correctament.');
+      }
     } catch (error) {
+      if (error?.code === 'auth/email-already-in-use') {
+        setErrorMessage('Ja hi ha un usuari a la base de dades amb aquest email.');
+        return;
+      }
+      if (error?.code === 'auth/invalid-email') {
+        setErrorMessage('El correu electronic introduit no es valid.');
+        return;
+      }
+      if (error?.code === 'auth/weak-password') {
+        setErrorMessage('La contrassenya ha de tenir com a minim 6 caracters.');
+        return;
+      }
       setErrorMessage('No s\'ha pogut desar l\'alumne. Torna-ho a provar.');
     } finally {
       setIsSubmitting(false);
     }
   }
+
+  async function handlePasswordReset() {
+    const trimmedEmail = formData.email.trim();
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    if (!trimmedEmail) {
+      setErrorMessage('Cal que l\'alumne tingui un correu electronic informat per recuperar la contrassenya.');
+      return;
+    }
+
+    setIsResettingPassword(true);
+
+    try {
+      await sendPasswordResetEmail(auth, trimmedEmail);
+      setSuccessMessage('S\'ha enviat el correu per recuperar la contrassenya.');
+    } catch (error) {
+      if (error?.code === 'auth/invalid-email') {
+        setErrorMessage('El correu electronic introduit no es valid.');
+      } else if (error?.code === 'auth/user-not-found') {
+        setErrorMessage('No existeix cap usuari d\'Authentication amb aquest correu.');
+      } else {
+        setErrorMessage('No s\'ha pogut enviar el correu de recuperacio de contrassenya.');
+      }
+    } finally {
+      setIsResettingPassword(false);
+    }
+  }
+
+  const pageTitle = isEditMode ? 'Editar Alumne' : 'Afegir Alumne';
+  const pageDescription = isEditMode
+    ? 'Actualitza la informacio de l\'alumne i els restaurants vinculats des del mateix formulari.'
+    : 'Els camps marcats amb * corresponen al correu electronic i la contrasenya; són obligatoris.';
+  const submitLabel = isEditMode ? 'Desar canvis' : 'Desar alumne';
 
   const restaurantListContent = restaurantLinks.length
     ? restaurantLinks.map((entry) => {
@@ -296,13 +452,15 @@ function AddStudentScreen() {
           >
             <div className="add-student-form__restaurant-entry-heading">
               <h3>{restaurantName}</h3>
-              <button
-                className="add-student-form__remove-button"
-                type="button"
-                onClick={() => handleRemoveRestaurant(entry.restaurantId)}
-              >
-                Eliminar
-              </button>
+              {!isEditMode ? (
+                <button
+                  className="add-student-form__remove-button"
+                  type="button"
+                  onClick={() => handleRemoveRestaurant(entry.restaurantId)}
+                >
+                  Eliminar
+                </button>
+              ) : null}
             </div>
             <p className="add-student-form__restaurant-entry-role">
               {entry.role || 'Rol no disponible'}
@@ -329,10 +487,9 @@ function AddStudentScreen() {
     <section className="add-student-screen">
       <div className="add-student-screen__intro">
         <p className="add-student-screen__eyebrow">Administracio</p>
-        <h1>Afegir Alumne</h1>
+        <h1>{pageTitle}</h1>
         <p className="add-student-screen__description">
-          Els camps marcats amb <span className="add-student-form__required">*</span> són obligatoris. Dona
-          d&apos;alta un alumne nou, desa la seva foto a storage i relaciona&apos;l amb tants restaurants com calgui.
+          {pageDescription}
         </p>
       </div>
 
@@ -384,9 +541,7 @@ function AddStudentScreen() {
                 className="add-student-form__field add-student-form__field--full"
                 htmlFor="student-name"
               >
-                <span>
-                  Nom complet <span className="add-student-form__required">*</span>
-                </span>
+                <span>Nom complet</span>
                 <input
                   id="student-name"
                   name="name"
@@ -397,24 +552,13 @@ function AddStudentScreen() {
                 />
               </label>
 
-              <label className="add-student-form__field" htmlFor="student-password">
+              <label className="add-student-form__field" htmlFor="student-email">
                 <span>
-                  Contrasenya <span className="add-student-form__required">*</span>
+                  Correu electronic <span className="add-student-form__required">*</span>
                 </span>
                 <input
-                  id="student-password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  placeholder="********"
-                  onChange={handleFormChange}
-                />
-              </label>
-
-              <label className="add-student-form__field" htmlFor="student-email">
-                <span>Correu electronic</span>
-                <input
                   id="student-email"
+                  autoComplete="email"
                   name="email"
                   type="email"
                   value={formData.email}
@@ -422,6 +566,23 @@ function AddStudentScreen() {
                   onChange={handleFormChange}
                 />
               </label>
+
+              {!isEditMode ? (
+                <label className="add-student-form__field" htmlFor="student-password">
+                  <span>
+                    Contrasenya <span className="add-student-form__required">*</span>
+                  </span>
+                  <input
+                    id="student-password"
+                    autoComplete="new-password"
+                    name="password"
+                    type="password"
+                    value={formData.password}
+                    placeholder="********"
+                    onChange={handleFormChange}
+                  />
+                </label>
+              ) : null}
 
               <label className="add-student-form__field" htmlFor="student-phone">
                 <span>Telefon de contacte</span>
@@ -560,8 +721,18 @@ function AddStudentScreen() {
         ) : null}
 
         <div className="add-student-form__actions">
+          {isEditMode && isAdministrator ? (
+            <button
+              className="add-student-form__secondary-action"
+              type="button"
+              onClick={handlePasswordReset}
+              disabled={isResettingPassword || isSubmitting}
+            >
+              {isResettingPassword ? 'Enviant correu...' : 'Recuperar contrassenya'}
+            </button>
+          ) : null}
           <button className="add-student-form__submit" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Desant...' : 'Desar alumne'}
+            {isSubmitting ? 'Desant...' : submitLabel}
           </button>
         </div>
       </form>

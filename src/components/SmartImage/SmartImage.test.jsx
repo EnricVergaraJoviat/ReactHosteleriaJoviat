@@ -21,7 +21,7 @@ test('falls back to a generated placeholder when the remote image fails', () => 
   expect(image.getAttribute('src')).toMatch(/^data:image\/svg\+xml;charset=UTF-8,/);
 });
 
-test('student fallback placeholder does not render embedded profile text or name', () => {
+test('student fallback placeholder uses the chef icon asset', () => {
   render(
     <SmartImage
       src=""
@@ -34,6 +34,6 @@ test('student fallback placeholder does not render embedded profile text or name
   const image = screen.getByAltText(/cameron brown1/i);
   const svgContent = decodeURIComponent(image.getAttribute('src').split(',')[1]);
 
-  expect(svgContent).not.toMatch(/Cameron Brown1/i);
-  expect(svgContent).not.toMatch(/Perfil/i);
+  expect(image.getAttribute('src')).toMatch(/^data:image\/svg\+xml;charset=UTF-8,/);
+  expect(svgContent).toMatch(/scale\(0\.58\)/i);
 });

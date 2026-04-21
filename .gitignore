@@ -43,3 +43,11 @@ packages/react-devtools-timeline/dist
 
 # Local Firebase config with sensitive values
 src/helpers/firebase.js
+
+# Local environment variables with API keys
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+functions/.env
+functions/.env.*
