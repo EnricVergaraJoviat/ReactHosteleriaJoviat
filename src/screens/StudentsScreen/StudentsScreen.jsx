@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
+import {
+  CURRENTLY_STUDYING_PROMOTION_VALUE,
+  createPromotionYears,
+  formatPromotionYear,
+} from '../../helpers/promotionYears';
 import SmartImage from '../../components/SmartImage/SmartImage';
 import { ReactComponent as SearchIcon } from '../../assets/icons/search.svg';
+import { ReactComponent as SettingsIcon } from '../../assets/icons/settings.svg';
 import { ReactComponent as StudentRestaurantsIcon } from '../../assets/icons/student-restaurants.svg';
 import { useI18n } from '../../i18n/I18nContext';
 import './StudentsScreen.css';
@@ -15,6 +21,11 @@ function StudentsScreen({ onOpenStudentDetails }) {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [areFiltersOpen, setAreFiltersOpen] = useState(false);
+  const [studentTypeFilter, setStudentTypeFilter] = useState('all');
+  const [currentWorkFilter, setCurrentWorkFilter] = useState('all');
+  const [promotionYearFilter, setPromotionYearFilter] = useState('all');
+  const promotionYears = useMemo(createPromotionYears, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -46,9 +57,20 @@ function StudentsScreen({ onOpenStudentDetails }) {
   }, [t]);
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
-  const filteredStudents = students.filter((student) =>
-    (student.Name ?? '').toLowerCase().includes(normalizedSearchTerm)
-  );
+  const filteredStudents = students.filter((student) => {
+    const matchesSearch = (student.Name ?? '').toLowerCase().includes(normalizedSearchTerm);
+    const matchesType = studentTypeFilter === 'all'
+      || (studentTypeFilter === 'students' && !student.isExAlumni)
+      || (studentTypeFilter === 'exStudents' && student.isExAlumni);
+    const hasCurrentWork = (student.linkedRestaurants ?? []).some((restaurant) => restaurant.currentJob);
+    const matchesCurrentWork = currentWorkFilter === 'all'
+      || (currentWorkFilter === 'current' && hasCurrentWork)
+      || (currentWorkFilter === 'notCurrent' && !hasCurrentWork);
+    const matchesPromotionYear = promotionYearFilter === 'all'
+      || String(student.PromotionYear ?? '') === promotionYearFilter;
+
+    return matchesSearch && matchesType && matchesCurrentWork && matchesPromotionYear;
+  });
   const totalPages = Math.ceil(filteredStudents.length / STUDENTS_PER_PAGE);
   const visibleStudents = filteredStudents.slice(
     (currentPage - 1) * STUDENTS_PER_PAGE,
@@ -61,7 +83,7 @@ function StudentsScreen({ onOpenStudentDetails }) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [normalizedSearchTerm]);
+  }, [normalizedSearchTerm, studentTypeFilter, currentWorkFilter, promotionYearFilter]);
 
   useEffect(() => {
     if (totalPages > 0 && currentPage > totalPages) {
@@ -72,7 +94,6 @@ function StudentsScreen({ onOpenStudentDetails }) {
   return (
     <section className="students-screen">
       <div className="students-screen__intro">
-        <p className="students-screen__eyebrow">{t('common.students')}</p>
         <h1>{t('students.title')}</h1>
       </div>
 
@@ -83,29 +104,87 @@ function StudentsScreen({ onOpenStudentDetails }) {
             {t('list.showing', { filtered: filteredStudents.length, total: students.length })}
           </span>
         </label>
-        <div className="students-search__field">
-          <span className="students-search__icon" aria-hidden="true">
-            <SearchIcon focusable="false" />
-          </span>
-          <input
-            id="students-search"
-            className="students-search__input"
-            type="text"
-            value={searchTerm}
-            placeholder={t('students.placeholder')}
-            onChange={(event) => setSearchTerm(event.target.value)}
-          />
-          {searchTerm ? (
-            <button
-              className="students-search__clear"
-              type="button"
-              aria-label={t('students.clearSearch')}
-              onClick={() => setSearchTerm('')}
-            >
-              ×
-            </button>
-          ) : null}
+        <div className="students-search__controls">
+          <div className="students-search__field">
+            <span className="students-search__icon" aria-hidden="true">
+              <SearchIcon focusable="false" />
+            </span>
+            <input
+              id="students-search"
+              className="students-search__input"
+              type="text"
+              value={searchTerm}
+              placeholder={t('students.placeholder')}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+            {searchTerm ? (
+              <button
+                className="students-search__clear"
+                type="button"
+                aria-label={t('students.clearSearch')}
+                onClick={() => setSearchTerm('')}
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
+          <button
+            className={`students-filters__toggle${areFiltersOpen ? ' students-filters__toggle--active' : ''}`}
+            type="button"
+            aria-label={t('filters.moreOptions')}
+            aria-expanded={areFiltersOpen}
+            onClick={() => setAreFiltersOpen((current) => !current)}
+          >
+            <SettingsIcon focusable="false" />
+          </button>
         </div>
+      </div>
+
+      <div className="students-filters">
+        {areFiltersOpen ? (
+          <div className="students-filters__panel">
+            <label className="students-filters__field" htmlFor="students-type-filter">
+              <span>{t('filters.studentType')}</span>
+              <select
+                id="students-type-filter"
+                value={studentTypeFilter}
+                onChange={(event) => setStudentTypeFilter(event.target.value)}
+              >
+                <option value="all">{t('filters.allStudents')}</option>
+                <option value="students">{t('common.student')}</option>
+                <option value="exStudents">{t('common.exStudent')}</option>
+              </select>
+            </label>
+            <label className="students-filters__field" htmlFor="students-current-work-filter">
+              <span>{t('filters.currentWork')}</span>
+              <select
+                id="students-current-work-filter"
+                value={currentWorkFilter}
+                onChange={(event) => setCurrentWorkFilter(event.target.value)}
+              >
+                <option value="all">{t('filters.anyCurrentWork')}</option>
+                <option value="current">{t('filters.currentlyWorking')}</option>
+                <option value="notCurrent">{t('filters.notCurrentlyWorking')}</option>
+              </select>
+            </label>
+            <label className="students-filters__field" htmlFor="students-promotion-year-filter">
+              <span>{t('forms.promotionYear')}</span>
+              <select
+                id="students-promotion-year-filter"
+                value={promotionYearFilter}
+                onChange={(event) => setPromotionYearFilter(event.target.value)}
+              >
+                <option value="all">{t('filters.anyYear')}</option>
+                <option value={CURRENTLY_STUDYING_PROMOTION_VALUE}>
+                  {t('students.currentlyStudying')}
+                </option>
+                {promotionYears.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : null}
       </div>
 
       {!isLoading && !error && filteredStudents.length > STUDENTS_PER_PAGE ? (
@@ -196,6 +275,11 @@ function StudentsScreen({ onOpenStudentDetails }) {
               <p className="student-card__status">
                 {student.isExAlumni ? t('common.exStudent') : t('common.student')}
               </p>
+              {student.PromotionYear ? (
+                <p className="student-card__promotion-year">
+                  {formatPromotionYear(t, student.PromotionYear)}
+                </p>
+              ) : null}
               <div className="student-card__meta">
                 <span className="student-card__meta-icon" aria-hidden="true">
                   <StudentRestaurantsIcon focusable="false" />

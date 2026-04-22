@@ -89,6 +89,16 @@
   background: transparent;
   padding: 0;
   cursor: pointer;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.site-header__home-button:hover {
+  opacity: 0.92;
+  transform: translateY(-1px) scale(1.02);
+}
+
+.site-header__home-button:active {
+  transform: translateY(0) scale(0.99);
 }
 
 .site-header__logo {
@@ -202,5 +212,13 @@
   .site-header__email {
     max-width: 9.2rem;
     font-size: 0.64rem;
+  }
+}
+
+@media (min-width: 961px) {
+  .site-header__brand {
+    justify-content: center;
+    width: 260px;
+    margin-left: -1.5rem;
   }
 }

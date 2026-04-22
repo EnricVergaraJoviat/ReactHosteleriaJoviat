@@ -19,6 +19,11 @@ import {
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { app, auth, db, storage } from '../../helpers/firebase';
 import { getFallbackImage } from '../../helpers/imageFallbacks';
+import {
+  CURRENTLY_STUDYING_PROMOTION_VALUE,
+  createPromotionYears,
+  normalizePromotionYearValue,
+} from '../../helpers/promotionYears';
 import { useI18n } from '../../i18n/I18nContext';
 import './AddStudentScreen.css';
 
@@ -142,6 +147,7 @@ function AddStudentScreen({
     email: '',
     phone: '',
     linkedIn: '',
+    promotionYear: '',
     password: '',
   });
   const [photoFile, setPhotoFile] = useState(null);
@@ -184,6 +190,7 @@ function AddStudentScreen({
     role: '',
     currentJob: true,
   });
+  const promotionYears = useMemo(createPromotionYears, []);
 
   useEffect(() => {
     if (!isEditMode || !student) {
@@ -196,6 +203,7 @@ function AddStudentScreen({
       email: student.Email ?? student.email ?? '',
       phone: student.Phone ?? student.phone ?? '',
       linkedIn: student.LinkedIn ?? student.linkedIn ?? '',
+      promotionYear: student.PromotionYear ? String(student.PromotionYear) : '',
       password: '',
     });
     setPhotoFile(null);
@@ -487,6 +495,7 @@ function AddStudentScreen({
           Email: trimmedEmail,
           Phone: formData.phone.trim(),
           LinkedIn: formData.linkedIn.trim(),
+          PromotionYear: normalizePromotionYearValue(formData.promotionYear),
           isExAlumni: formData.status === 'exalumne',
           updatedAt: serverTimestamp(),
         });
@@ -524,6 +533,7 @@ function AddStudentScreen({
           Email: trimmedEmail,
           Phone: formData.phone.trim(),
           LinkedIn: formData.linkedIn.trim(),
+          PromotionYear: normalizePromotionYearValue(formData.promotionYear),
           Password: trimmedPassword,
           isExAlumni: formData.status === 'exalumne',
           createdAt: serverTimestamp(),
@@ -547,6 +557,7 @@ function AddStudentScreen({
           email: '',
           phone: '',
           linkedIn: '',
+          promotionYear: '',
           password: '',
         });
         setPhotoFile(null);
@@ -857,6 +868,27 @@ function AddStudentScreen({
                   placeholder="linkedin.com/in/usuari"
                   onChange={handleFormChange}
                 />
+              </label>
+
+              <label className="add-student-form__field" htmlFor="student-promotion-year">
+                <span className="add-student-form__label">
+                  <FieldIcon name="status" />
+                  {t('forms.promotionYear')}
+                </span>
+                <select
+                  id="student-promotion-year"
+                  name="promotionYear"
+                  value={formData.promotionYear}
+                  onChange={handleFormChange}
+                >
+                  <option value="">{t('filters.anyYear')}</option>
+                  <option value={CURRENTLY_STUDYING_PROMOTION_VALUE}>
+                    {t('students.currentlyStudying')}
+                  </option>
+                  {promotionYears.map((year) => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
               </label>
             </div>
           </section>

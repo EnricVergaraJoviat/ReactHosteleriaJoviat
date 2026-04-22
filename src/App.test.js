@@ -121,6 +121,15 @@ jest.mock('./assets/icons/search.svg', () => {
   };
 });
 
+jest.mock('./assets/icons/settings.svg', () => {
+  const React = require('react');
+  return {
+    __esModule: true,
+    default: 'settings.svg',
+    ReactComponent: (props) => React.createElement('svg', props),
+  };
+});
+
 jest.mock('./assets/icons/student-restaurants.svg', () => {
   const React = require('react');
   return {
@@ -1243,6 +1252,7 @@ test('allows an administrator to add a student with photo and restaurant links',
     await userEvent.type(screen.getByLabelText(/correu electronic/i), 'clara@joviat.cat');
     await userEvent.type(screen.getByLabelText(/telefon de contacte/i), '600777888');
     await userEvent.type(screen.getByLabelText(/perfil linkedin/i), 'https://linkedin.com/in/clara-font');
+    await userEvent.selectOptions(screen.getByLabelText(/any de promocio/i), 'currently-studying');
     await userEvent.type(screen.getByLabelText(/filtrar restaurants pel nom/i), 'Disfru');
   });
 
@@ -1295,6 +1305,7 @@ test('allows an administrator to add a student with photo and restaurant links',
     Email: 'clara@joviat.cat',
     Phone: '600777888',
     LinkedIn: 'https://linkedin.com/in/clara-font',
+    PromotionYear: 'currently-studying',
     Password: 'securepass',
     isExAlumni: true,
     createdAt: 'SERVER_TIMESTAMP',
@@ -1942,6 +1953,7 @@ test('reuses the add student form in edit mode for administrators', async () => 
       Email: 'aina@joviat.cat',
       Phone: '699111222',
       LinkedIn: 'linkedin.com/in/aina-serra',
+      PromotionYear: '',
       isExAlumni: false,
       updatedAt: 'SERVER_TIMESTAMP',
     }
@@ -2719,7 +2731,7 @@ test('allows an administrator to delete a restaurant from its detail card', asyn
   expect(deleteDoc).toHaveBeenCalledWith({ id: 'relation-1', path: 'Rest-Alum/relation-1' });
   expect(deleteDoc).toHaveBeenCalledWith({ id: 'relation-2', path: 'Rest-Alum/relation-2' });
   expect(deleteDoc).toHaveBeenCalledWith({ id: 'restaurant-1', path: 'Restaurant/restaurant-1' });
-  expect(await screen.findByRole('heading', { name: /^restaurants$/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /llistat de restaurants/i })).toBeInTheDocument();
 });
 
 test('allows an administrator to edit a restaurant from its detail card using the same form', async () => {
@@ -2995,7 +3007,7 @@ test('navigates to the restaurants screen and returns home from the logo', async
   });
 
   expect(
-    await screen.findByRole('heading', { name: /^restaurants$/i })
+    await screen.findByRole('heading', { name: /llistat de restaurants/i })
   ).toBeInTheDocument();
   expect(screen.getByTestId('restaurants-map')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /veure mapa/i })).toHaveAttribute('aria-pressed', 'true');
@@ -3068,6 +3080,71 @@ test('filters restaurants by name and clears the search', async () => {
 
   expect(searchInput).toHaveValue('');
   expect(screen.getAllByText(/el celler de can roca/i).length).toBeGreaterThan(0);
+});
+
+test('builds restaurant city filters from the city after the postal code', async () => {
+  getDocs.mockImplementation(async (collectionName) => {
+    if (collectionName === 'Restaurant') {
+      return {
+        docs: [
+          {
+            id: 'restaurant-1',
+            data: () => ({
+              Name: 'La Taula de Vic',
+              Address: 'Carrer Major, 12, 08500 Vic, Barcelona, Spain',
+            }),
+          },
+          {
+            id: 'restaurant-2',
+            data: () => ({
+              Name: 'Mar de Sitges',
+              Address: 'Passeig Maritim, 20, 08870 Sitges, Barcelona, Spain',
+            }),
+          },
+        ],
+      };
+    }
+
+    if (
+      collectionName === 'Alumni'
+      || collectionName === 'Rest-Alum'
+      || collectionName === 'Administrator'
+      || collectionName === 'UserRegistrations'
+      || collectionName === 'RestaruantsRegistrations'
+    ) {
+      return { docs: [] };
+    }
+
+    return { docs: [] };
+  });
+
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(
+      screen.getByRole('button', { name: /visualitzar restaurants/i })
+    );
+  });
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /veure llistat/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /mes opcions de filtratge/i }));
+  });
+
+  const cityFilter = await screen.findByLabelText(/ciutat/i);
+  expect(screen.getByRole('option', { name: /^vic$/i })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: /^sitges$/i })).toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: /^barcelona$/i })).not.toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.selectOptions(cityFilter, 'Vic');
+  });
+
+  expect(screen.getAllByText(/la taula de vic/i).length).toBeGreaterThan(0);
+  expect(screen.queryByText(/mar de sitges/i)).not.toBeInTheDocument();
 });
 
 test('paginates the restaurants list in groups of 8 below the search field', async () => {

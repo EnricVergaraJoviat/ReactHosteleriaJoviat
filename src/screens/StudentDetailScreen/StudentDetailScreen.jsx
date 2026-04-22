@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import SmartImage from '../../components/SmartImage/SmartImage';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
+import { formatPromotionYear } from '../../helpers/promotionYears';
 import { deleteStudentAccount } from '../../helpers/studentDeletion';
 import { useI18n } from '../../i18n/I18nContext';
 import './StudentDetailScreen.css';
@@ -243,6 +244,18 @@ function StudentDetailScreen({
     && normalizedCurrentUserEmail === normalizedStudentEmail
   );
   const canDeleteStudent = isAdministrator;
+  const studentStatusOptions = [
+    {
+      key: 'student',
+      label: t('common.student'),
+      isActive: !student.isExAlumni,
+    },
+    {
+      key: 'exStudent',
+      label: t('common.exStudent'),
+      isActive: student.isExAlumni,
+    },
+  ];
 
   return (
     <section className="student-detail">
@@ -266,13 +279,27 @@ function StudentDetailScreen({
               alt={student.Name ?? t('common.student')}
             />
           </div>
-          <p className="student-detail__student-status">
-            {student.isExAlumni ? t('common.exStudent') : t('common.student')}
-          </p>
         </div>
         <div className="student-detail__hero-body">
           <p className="student-detail__eyebrow">{t('detail.studentSheet')}</p>
           <h1>{student.Name ?? t('common.noName')}</h1>
+          <div className="student-detail__student-status" role="group" aria-label={t('forms.studentStatus')}>
+            {studentStatusOptions.map((statusOption) => (
+              <span
+                className={`student-detail__student-status-option${
+                  statusOption.isActive ? ' student-detail__student-status-option--active' : ''
+                }`}
+                key={statusOption.key}
+              >
+                {statusOption.label}
+              </span>
+            ))}
+          </div>
+          {student.PromotionYear ? (
+            <p className="student-detail__promotion-year">
+              {formatPromotionYear(t, student.PromotionYear)}
+            </p>
+          ) : null}
           {canEditStudent || canDeleteStudent ? (
             <div className="student-detail__admin-actions">
               {canEditStudent ? (

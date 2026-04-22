@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-markercluster';
@@ -7,6 +7,7 @@ import { joviatMapIcon } from '../../helpers/joviatMapIcon';
 import SmartImage from '../../components/SmartImage/SmartImage';
 import LinkedStudentsPreview from '../../components/LinkedStudentsPreview/LinkedStudentsPreview';
 import { ReactComponent as SearchIcon } from '../../assets/icons/search.svg';
+import { ReactComponent as SettingsIcon } from '../../assets/icons/settings.svg';
 import { useI18n } from '../../i18n/I18nContext';
 import 'leaflet/dist/leaflet.css';
 import 'react-leaflet-markercluster/styles';
@@ -82,6 +83,31 @@ function parseLocation(location) {
   }
 
   return null;
+}
+
+function getRestaurantCity(address) {
+  if (!address || typeof address !== 'string') {
+    return '';
+  }
+
+  const postalCodeCityMatch = address.match(/\b(?:ES[-\s]?)?\d{5}\s+([^,]+)/i);
+
+  if (postalCodeCityMatch?.[1]) {
+    return postalCodeCityMatch[1].trim();
+  }
+
+  const ignoredSegments = new Set(['espanya', 'españa', 'spain']);
+  const segments = address
+    .split(',')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  const citySegment = [...segments]
+    .reverse()
+    .find((segment) => !ignoredSegments.has(segment.toLowerCase()));
+
+  return (citySegment ?? '')
+    .replace(/^\d{4,5}\s+/, '')
+    .trim();
 }
 
 function createClusterIcon(cluster) {
@@ -166,6 +192,8 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState('map');
+  const [areFiltersOpen, setAreFiltersOpen] = useState(false);
+  const [cityFilter, setCityFilter] = useState('all');
 
   useEffect(() => {
     let isMounted = true;
@@ -197,9 +225,20 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
   }, [t]);
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
-  const filteredRestaurants = restaurants.filter((restaurant) =>
-    (restaurant.Name ?? '').toLowerCase().includes(normalizedSearchTerm)
-  );
+  const cityOptions = useMemo(() => {
+    const cities = restaurants
+      .map((restaurant) => getRestaurantCity(restaurant.Address))
+      .filter(Boolean);
+
+    return [...new Set(cities)].sort((a, b) => a.localeCompare(b));
+  }, [restaurants]);
+  const filteredRestaurants = restaurants.filter((restaurant) => {
+    const matchesSearch = (restaurant.Name ?? '').toLowerCase().includes(normalizedSearchTerm);
+    const restaurantCity = getRestaurantCity(restaurant.Address);
+    const matchesCity = cityFilter === 'all' || restaurantCity === cityFilter;
+
+    return matchesSearch && matchesCity;
+  });
   const totalPages = Math.ceil(filteredRestaurants.length / RESTAURANTS_PER_PAGE);
   const visibleRestaurants = filteredRestaurants.slice(
     (currentPage - 1) * RESTAURANTS_PER_PAGE,
@@ -212,7 +251,7 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [normalizedSearchTerm]);
+  }, [normalizedSearchTerm, cityFilter]);
 
   useEffect(() => {
     if (totalPages > 0 && currentPage > totalPages) {
@@ -271,29 +310,60 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
             {t('list.showing', { filtered: filteredRestaurants.length, total: restaurants.length })}
           </span>
         </label>
-        <div className="restaurants-search__field">
-          <span className="restaurants-search__icon" aria-hidden="true">
-            <SearchIcon focusable="false" />
-          </span>
-          <input
-            id="restaurants-search"
-            className="restaurants-search__input"
-            type="text"
-            value={searchTerm}
-            placeholder={t('restaurants.placeholder')}
-            onChange={(event) => setSearchTerm(event.target.value)}
-          />
-          {searchTerm ? (
-            <button
-              className="restaurants-search__clear"
-              type="button"
-              aria-label={t('restaurants.clearSearch')}
-              onClick={() => setSearchTerm('')}
-            >
-              ×
-            </button>
-          ) : null}
+        <div className="restaurants-search__controls">
+          <div className="restaurants-search__field">
+            <span className="restaurants-search__icon" aria-hidden="true">
+              <SearchIcon focusable="false" />
+            </span>
+            <input
+              id="restaurants-search"
+              className="restaurants-search__input"
+              type="text"
+              value={searchTerm}
+              placeholder={t('restaurants.placeholder')}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+            {searchTerm ? (
+              <button
+                className="restaurants-search__clear"
+                type="button"
+                aria-label={t('restaurants.clearSearch')}
+                onClick={() => setSearchTerm('')}
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
+          <button
+            className={`restaurants-filters__toggle${areFiltersOpen ? ' restaurants-filters__toggle--active' : ''}`}
+            type="button"
+            aria-label={t('filters.moreOptions')}
+            aria-expanded={areFiltersOpen}
+            onClick={() => setAreFiltersOpen((current) => !current)}
+          >
+            <SettingsIcon focusable="false" />
+          </button>
         </div>
+      </div>
+
+      <div className="restaurants-filters">
+        {areFiltersOpen ? (
+          <div className="restaurants-filters__panel">
+            <label className="restaurants-filters__field" htmlFor="restaurants-city-filter">
+              <span>{t('filters.city')}</span>
+              <select
+                id="restaurants-city-filter"
+                value={cityFilter}
+                onChange={(event) => setCityFilter(event.target.value)}
+              >
+                <option value="all">{t('filters.anyCity')}</option>
+                {cityOptions.map((city) => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : null}
       </div>
 
       {isLoading ? (

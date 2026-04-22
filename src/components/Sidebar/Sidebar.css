@@ -168,7 +168,7 @@
 .sidebar--desktop {
   position: sticky;
   top: 0;
-  width: 280px;
+  width: 260px;
   height: calc(100vh - 91px);
   overflow-y: auto;
   flex-shrink: 0;
@@ -181,7 +181,7 @@
   bottom: 0;
   left: 0;
   z-index: 1200;
-  width: min(82vw, 320px);
+  width: min(62vw, 240px);
   height: calc(100vh - 91px);
   height: calc(100dvh - 91px);
   overflow-y: auto;

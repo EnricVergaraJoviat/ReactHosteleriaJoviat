@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import { joviatMapIcon } from '../../helpers/joviatMapIcon';
+import { formatPromotionYear } from '../../helpers/promotionYears';
 import { deleteRestaurant } from '../../helpers/restaurantDeletion';
 import SmartImage from '../../components/SmartImage/SmartImage';
 import { useI18n } from '../../i18n/I18nContext';
@@ -83,6 +84,15 @@ function DetailIcon({ type }) {
         <svg viewBox="0 0 24 24">
           <path
             d="M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm14 3.2-6.4 4.4a1 1 0 0 1-1.2 0L5 8.2V17h14V8.2ZM6.3 7l5.7 3.9L17.7 7H6.3Z"
+            fill="currentColor"
+          />
+        </svg>
+      );
+    case 'location':
+      return (
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M12 2.8A6.2 6.2 0 0 0 5.8 9c0 4.4 5 10.7 5.2 10.9a1.3 1.3 0 0 0 2 0c.2-.2 5.2-6.5 5.2-10.9A6.2 6.2 0 0 0 12 2.8Zm0 8.4A2.2 2.2 0 1 1 12 6.8a2.2 2.2 0 0 1 0 4.4Z"
             fill="currentColor"
           />
         </svg>
@@ -195,6 +205,7 @@ function RestaurantDetailScreen({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionMessage, setActionMessage] = useState('');
+  const [isLocationExpanded, setIsLocationExpanded] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -316,7 +327,10 @@ function RestaurantDetailScreen({
           <p className="restaurant-detail__eyebrow">{t('detail.restaurantSheet')}</p>
           <h1>{restaurant.Name ?? t('common.noName')}</h1>
           <p className="restaurant-detail__address">
-            {restaurant.Address ?? t('common.addressUnavailable')}
+            <span className="restaurant-detail__address-icon" aria-hidden="true">
+              <DetailIcon type="location" />
+            </span>
+            <span>{restaurant.Address ?? t('common.addressUnavailable')}</span>
           </p>
           {isAdministrator ? (
             <div className="restaurant-detail__admin-actions">
@@ -351,33 +365,6 @@ function RestaurantDetailScreen({
       </div>
 
       <section className="restaurant-detail__panel">
-        <h2>{t('detail.location')}</h2>
-        {coordinates ? (
-          <div className="restaurant-detail__map-wrap">
-            <MapContainer
-              center={coordinates}
-              className="restaurant-detail__map"
-              scrollWheelZoom={false}
-              zoom={15}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <Marker icon={joviatMapIcon} position={coordinates}>
-                <Popup>{restaurant.Name ?? t('common.noName')}</Popup>
-              </Marker>
-            </MapContainer>
-          </div>
-        ) : (
-          <div className="restaurant-detail__map-empty">
-            {t('detail.noLocation')}
-          </div>
-        )}
-      </section>
-
-      <section className="restaurant-detail__panel">
-        <h2>{t('common.contact')}</h2>
         <div className="restaurant-detail__contacts">
           <ContactItem
             label={t('common.phone')}
@@ -447,6 +434,44 @@ function RestaurantDetailScreen({
         </div>
       </section>
 
+      <section className="restaurant-detail__panel restaurant-detail__panel--collapsible">
+        <button
+          className="restaurant-detail__section-toggle"
+          type="button"
+          aria-expanded={isLocationExpanded}
+          onClick={() => setIsLocationExpanded((current) => !current)}
+        >
+          <span>{t('detail.location')}</span>
+          <span className="restaurant-detail__section-toggle-icon" aria-hidden="true">
+            {isLocationExpanded ? '−' : '+'}
+          </span>
+        </button>
+        {isLocationExpanded ? (
+          coordinates ? (
+            <div className="restaurant-detail__map-wrap">
+              <MapContainer
+                center={coordinates}
+                className="restaurant-detail__map"
+                scrollWheelZoom={false}
+                zoom={15}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <Marker icon={joviatMapIcon} position={coordinates}>
+                  <Popup>{restaurant.Name ?? t('common.noName')}</Popup>
+                </Marker>
+              </MapContainer>
+            </div>
+          ) : (
+            <div className="restaurant-detail__map-empty">
+              {t('detail.noLocation')}
+            </div>
+          )
+        ) : null}
+      </section>
+
       <section className="restaurant-detail__panel">
         <div className="restaurant-detail__panel-heading">
           <h2>{t('common.students')}</h2>
@@ -475,6 +500,11 @@ function RestaurantDetailScreen({
                   <p className="restaurant-detail__student-role">
                     {student.role || t('common.roleUnavailable')}
                   </p>
+                  {student.PromotionYear ? (
+                    <p className="restaurant-detail__student-promotion-year">
+                      {formatPromotionYear(t, student.PromotionYear)}
+                    </p>
+                  ) : null}
                   <p className={`restaurant-detail__student-status${student.currentJob ? '' : ' restaurant-detail__student-status--muted'}`}>
                     {student.currentJob
                       ? t('common.currentJob')
