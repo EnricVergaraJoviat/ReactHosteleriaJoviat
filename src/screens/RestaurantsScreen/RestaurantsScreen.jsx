@@ -8,6 +8,7 @@ import SmartImage from '../../components/SmartImage/SmartImage';
 import LinkedStudentsPreview from '../../components/LinkedStudentsPreview/LinkedStudentsPreview';
 import { ReactComponent as SearchIcon } from '../../assets/icons/search.svg';
 import { ReactComponent as SettingsIcon } from '../../assets/icons/settings.svg';
+import restaurantTitleImage from '../../assets/images/restaurant.png';
 import { useI18n } from '../../i18n/I18nContext';
 import 'leaflet/dist/leaflet.css';
 import 'react-leaflet-markercluster/styles';
@@ -271,7 +272,15 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
   return (
     <section className="restaurants-screen">
       <div className="restaurants-screen__intro">
-        <h1>{t('restaurants.title')}</h1>
+        <div className="restaurants-screen__title-row">
+          <img
+            className="restaurants-screen__title-icon"
+            src={restaurantTitleImage}
+            alt=""
+            aria-hidden="true"
+          />
+          <h1>{t('restaurants.title')}</h1>
+        </div>
       </div>
 
       <div className="restaurants-view-toggle" aria-label={t('restaurants.viewMode')}>

@@ -274,6 +274,12 @@ function App() {
     setActiveView('auth');
   }
 
+  function handleOpenRegister() {
+    setAuthErrorMessage('');
+    setAuthViewMode(currentUser ? 'status' : 'request');
+    setActiveView('auth');
+  }
+
   async function handleLogin({ email, password }) {
     setAuthErrorMessage('');
     setIsAuthSubmitting(true);
@@ -308,7 +314,18 @@ function App() {
     await createUserRegistration({ email, name });
   }
 
-  let screen = <HomeScreen onNavigate={handleNavigate} />;
+  let screen = (
+    <HomeScreen
+      onNavigate={(view) => {
+        if (view === 'register') {
+          handleOpenRegister();
+          return;
+        }
+
+        handleNavigate(view);
+      }}
+    />
+  );
 
   if (activeView === 'restaurants') {
     screen = <RestaurantsScreen onOpenRestaurantDetails={handleOpenRestaurantDetails} />;

@@ -7,12 +7,27 @@
   max-width: 1100px;
 }
 
+.restaurants-screen__title-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.9rem;
+}
+
 .restaurants-screen__intro h1 {
   margin: 0;
   color: #111111;
   font-size: clamp(2rem, 4vw, 3.5rem);
   line-height: 0.95;
   letter-spacing: 0;
+}
+
+.restaurants-screen__title-icon {
+  display: block;
+  width: auto;
+  height: clamp(2rem, 4vw, 3.5rem);
+  object-fit: contain;
+  flex-shrink: 0;
+  transform: translateY(-0.44rem);
 }
 
 .restaurants-view-toggle {
@@ -263,8 +278,15 @@
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.86);
   color: #141414;
-  padding: 0.7rem 0.85rem;
+  padding: 0.7rem 3rem 0.7rem 0.85rem;
   font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7.5 10 12.5 15 7.5' stroke='%235c4a31' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1rem;
 }
 
 .restaurants-map {
@@ -807,6 +829,43 @@
   }
 
   .restaurants-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+  }
+
+  .restaurant-card__body {
+    gap: 0.5rem;
+    padding: 0.8rem 0.8rem 0.9rem;
+  }
+
+  .restaurant-card__body h2 {
+    font-size: 1rem;
+  }
+
+  .restaurant-card__address {
+    font-size: 0.8rem;
+  }
+
+  .restaurant-card__meta .linked-students-preview__avatars {
+    min-height: 2.35rem;
+  }
+
+  .restaurant-card__meta .linked-students-preview__avatar,
+  .restaurant-card__meta .linked-students-preview__more {
+    width: 2.35rem;
+    height: 2.35rem;
+  }
+
+  .restaurant-card__meta .linked-students-preview__avatar + .linked-students-preview__avatar,
+  .restaurant-card__meta .linked-students-preview__avatar + .linked-students-preview__more,
+  .restaurant-card__meta .linked-students-preview__more + .linked-students-preview__avatar,
+  .restaurant-card__meta .linked-students-preview__more + .linked-students-preview__more {
+    margin-left: -0.6rem;
+  }
+
+  .restaurant-card__details {
+    min-height: 2.2rem;
+    padding: 0.62rem 0.72rem;
+    font-size: 0.66rem;
   }
 }

@@ -4,6 +4,8 @@
 }
 
 .sidebar__nav {
+  display: flex;
+  flex-direction: column;
   min-height: 100%;
   box-sizing: border-box;
   padding: 1.6rem 1.15rem 2rem;
@@ -115,6 +117,10 @@
     transform 0.2s ease;
 }
 
+.sidebar__link--external {
+  text-decoration: none;
+}
+
 .sidebar__icon {
   flex-shrink: 0;
   width: 1.2rem;
@@ -163,6 +169,21 @@
 
 .sidebar__link--active .sidebar__icon {
   color: #8b6a3d;
+}
+
+.sidebar__world-art {
+  margin-top: auto;
+  padding-top: 1.4rem;
+  display: flex;
+  justify-content: center;
+}
+
+.sidebar__world-art img {
+  display: block;
+  width: min(100%, 90px);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.22));
 }
 
 .sidebar--desktop {

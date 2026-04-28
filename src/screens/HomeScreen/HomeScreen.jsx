@@ -1,4 +1,5 @@
 import heroImage from '../../assets/images/joviat-restaurant.webp';
+import alumniIcon from '../../assets/images/Alumni.png';
 import { useI18n } from '../../i18n/I18nContext';
 import './HomeScreen.css';
 
@@ -34,7 +35,24 @@ function HomeScreen({ onNavigate }) {
             </button>
           </div>
         </div>
-        <h1>{t('home.title')}</h1>
+        <div className="home-screen__headline-panel">
+          <div className="home-screen__headline-copy">
+            <h1>{t('home.title')}</h1>
+            <button
+              className="home-screen__register-button"
+              type="button"
+              onClick={() => onNavigate('register')}
+            >
+              <img
+                className="home-screen__register-icon"
+                src={alumniIcon}
+                alt=""
+                aria-hidden="true"
+              />
+              <span>{t('home.register')}</span>
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );

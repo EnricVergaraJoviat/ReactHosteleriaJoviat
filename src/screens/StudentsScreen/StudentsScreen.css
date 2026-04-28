@@ -239,6 +239,44 @@
   grid-column: 1 / -1;
 }
 
+.students-filters__role-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2.75rem;
+  border: 1px solid rgba(109, 85, 50, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 0.7rem 0.85rem;
+  color: #141414;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.students-filters__role-trigger::after {
+  content: "";
+  width: 0.72rem;
+  height: 0.72rem;
+  border-right: 2px solid #5c4a31;
+  border-bottom: 2px solid #5c4a31;
+  transform: translateY(-0.12rem) rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+.students-filters__role-trigger:hover {
+  transform: translateY(-1px);
+}
+
+.students-filters__role-trigger:focus-visible {
+  outline: 2px solid rgba(17, 17, 17, 0.28);
+  outline-offset: 3px;
+}
+
+.students-filters__role-trigger--open::after {
+  transform: translateY(0.12rem) rotate(225deg);
+}
+
 .students-filters__role-box {
   display: grid;
   grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);

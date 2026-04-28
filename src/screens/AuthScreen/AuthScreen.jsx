@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useI18n } from '../../i18n/I18nContext';
 import './AuthScreen.css';
 
@@ -24,8 +24,17 @@ function AuthScreen({
 
   const isLoginMode = mode === 'login';
   const isLogoutMode = mode === 'logout';
+  const shouldOpenRequestDialog = mode === 'request';
   const requestResultMessage = requestSuccessMessage || requestErrorMessage;
   const isRequestSuccess = Boolean(requestSuccessMessage);
+
+  useEffect(() => {
+    if (shouldOpenRequestDialog) {
+      setRequestErrorMessage('');
+      setRequestSuccessMessage('');
+      setIsRequestDialogOpen(true);
+    }
+  }, [shouldOpenRequestDialog]);
 
   function closeRequestDialog() {
     setIsRequestDialogOpen(false);
@@ -71,7 +80,7 @@ function AuthScreen({
         aria-modal="true"
         aria-labelledby="auth-screen-title"
       >
-        {isLoginMode ? (
+        {isLoginMode || shouldOpenRequestDialog ? (
           <>
             <p className="auth-screen__eyebrow">{t('auth.access')}</p>
             <h1 id="auth-screen-title">{t('auth.loginTitle')}</h1>
@@ -144,7 +153,7 @@ function AuthScreen({
           </>
         ) : null}
 
-        {!isLoginMode && !isLogoutMode ? (
+        {!isLoginMode && !isLogoutMode && !shouldOpenRequestDialog ? (
           <>
             <p className="auth-screen__eyebrow">{t('auth.activeSession')}</p>
             <h1 id="auth-screen-title">{t('auth.loggedTitle')}</h1>

@@ -2,7 +2,10 @@ import './Sidebar.css';
 import { ReactComponent as RestaurantsMenuIcon } from '../../assets/icons/restaurants.svg';
 import { ReactComponent as AddRestaurantMenuIcon } from '../../assets/icons/add-restaurant.svg';
 import joviatNetworkingLogo from '../../assets/images/logo_joviat_networking_white.png';
+import worldImage from '../../assets/images/world_joviat.png';
 import { useI18n } from '../../i18n/I18nContext';
+
+const TRELLO_BOARD_URL = 'https://trello.com/b/4CWtinBj/hosteleriajoviat';
 
 function SidebarIcon({ children }) {
   return (
@@ -214,9 +217,36 @@ function Sidebar({
                     </button>
                   </li>
                 ))}
+                {isAdministrator ? (
+                  <li>
+                    <a
+                      className="sidebar__link sidebar__link--external"
+                      href={TRELLO_BOARD_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <SidebarIcon>
+                        <path
+                          d="M7 4.75h10A2.25 2.25 0 0 1 19.25 7v10A2.25 2.25 0 0 1 17 19.25H7A2.25 2.25 0 0 1 4.75 17V7A2.25 2.25 0 0 1 7 4.75Z"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                        />
+                        <path
+                          d="M9 8.5h2.25v6H9zM12.75 8.5H15v3.75h-2.25z"
+                          fill="currentColor"
+                        />
+                      </SidebarIcon>
+                      <span className="sidebar__link-text">{t('nav.openTrello')}</span>
+                    </a>
+                  </li>
+                ) : null}
               </ul>
             </>
           ) : null}
+          <div className="sidebar__world-art" aria-hidden="true">
+            <img src={worldImage} alt="" />
+          </div>
         </nav>
       </aside>
     </>

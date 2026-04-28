@@ -27,6 +27,7 @@ function StudentsScreen({ onOpenStudentDetails }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [areFiltersOpen, setAreFiltersOpen] = useState(true);
+  const [areRoleFiltersOpen, setAreRoleFiltersOpen] = useState(false);
   const [studentTypeFilter, setStudentTypeFilter] = useState('all');
   const [currentWorkFilter, setCurrentWorkFilter] = useState('all');
   const [promotionYearFilter, setPromotionYearFilter] = useState('all');
@@ -207,37 +208,46 @@ function StudentsScreen({ onOpenStudentDetails }) {
               </select>
             </label>
             <div className="students-filters__field students-filters__field--roles">
-              <span>{t('forms.role')}</span>
-              <div className="students-filters__role-box">
-                <div className="students-filters__role-actions">
-                  <button
-                    className="students-filters__role-action"
-                    type="button"
-                    onClick={() => setRoleFilters(restaurantRoleOptions.map((roleOption) => roleOption.value))}
-                  >
-                    {t('filters.selectAllRoles')}
-                  </button>
-                  <button
-                    className="students-filters__role-action"
-                    type="button"
-                    onClick={() => setRoleFilters([])}
-                  >
-                    {t('filters.clearRoles')}
-                  </button>
+              <button
+                className={`students-filters__role-trigger${areRoleFiltersOpen ? ' students-filters__role-trigger--open' : ''}`}
+                type="button"
+                aria-expanded={areRoleFiltersOpen}
+                onClick={() => setAreRoleFiltersOpen((current) => !current)}
+              >
+                <span>{t('forms.role')}</span>
+              </button>
+              {areRoleFiltersOpen ? (
+                <div className="students-filters__role-box">
+                  <div className="students-filters__role-actions">
+                    <button
+                      className="students-filters__role-action"
+                      type="button"
+                      onClick={() => setRoleFilters(restaurantRoleOptions.map((roleOption) => roleOption.value))}
+                    >
+                      {t('filters.selectAllRoles')}
+                    </button>
+                    <button
+                      className="students-filters__role-action"
+                      type="button"
+                      onClick={() => setRoleFilters([])}
+                    >
+                      {t('filters.clearRoles')}
+                    </button>
+                  </div>
+                  <div className="students-filters__role-list">
+                    {restaurantRoleOptions.map((roleOption) => (
+                      <label className="students-filters__role-option" key={roleOption.value}>
+                        <input
+                          type="checkbox"
+                          checked={roleFilters.includes(roleOption.value)}
+                          onChange={() => handleRoleFilterToggle(roleOption.value)}
+                        />
+                        <span>{roleOption.label}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-                <div className="students-filters__role-list">
-                  {restaurantRoleOptions.map((roleOption) => (
-                    <label className="students-filters__role-option" key={roleOption.value}>
-                      <input
-                        type="checkbox"
-                        checked={roleFilters.includes(roleOption.value)}
-                        onChange={() => handleRoleFilterToggle(roleOption.value)}
-                      />
-                      <span>{roleOption.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              ) : null}
             </div>
           </div>
         ) : null}

@@ -386,12 +386,24 @@ test('renders the Joviat home screen', () => {
   render(<App />);
   expect(screen.getByAltText(/logo joviat/i)).toBeInTheDocument();
   expect(screen.getByText(/cicle formatiu hoteleria/i)).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /explorar restaurants/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /explorar establiments/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /explorar alumnes/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /registra't/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /^login$/i })).toBeInTheDocument();
   expect(
     screen.getByText(/descobreix fins on arriba la xarxa de la joviat/i)
   ).toBeInTheDocument();
+});
+
+test('opens the request access dialog from the home register button', async () => {
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /registra't/i }));
+  });
+
+  expect(await screen.findByRole('heading', { name: /sol.licitar acces/i })).toBeInTheDocument();
+  expect(screen.getByLabelText(/nom i cognoms/i)).toBeInTheDocument();
 });
 
 test('shows an error dialog when login fails', async () => {
@@ -1445,6 +1457,10 @@ test('filters students by role and lets you select or clear all roles', async ()
   });
 
   await screen.findByText(/aina serra/i);
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^rol$/i }));
+  });
 
   await act(async () => {
     await userEvent.click(screen.getByLabelText(/propietari\/a/i));

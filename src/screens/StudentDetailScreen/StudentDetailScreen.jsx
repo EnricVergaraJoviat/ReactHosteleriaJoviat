@@ -18,6 +18,37 @@ function formatLink(value, prefix) {
   return `${prefix}${value}`;
 }
 
+function formatInstagramLink(value) {
+  if (!value) {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  return `https://instagram.com/${value.replace(/^@+/, '')}`;
+}
+
+function formatInstagramDisplayValue(value) {
+  if (!value) {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const { pathname } = new URL(value);
+      const username = pathname.split('/').filter(Boolean)[0];
+
+      return username ? `@${username}` : 'Instagram';
+    } catch (error) {
+      return 'Instagram';
+    }
+  }
+
+  return value.startsWith('@') ? value : `@${value}`;
+}
+
 function DetailIcon({ type }) {
   switch (type) {
     case 'edit':
@@ -62,6 +93,19 @@ function DetailIcon({ type }) {
           <path
             d="M6.5 8.8H3.8V20h2.7V8.8ZM5.2 4A1.6 1.6 0 1 0 5.2 7.2A1.6 1.6 0 0 0 5.2 4Zm6.2 4.8H8.8V20h2.7v-5.9c0-1.6.8-2.6 2.1-2.6 1.2 0 1.8.8 1.8 2.5v6H18v-6.6c0-3-1.6-4.8-4.1-4.8-1.2 0-2 .5-2.5 1.2v-1Z"
             fill="currentColor"
+          />
+        </svg>
+      );
+    case 'instagram':
+      return (
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M8 4.5h8A3.5 3.5 0 0 1 19.5 8v8a3.5 3.5 0 0 1-3.5 3.5H8A3.5 3.5 0 0 1 4.5 16V8A3.5 3.5 0 0 1 8 4.5Zm8 2.2h0M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
         </svg>
       );
@@ -244,6 +288,13 @@ function StudentDetailScreen({
     && normalizedCurrentUserEmail === normalizedStudentEmail
   );
   const canDeleteStudent = isAdministrator;
+  const hasStudentActivity = (student.linkedRestaurants?.length ?? 0) > 0;
+  const allowsContactVisibility = student.VisibleContactToAlumniNetwork ?? true;
+  const canViewContactDetails = isAuthenticated && (
+    canDeleteStudent
+    || allowsContactVisibility
+    || hasStudentActivity
+  );
   const studentStatusOptions = [
     {
       key: 'student',
@@ -336,7 +387,7 @@ function StudentDetailScreen({
         </div>
       </div>
 
-      {isAuthenticated ? (
+      {canViewContactDetails ? (
         <section className="student-detail__panel">
           <h2>{t('common.contact')}</h2>
           <div className="student-detail__contacts">
@@ -358,6 +409,13 @@ function StudentDetailScreen({
               href={student.LinkedIn ? formatLink(student.LinkedIn, 'https://') : ''}
               icon="linkedin"
               displayValue="URL"
+            />
+            <ContactItem
+              label="Instagram"
+              value={student.Instagram}
+              href={student.Instagram ? formatInstagramLink(student.Instagram) : ''}
+              icon="instagram"
+              displayValue={student.Instagram ? formatInstagramDisplayValue(student.Instagram) : ''}
             />
           </div>
         </section>
