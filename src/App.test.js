@@ -2811,7 +2811,7 @@ test('allows an administrator to delete a restaurant from its detail card', asyn
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^restaurants$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^establiments$/i }));
   });
 
   await act(async () => {
@@ -2925,7 +2925,7 @@ test('allows an administrator to edit a restaurant from its detail card using th
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^restaurants$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^establiments$/i }));
   });
 
   await act(async () => {
@@ -2938,7 +2938,7 @@ test('allows an administrator to edit a restaurant from its detail card using th
     await userEvent.click(await screen.findByRole('button', { name: /^editar$/i }));
   });
 
-  expect(await screen.findByRole('heading', { name: /editar restaurant/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /editar establiment/i })).toBeInTheDocument();
   expect(screen.getByDisplayValue('El Celler de Can Roca')).toBeInTheDocument();
 
   await act(async () => {
@@ -3009,17 +3009,17 @@ test('copies a new Google Places restaurant photo before saving it', async () =>
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /afegir restaurant/i }));
+    await userEvent.click(screen.getByRole('button', { name: /afegir establiment/i }));
   });
 
-  expect(await screen.findByRole('heading', { name: /afegir restaurant/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /afegir establiment/i })).toBeInTheDocument();
 
   await act(async () => {
     await userEvent.type(screen.getByLabelText(/^nom$/i), 'Disfrutar');
     await userEvent.type(screen.getByLabelText(/adreca/i), 'Carrer de Villarroel, 163, Barcelona');
     await userEvent.type(screen.getByLabelText(/foto url/i), 'https://places.example/disfrutar.jpg');
     await userEvent.type(screen.getByLabelText(/google place id/i), 'place-disfrutar');
-    await userEvent.click(screen.getByRole('button', { name: /desar restaurant/i }));
+    await userEvent.click(screen.getByRole('button', { name: /desar establiment/i }));
   });
 
   expect(copyPlacePhotoToStorage).toHaveBeenCalledWith({
@@ -3033,6 +3033,17 @@ test('copies a new Google Places restaurant photo before saving it', async () =>
     GooglePlaceId: 'place-disfrutar',
     createdAt: 'SERVER_TIMESTAMP',
   }));
+  expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+  expect(screen.getByText(/vols anar a la fitxa de disfrutar/i)).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: /^disfrutar$/i })).not.toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /nou establiment/i }));
+  });
+
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  expect(screen.getByLabelText(/^nom$/i)).toHaveValue('');
+  expect(screen.getByLabelText(/foto url/i)).toHaveValue('');
 });
 
 test('opens the restaurant detail card from the student detail', async () => {

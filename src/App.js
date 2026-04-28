@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import AppShell from './components/AppShell/AppShell';
 import AdminScreen from './screens/AdminScreen/AdminScreen';
 import AddRestaurantScreen from './screens/AddRestaurantScreen/AddRestaurantScreen';
@@ -50,6 +50,7 @@ function App() {
   const [restaurantDetailOrigin, setRestaurantDetailOrigin] = useState('restaurants');
   const [restaurantFormMode, setRestaurantFormMode] = useState('create');
   const [restaurantFormInitialData, setRestaurantFormInitialData] = useState(null);
+  const [pendingRestaurantRegistrationId, setPendingRestaurantRegistrationId] = useState('');
   const [authViewMode, setAuthViewMode] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
   const [authErrorMessage, setAuthErrorMessage] = useState('');
@@ -163,6 +164,7 @@ function App() {
     if (view !== 'add-restaurant' && view !== 'edit-restaurant') {
       setRestaurantFormMode('create');
       setRestaurantFormInitialData(null);
+      setPendingRestaurantRegistrationId('');
     }
   }
 
@@ -228,6 +230,42 @@ function App() {
     } catch (error) {
       setActiveView('restaurant-detail');
     }
+  }
+
+  function handleManageRestaurantRegistration(registration, placeDetails) {
+    setRestaurantFormMode('create');
+    setPendingRestaurantRegistrationId(registration.id);
+    setRestaurantFormInitialData({
+      Name: placeDetails.name ?? '',
+      Address: placeDetails.address ?? '',
+      Phone: placeDetails.phone ?? '',
+      Email: '',
+      Website: placeDetails.website ?? '',
+      GoogleMapsURL: placeDetails.googleMapsUrl || registration.GoogleMapsShareUrl || '',
+      PhotoURL: placeDetails.photoUrl ?? '',
+      Rating: placeDetails.rating ?? '',
+      BusinessStatus: placeDetails.businessStatus ?? '',
+      GooglePlaceId: placeDetails.googlePlaceId ?? '',
+      GooglePhotoName: placeDetails.googlePhotoName ?? '',
+      Location:
+        typeof placeDetails.latitude === 'number' && typeof placeDetails.longitude === 'number'
+          ? {
+              latitude: placeDetails.latitude,
+              longitude: placeDetails.longitude,
+            }
+          : '',
+    });
+    setActiveView('add-restaurant');
+  }
+
+  async function handleRestaurantCreated(restaurantId) {
+    if (pendingRestaurantRegistrationId) {
+      try {
+        await deleteDoc(doc(db, 'RestaruantsRegistrations', pendingRestaurantRegistrationId));
+      } catch (error) {}
+    }
+
+    setPendingRestaurantRegistrationId('');
   }
 
   function handleAuthAction() {
@@ -329,7 +367,14 @@ function App() {
   }
 
   if (isAdministrator && activeView === 'add-restaurant') {
-    screen = <AddRestaurantScreen mode="create" />;
+    screen = (
+      <AddRestaurantScreen
+        mode="create"
+        restaurant={restaurantFormInitialData}
+        onSaved={handleRestaurantCreated}
+        onOpenCreatedRestaurant={(restaurantId) => handleOpenRestaurantDetails(restaurantId, 'restaurants')}
+      />
+    );
   }
 
   if (isAdministrator && activeView === 'edit-restaurant' && restaurantFormInitialData) {
@@ -365,7 +410,11 @@ function App() {
   }
 
   if (isAdministrator && activeView === 'manage-registrations') {
-    screen = <ManageRegistrationsScreen />;
+    screen = (
+      <ManageRegistrationsScreen
+        onManageRestaurantRegistration={handleManageRestaurantRegistration}
+      />
+    );
   }
 
   return (

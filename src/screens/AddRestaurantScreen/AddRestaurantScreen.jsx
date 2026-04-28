@@ -300,7 +300,12 @@ function buildGoogleEmbedUrl({ googlePlaceId, latitude, longitude, address, name
   return '';
 }
 
-function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
+function AddRestaurantScreen({
+  mode = 'create',
+  restaurant = null,
+  onSaved,
+  onOpenCreatedRestaurant,
+}) {
   const { t } = useI18n();
   const [googleStatus, setGoogleStatus] = useState(
     GOOGLE_MAPS_API_KEY ? 'loading' : 'missing-key'
@@ -317,6 +322,7 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
   const [successMessage, setSuccessMessage] = useState('');
   const [successTone, setSuccessTone] = useState('success');
   const [hasPhotoPreviewError, setHasPhotoPreviewError] = useState(false);
+  const [createdRestaurantInfo, setCreatedRestaurantInfo] = useState(null);
 
   useEffect(() => {
     if (!GOOGLE_MAPS_API_KEY) {
@@ -379,7 +385,20 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
     setErrorMessage('');
     setSuccessMessage('');
     setSuccessTone('success');
+    setCreatedRestaurantInfo(null);
   }, [restaurant, mode]);
+
+  function resetCreateForm() {
+    setFormData(INITIAL_FORM_DATA);
+    setResults([]);
+    setSelectedPlaceId('');
+    setSearchTerm('');
+    setErrorMessage('');
+    setSuccessMessage('');
+    setSuccessTone('success');
+    setHasPhotoPreviewError(false);
+    setCreatedRestaurantInfo(null);
+  }
 
   function handleFormChange(event) {
     const { name, value } = event.target;
@@ -561,13 +580,13 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
           createdAt: serverTimestamp(),
         });
 
-        setFormData(INITIAL_FORM_DATA);
-        setResults([]);
-        setSelectedPlaceId('');
-        setSearchTerm('');
+        await onSaved?.(createdRestaurant.id);
         setSuccessTone('success');
         setSuccessMessage(t('forms.restaurantCreated'));
-        onSaved?.(createdRestaurant.id);
+        setCreatedRestaurantInfo({
+          id: createdRestaurant.id,
+          name: trimmedName,
+        });
       }
     } catch (error) {
       console.error('Restaurant save failed', {
@@ -908,6 +927,41 @@ function AddRestaurantScreen({ mode = 'create', restaurant = null, onSaved }) {
           </div>
         </section>
       </form>
+
+      {createdRestaurantInfo ? (
+        <div className="add-restaurant-form__dialog-layer" role="presentation">
+          <div
+            className="add-restaurant-form__dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="restaurant-created-title"
+            aria-describedby="restaurant-created-description"
+          >
+            <h2 id="restaurant-created-title">{t('forms.restaurantCreatedDialogTitle')}</h2>
+            <p id="restaurant-created-description">
+              {t('forms.restaurantCreatedDialogDescription', {
+                name: createdRestaurantInfo.name,
+              })}
+            </p>
+            <div className="add-restaurant-form__dialog-actions">
+              <button
+                className="add-restaurant-form__action add-restaurant-form__action--secondary"
+                type="button"
+                onClick={() => onOpenCreatedRestaurant?.(createdRestaurantInfo.id)}
+              >
+                {t('forms.openCreatedRestaurant', { name: createdRestaurantInfo.name })}
+              </button>
+              <button
+                className="add-restaurant-form__action"
+                type="button"
+                onClick={resetCreateForm}
+              >
+                {t('forms.createAnotherRestaurant')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

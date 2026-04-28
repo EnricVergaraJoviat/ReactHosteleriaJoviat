@@ -127,6 +127,17 @@
   font-size: 1rem;
 }
 
+.add-restaurant-form__field select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 3.4rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7.5 10 12.5 15 7.5' stroke='%236f655a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1.15rem center;
+  background-size: 1rem;
+}
+
 .add-restaurant-form__field input::placeholder {
   color: #b3aa9c;
   opacity: 1;
@@ -202,6 +213,42 @@
 
 .add-restaurant-form__selected p {
   margin-top: 0.35rem;
+}
+
+.add-restaurant-form__dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(17, 17, 17, 0.34);
+}
+
+.add-restaurant-form__dialog {
+  width: min(100%, 520px);
+  border-radius: 28px;
+  background: rgba(255, 252, 246, 0.98);
+  padding: 1.6rem;
+  box-shadow: 0 28px 70px rgba(17, 17, 17, 0.18);
+}
+
+.add-restaurant-form__dialog h2 {
+  margin: 0 0 1rem;
+  color: #111111;
+}
+
+.add-restaurant-form__dialog p {
+  margin: 0;
+  color: #5b4c38;
+  line-height: 1.55;
+}
+
+.add-restaurant-form__dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.2rem;
 }
 
 .add-restaurant-form__status {
@@ -335,5 +382,14 @@
   .add-restaurant-form__panel-heading {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .add-restaurant-form__dialog {
+    border-radius: 22px;
+    padding: 1.25rem;
+  }
+
+  .add-restaurant-form__dialog-actions {
+    flex-direction: column;
   }
 }

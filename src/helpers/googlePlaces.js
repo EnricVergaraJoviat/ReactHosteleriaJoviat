@@ -176,7 +176,6 @@ async function searchRestaurants(query) {
   const Place = await getPlaceClass();
   const response = await Place.searchByText({
     fields: ['id', 'displayName', 'formattedAddress', 'photos'],
-    includedType: 'restaurant',
     maxResultCount: 10,
     textQuery: trimmedQuery,
   });
