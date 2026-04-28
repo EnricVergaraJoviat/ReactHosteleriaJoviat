@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import {
+  getRestaurantRoleOptions,
+  normalizeRestaurantRole,
+} from '../../helpers/restaurantRoles';
+import {
   CURRENTLY_STUDYING_PROMOTION_VALUE,
   createPromotionYears,
   formatPromotionYear,
@@ -9,6 +13,7 @@ import SmartImage from '../../components/SmartImage/SmartImage';
 import { ReactComponent as SearchIcon } from '../../assets/icons/search.svg';
 import { ReactComponent as SettingsIcon } from '../../assets/icons/settings.svg';
 import { ReactComponent as StudentRestaurantsIcon } from '../../assets/icons/student-restaurants.svg';
+import alumniTitleImage from '../../assets/images/Alumni.png';
 import { useI18n } from '../../i18n/I18nContext';
 import './StudentsScreen.css';
 
@@ -25,7 +30,9 @@ function StudentsScreen({ onOpenStudentDetails }) {
   const [studentTypeFilter, setStudentTypeFilter] = useState('all');
   const [currentWorkFilter, setCurrentWorkFilter] = useState('all');
   const [promotionYearFilter, setPromotionYearFilter] = useState('all');
+  const [roleFilters, setRoleFilters] = useState([]);
   const promotionYears = useMemo(createPromotionYears, []);
+  const restaurantRoleOptions = useMemo(() => getRestaurantRoleOptions(t), [t]);
 
   useEffect(() => {
     let isMounted = true;
@@ -68,8 +75,13 @@ function StudentsScreen({ onOpenStudentDetails }) {
       || (currentWorkFilter === 'notCurrent' && !hasCurrentWork);
     const matchesPromotionYear = promotionYearFilter === 'all'
       || String(student.PromotionYear ?? '') === promotionYearFilter;
+    const normalizedStudentRoles = (student.linkedRestaurants ?? [])
+      .map((restaurant) => normalizeRestaurantRole(restaurant.role))
+      .filter(Boolean);
+    const matchesRole = roleFilters.length === 0
+      || roleFilters.some((roleFilter) => normalizedStudentRoles.includes(roleFilter));
 
-    return matchesSearch && matchesType && matchesCurrentWork && matchesPromotionYear;
+    return matchesSearch && matchesType && matchesCurrentWork && matchesPromotionYear && matchesRole;
   });
   const totalPages = Math.ceil(filteredStudents.length / STUDENTS_PER_PAGE);
   const visibleStudents = filteredStudents.slice(
@@ -83,7 +95,7 @@ function StudentsScreen({ onOpenStudentDetails }) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [normalizedSearchTerm, studentTypeFilter, currentWorkFilter, promotionYearFilter]);
+  }, [normalizedSearchTerm, studentTypeFilter, currentWorkFilter, promotionYearFilter, roleFilters]);
 
   useEffect(() => {
     if (totalPages > 0 && currentPage > totalPages) {
@@ -91,10 +103,21 @@ function StudentsScreen({ onOpenStudentDetails }) {
     }
   }, [currentPage, totalPages]);
 
+  function handleRoleFilterToggle(roleValue) {
+    setRoleFilters((current) => (
+      current.includes(roleValue)
+        ? current.filter((entry) => entry !== roleValue)
+        : [...current, roleValue]
+    ));
+  }
+
   return (
     <section className="students-screen">
       <div className="students-screen__intro">
-        <h1>{t('students.title')}</h1>
+        <div className="students-screen__title-row">
+          <img className="students-screen__title-icon" src={alumniTitleImage} alt="" aria-hidden="true" />
+          <h1>{t('students.title')}</h1>
+        </div>
       </div>
 
       <div className="students-search">
@@ -183,6 +206,39 @@ function StudentsScreen({ onOpenStudentDetails }) {
                 ))}
               </select>
             </label>
+            <div className="students-filters__field students-filters__field--roles">
+              <span>{t('forms.role')}</span>
+              <div className="students-filters__role-box">
+                <div className="students-filters__role-actions">
+                  <button
+                    className="students-filters__role-action"
+                    type="button"
+                    onClick={() => setRoleFilters(restaurantRoleOptions.map((roleOption) => roleOption.value))}
+                  >
+                    {t('filters.selectAllRoles')}
+                  </button>
+                  <button
+                    className="students-filters__role-action"
+                    type="button"
+                    onClick={() => setRoleFilters([])}
+                  >
+                    {t('filters.clearRoles')}
+                  </button>
+                </div>
+                <div className="students-filters__role-list">
+                  {restaurantRoleOptions.map((roleOption) => (
+                    <label className="students-filters__role-option" key={roleOption.value}>
+                      <input
+                        type="checkbox"
+                        checked={roleFilters.includes(roleOption.value)}
+                        onChange={() => handleRoleFilterToggle(roleOption.value)}
+                      />
+                      <span>{roleOption.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         ) : null}
       </div>

@@ -3,6 +3,7 @@ import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import { joviatMapIcon } from '../../helpers/joviatMapIcon';
 import { formatPromotionYear } from '../../helpers/promotionYears';
+import { translateRestaurantRole } from '../../helpers/restaurantRoles';
 import { deleteRestaurant } from '../../helpers/restaurantDeletion';
 import SmartImage from '../../components/SmartImage/SmartImage';
 import { useI18n } from '../../i18n/I18nContext';
@@ -498,7 +499,7 @@ function RestaurantDetailScreen({
                 <div className="restaurant-detail__student-body">
                   <h3>{student.Name ?? t('common.noName')}</h3>
                   <p className="restaurant-detail__student-role">
-                    {student.role || t('common.roleUnavailable')}
+                    {student.role ? translateRestaurantRole(student.role, t) : t('common.roleUnavailable')}
                   </p>
                   {student.PromotionYear ? (
                     <p className="restaurant-detail__student-promotion-year">

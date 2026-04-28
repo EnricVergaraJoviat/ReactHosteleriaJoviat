@@ -24,6 +24,12 @@ import {
   createPromotionYears,
   normalizePromotionYearValue,
 } from '../../helpers/promotionYears';
+import {
+  getRestaurantRoleOptions,
+  normalizeRestaurantRole,
+  translateRestaurantRole,
+} from '../../helpers/restaurantRoles';
+import googleMapsShareExampleImage from '../../assets/images/google-maps-share-example.png';
 import { useI18n } from '../../i18n/I18nContext';
 import './AddStudentScreen.css';
 
@@ -37,6 +43,26 @@ function normalizeFileName(fileName) {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
     .toLowerCase();
+}
+
+function isValidGoogleMapsUrl(value) {
+  try {
+    const parsedUrl = new URL(value);
+    const hostname = parsedUrl.hostname.toLowerCase();
+
+    return (
+      parsedUrl.protocol === 'https:'
+      && (
+        hostname === 'maps.app.goo.gl'
+        || hostname === 'goo.gl'
+        || hostname === 'google.com'
+        || hostname === 'www.google.com'
+        || hostname.endsWith('.google.com')
+      )
+    );
+  } catch (error) {
+    return false;
+  }
 }
 
 async function createStudentAuthUser(email, password) {
@@ -101,6 +127,7 @@ function FieldIcon({ name }) {
     lock: 'M7.5 10V7.8a4.5 4.5 0 0 1 9 0V10M6.3 10h11.4v9.5H6.3V10ZM12 14v2',
     phone: 'M7.1 4.6 9.4 4l1.2 4-1.6.9a10.6 10.6 0 0 0 5.1 5.1l.9-1.6 4 1.2-.6 2.3c-.2.7-.9 1.2-1.6 1.1A14.5 14.5 0 0 1 6 6.2c-.1-.7.4-1.4 1.1-1.6Z',
     linkedin: 'M5 9.5v9M5 6.2v.1M9.5 18.5v-9M9.5 13.3c.4-2.2 1.8-3.9 4-3.9 2.7 0 4 1.8 4 4.7v4.4',
+    instagram: 'M8 4.5h8A3.5 3.5 0 0 1 19.5 8v8a3.5 3.5 0 0 1-3.5 3.5H8A3.5 3.5 0 0 1 4.5 16V8A3.5 3.5 0 0 1 8 4.5Zm8 2.2h0M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z',
   };
 
   return (
@@ -147,6 +174,8 @@ function AddStudentScreen({
     email: '',
     phone: '',
     linkedIn: '',
+    instagram: '',
+    visibleContactToAlumniNetwork: true,
     promotionYear: '',
     password: '',
   });
@@ -180,7 +209,7 @@ function AddStudentScreen({
     passwordConfirmation: false,
   });
   const [restaurantError, setRestaurantError] = useState('');
-  const [restaurantRequestDescription, setRestaurantRequestDescription] = useState('');
+  const [restaurantRequestMapsUrl, setRestaurantRequestMapsUrl] = useState('');
   const [restaurantRequestError, setRestaurantRequestError] = useState('');
   const [restaurantRequestMessage, setRestaurantRequestMessage] = useState('');
   const [isRestaurantRequestDialogOpen, setIsRestaurantRequestDialogOpen] = useState(false);
@@ -191,6 +220,7 @@ function AddStudentScreen({
     currentJob: true,
   });
   const promotionYears = useMemo(createPromotionYears, []);
+  const restaurantRoleOptions = useMemo(() => getRestaurantRoleOptions(t), [t]);
 
   useEffect(() => {
     if (!isEditMode || !student) {
@@ -203,6 +233,8 @@ function AddStudentScreen({
       email: student.Email ?? student.email ?? '',
       phone: student.Phone ?? student.phone ?? '',
       linkedIn: student.LinkedIn ?? student.linkedIn ?? '',
+      instagram: student.Instagram ?? student.instagram ?? '',
+      visibleContactToAlumniNetwork: student.VisibleContactToAlumniNetwork ?? true,
       promotionYear: student.PromotionYear ? String(student.PromotionYear) : '',
       password: '',
     });
@@ -213,14 +245,14 @@ function AddStudentScreen({
     setRestaurantLinks(
       (student.linkedRestaurants ?? []).map((entry) => ({
         restaurantId: entry.id,
-        role: entry.role ?? '',
+        role: normalizeRestaurantRole(entry.role),
         currentJob: Boolean(entry.currentJob),
         relationId: entry.relationId ?? '',
       }))
     );
     setRestaurantSearch('');
     setRestaurantError('');
-    setRestaurantRequestDescription('');
+    setRestaurantRequestMapsUrl('');
     setRestaurantRequestError('');
     setRestaurantRequestMessage('');
     setIsRestaurantRequestDialogOpen(false);
@@ -289,10 +321,10 @@ function AddStudentScreen({
   }, [restaurantSearch, restaurants]);
 
   function handleFormChange(event) {
-    const { name, value } = event.target;
+    const { name, type, value, checked } = event.target;
     setFormData((current) => ({
       ...current,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
   }
 
@@ -377,7 +409,7 @@ function AddStudentScreen({
       ...current,
       {
         restaurantId: newRestaurant.restaurantId,
-        role: newRestaurant.role.trim(),
+        role: normalizeRestaurantRole(newRestaurant.role),
         currentJob: newRestaurant.currentJob,
       },
     ]);
@@ -396,22 +428,27 @@ function AddStudentScreen({
   }
 
   function handleOpenRestaurantRequestDialog() {
-    setRestaurantRequestDescription('');
+    setRestaurantRequestMapsUrl('');
     setRestaurantRequestError('');
     setRestaurantRequestMessage('');
     setIsRestaurantRequestDialogOpen(true);
   }
 
   async function handleSubmitRestaurantRequest() {
-    const trimmedDescription = restaurantRequestDescription.trim();
+    const trimmedMapsUrl = restaurantRequestMapsUrl.trim();
     const trimmedName = formData.name.trim() || student?.Name || t('registrations.userNoName');
     const trimmedEmail = formData.email.trim() || student?.Email || student?.email || '';
 
     setRestaurantRequestError('');
     setRestaurantRequestMessage('');
 
-    if (!trimmedDescription) {
+    if (!trimmedMapsUrl) {
       setRestaurantRequestError(t('forms.restaurantRequestDescriptionRequired'));
+      return;
+    }
+
+    if (!isValidGoogleMapsUrl(trimmedMapsUrl)) {
+      setRestaurantRequestError(t('forms.restaurantRequestLinkInvalid'));
       return;
     }
 
@@ -421,12 +458,13 @@ function AddStudentScreen({
       await addDoc(collection(db, RESTAURANT_REGISTRATIONS_COLLECTION), {
         Name: trimmedName,
         Email: trimmedEmail,
-        Description: trimmedDescription,
+        Description: '',
+        GoogleMapsShareUrl: trimmedMapsUrl,
         id_alumni: student?.id ? doc(db, 'Alumni', student.id) : null,
         createdAt: serverTimestamp(),
       });
 
-      setRestaurantRequestDescription('');
+      setRestaurantRequestMapsUrl('');
       setIsRestaurantRequestDialogOpen(false);
       setRestaurantRequestMessage(t('forms.restaurantRequestSent'));
     } catch (error) {
@@ -457,7 +495,7 @@ function AddStudentScreen({
 
     const completedLinks = restaurantLinks.map((entry) => ({
       ...entry,
-      role: entry.role.trim(),
+      role: normalizeRestaurantRole(entry.role),
     }));
 
     const seenRestaurantIds = new Set();
@@ -495,6 +533,8 @@ function AddStudentScreen({
           Email: trimmedEmail,
           Phone: formData.phone.trim(),
           LinkedIn: formData.linkedIn.trim(),
+          Instagram: formData.instagram.trim(),
+          VisibleContactToAlumniNetwork: Boolean(formData.visibleContactToAlumniNetwork),
           PromotionYear: normalizePromotionYearValue(formData.promotionYear),
           isExAlumni: formData.status === 'exalumne',
           updatedAt: serverTimestamp(),
@@ -533,6 +573,8 @@ function AddStudentScreen({
           Email: trimmedEmail,
           Phone: formData.phone.trim(),
           LinkedIn: formData.linkedIn.trim(),
+          Instagram: formData.instagram.trim(),
+          VisibleContactToAlumniNetwork: Boolean(formData.visibleContactToAlumniNetwork),
           PromotionYear: normalizePromotionYearValue(formData.promotionYear),
           Password: trimmedPassword,
           isExAlumni: formData.status === 'exalumne',
@@ -557,6 +599,8 @@ function AddStudentScreen({
           email: '',
           phone: '',
           linkedIn: '',
+          instagram: '',
+          visibleContactToAlumniNetwork: true,
           promotionYear: '',
           password: '',
         });
@@ -708,7 +752,7 @@ function AddStudentScreen({
               ) : null}
             </div>
             <p className="add-student-form__restaurant-entry-role">
-              {entry.role || t('common.roleUnavailable')}
+              {entry.role ? translateRestaurantRole(entry.role, t) : t('common.roleUnavailable')}
             </p>
             <span
               className={`add-student-form__restaurant-entry-badge ${
@@ -763,6 +807,19 @@ function AddStudentScreen({
               accept="image/*"
               onChange={handlePhotoChange}
             />
+
+            <label className="add-student-form__checkbox" htmlFor="student-visible-contact">
+              <input
+                id="student-visible-contact"
+                name="visibleContactToAlumniNetwork"
+                type="checkbox"
+                checked={formData.visibleContactToAlumniNetwork}
+                onChange={handleFormChange}
+              />
+              <span>
+                {t('forms.visibleContactToAlumniNetwork')}
+              </span>
+            </label>
 
             <label className="add-student-form__field" htmlFor="student-status">
               <span className="add-student-form__label">
@@ -866,6 +923,24 @@ function AddStudentScreen({
                   type="url"
                   value={formData.linkedIn}
                   placeholder="linkedin.com/in/usuari"
+                  onChange={handleFormChange}
+                />
+              </label>
+
+              <label
+                className="add-student-form__field add-student-form__field--full"
+                htmlFor="student-instagram"
+              >
+                <span className="add-student-form__label">
+                  <FieldIcon name="instagram" />
+                  {t('forms.instagramProfile')}
+                </span>
+                <input
+                  id="student-instagram"
+                  name="instagram"
+                  type="text"
+                  value={formData.instagram}
+                  placeholder="@usuari o instagram.com/usuari"
                   onChange={handleFormChange}
                 />
               </label>
@@ -1024,15 +1099,20 @@ function AddStudentScreen({
               <div className="add-student-form__restaurant-add-column">
                 <label className="add-student-form__field" htmlFor="restaurant-role">
                   <span>{t('forms.role')}</span>
-                  <input
+                  <select
                     id="restaurant-role"
-                    type="text"
                     value={newRestaurant.role}
-                    placeholder={t('forms.rolePlaceholder')}
                     onChange={(event) =>
                       handleNewRestaurantChange('role', event.target.value)
                     }
-                  />
+                  >
+                    <option value="">{t('forms.selectRole')}</option>
+                    {restaurantRoleOptions.map((roleOption) => (
+                      <option key={roleOption.value} value={roleOption.value}>
+                        {roleOption.label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="add-student-form__checkbox add-student-form__checkbox--inline">
                   <input
@@ -1127,16 +1207,25 @@ function AddStudentScreen({
             <h2 id="restaurant-request-title">{t('forms.restaurantRequestTitle')}</h2>
             <label className="add-student-form__field" htmlFor="restaurant-request-description">
               <span>{t('forms.restaurantRequestDescription')}</span>
-              <textarea
+              <input
                 id="restaurant-request-description"
-                value={restaurantRequestDescription}
+                type="url"
+                value={restaurantRequestMapsUrl}
                 placeholder={t('forms.restaurantRequestPlaceholder')}
                 onChange={(event) => {
-                  setRestaurantRequestDescription(event.target.value);
+                  setRestaurantRequestMapsUrl(event.target.value);
                   setRestaurantRequestError('');
                 }}
               />
+              <small>{t('forms.restaurantRequestHelp')}</small>
             </label>
+            <figure className="add-student-form__request-example">
+              <img
+                className="add-student-form__request-example-image"
+                src={googleMapsShareExampleImage}
+                alt={t('forms.restaurantRequestExampleAlt')}
+              />
+            </figure>
             {restaurantRequestError ? (
               <p className="add-student-form__feedback add-student-form__feedback--error" role="alert">
                 {restaurantRequestError}
