@@ -1333,7 +1333,7 @@ test('navigates to the students screen', async () => {
     await screen.findByRole('heading', { name: /llistat d'alumnes/i })
   ).toBeInTheDocument();
   expect(await screen.findByText(/aina serra/i)).toBeInTheDocument();
-  expect((await screen.findAllByText(/1 restaurant associat/i)).length).toBe(2);
+  expect((await screen.findAllByText(/1 establiment associat/i)).length).toBe(2);
   expect(collection).toHaveBeenCalledWith({}, 'Alumni');
   expect(collection).toHaveBeenCalledWith({}, 'Rest-Alum');
   expect(getDocs).toHaveBeenCalledWith('Alumni');
@@ -3059,11 +3059,11 @@ test('filters restaurants by name and clears the search', async () => {
   render(<App />);
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /visualitzar restaurants/i })
+      screen.getByRole('button', { name: /^establiments$/i })
     );
   });
 
-  const searchInput = await screen.findByLabelText(/cercar restaurant/i);
+  const searchInput = await screen.findByLabelText(/cercar establiments/i);
 
   await act(async () => {
     await userEvent.type(searchInput, 'disfr');
@@ -3074,7 +3074,7 @@ test('filters restaurants by name and clears the search', async () => {
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /esborrar cerca de restaurants/i })
+      screen.getByRole('button', { name: /esborrar cerca d'establiments/i })
     );
   });
 
@@ -3122,16 +3122,12 @@ test('builds restaurant city filters from the city after the postal code', async
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /visualitzar restaurants/i })
+      screen.getByRole('button', { name: /^establiments$/i })
     );
   });
 
   await act(async () => {
     await userEvent.click(screen.getByRole('button', { name: /veure llistat/i }));
-  });
-
-  await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /mes opcions de filtratge/i }));
   });
 
   const cityFilter = await screen.findByLabelText(/ciutat/i);

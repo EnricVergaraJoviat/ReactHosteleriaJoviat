@@ -21,7 +21,7 @@ function StudentsScreen({ onOpenStudentDetails }) {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [areFiltersOpen, setAreFiltersOpen] = useState(false);
+  const [areFiltersOpen, setAreFiltersOpen] = useState(true);
   const [studentTypeFilter, setStudentTypeFilter] = useState('all');
   const [currentWorkFilter, setCurrentWorkFilter] = useState('all');
   const [promotionYearFilter, setPromotionYearFilter] = useState('all');

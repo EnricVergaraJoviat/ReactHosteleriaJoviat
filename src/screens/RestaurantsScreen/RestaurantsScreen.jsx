@@ -192,7 +192,7 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState('map');
-  const [areFiltersOpen, setAreFiltersOpen] = useState(false);
+  const [areFiltersOpen, setAreFiltersOpen] = useState(true);
   const [cityFilter, setCityFilter] = useState('all');
 
   useEffect(() => {
