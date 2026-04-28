@@ -8,6 +8,7 @@ function SmartImage({ src, type, label, alt, className, ...props }) {
   const initialSrc = getImageWithFallback(src, type, label);
   const [currentSrc, setCurrentSrc] = useState(initialSrc);
   const [isLoaded, setIsLoaded] = useState(initialSrc === fallbackSrc);
+  const isFallbackImage = currentSrc === fallbackSrc;
 
   useEffect(() => {
     const nextSrc = getImageWithFallback(src, type, label);
@@ -36,14 +37,20 @@ function SmartImage({ src, type, label, alt, className, ...props }) {
   }
 
   return (
-    <span className={`smart-image${className ? ` ${className}` : ''}`}>
+    <span
+      className={`smart-image${className ? ` ${className}` : ''}${isFallbackImage ? ' smart-image--fallback' : ''}${
+        isFallbackImage && type === 'student' ? ' smart-image--student-fallback' : ''
+      }`}
+    >
       {!isLoaded ? (
         <span className="smart-image__loader" aria-hidden="true" />
       ) : null}
       <img
         {...props}
         ref={imageRef}
-        className="smart-image__img"
+        className={`smart-image__img${isFallbackImage ? ' smart-image__img--fallback' : ''}${
+          isFallbackImage && type === 'student' ? ' smart-image__img--student-fallback' : ''
+        }`}
         src={currentSrc}
         alt={alt}
         loading="lazy"

@@ -6,6 +6,10 @@
   overflow: hidden;
 }
 
+.smart-image--student-fallback {
+  background: linear-gradient(180deg, #efe3cc 0%, #f7f1e5 100%);
+}
+
 .smart-image__img {
   position: absolute;
   inset: 0;
@@ -13,6 +17,12 @@
   height: 100%;
   display: block;
   object-fit: cover;
+}
+
+.smart-image__img--student-fallback {
+  object-fit: contain;
+  padding: 0.85rem;
+  box-sizing: border-box;
 }
 
 .smart-image__loader {

@@ -188,6 +188,7 @@ function AddStudentScreen({
   const existingPhotoPreview = student?.PhotoURL ?? '';
   const previewUrlRef = useRef(fallbackPreview);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState(fallbackPreview);
+  const isFallbackPreview = photoPreviewUrl === fallbackPreview;
   const hasObjectUrl = typeof URL?.createObjectURL === 'function';
   const [restaurants, setRestaurants] = useState([]);
   const [restaurantSearch, setRestaurantSearch] = useState('');
@@ -786,11 +787,17 @@ function AddStudentScreen({
         <div className="add-student-form__top">
           <section className="add-student-form__card add-student-form__card--aside">
             <label className="add-student-form__upload" htmlFor="student-photo">
-              <div className="add-student-form__upload-preview-wrapper">
+              <div
+                className={`add-student-form__upload-preview-wrapper${
+                  isFallbackPreview ? ' add-student-form__upload-preview-wrapper--fallback' : ''
+                }`}
+              >
                 <img
                   src={photoPreviewUrl}
                   alt={formData.name || t('forms.photo')}
-                  className="add-student-form__upload-preview"
+                  className={`add-student-form__upload-preview${
+                    isFallbackPreview ? ' add-student-form__upload-preview--fallback' : ''
+                  }`}
                 />
               </div>
               <span className="add-student-form__upload-label">{t('forms.uploadPhoto')}</span>

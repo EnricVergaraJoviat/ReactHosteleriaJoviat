@@ -113,11 +113,21 @@
   box-shadow: inset 0 1px 6px rgba(255, 255, 255, 0.7);
 }
 
+.add-student-form__upload-preview-wrapper--fallback {
+  background: linear-gradient(180deg, #efe3cc 0%, #f7f1e5 100%);
+}
+
 .add-student-form__upload-preview {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.add-student-form__upload-preview--fallback {
+  object-fit: contain;
+  padding: 0.85rem;
+  box-sizing: border-box;
 }
 
 .add-student-form__upload-label {
