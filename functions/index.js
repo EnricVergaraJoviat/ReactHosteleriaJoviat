@@ -1,12 +1,84 @@
 const { initializeApp } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getStorage } = require('firebase-admin/storage');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const { defineString } = require('firebase-functions/params');
+const { defineSecret, defineString } = require('firebase-functions/params');
 const logger = require('firebase-functions/logger');
+const nodemailer = require('nodemailer');
 
 initializeApp();
 
 const GOOGLE_MAPS_API_KEY = defineString('GOOGLE_MAPS_API_KEY');
+const GMAIL_EMAIL = defineString('GMAIL_EMAIL');
+const GMAIL_APP_PASSWORD = defineSecret('GMAIL_APP_PASSWORD');
+
+function normalizeEmail(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function normalizeOptionalString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizePromotionYear(value) {
+  if (typeof value === 'string') {
+    const trimmedValue = value.trim();
+    return trimmedValue || null;
+  }
+
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  return null;
+}
+
+async function sendStudentWelcomeEmail({ email, name, password }) {
+  const gmailEmail = GMAIL_EMAIL.value();
+  const gmailAppPassword = GMAIL_APP_PASSWORD.value();
+
+  if (!gmailEmail || !gmailAppPassword) {
+    throw new HttpsError(
+      'failed-precondition',
+      'Email delivery is not configured. Missing Gmail credentials.'
+    );
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: gmailEmail,
+      pass: gmailAppPassword,
+    },
+  });
+
+  const safeName = name || 'alumne';
+
+  await transporter.sendMail({
+    from: gmailEmail,
+    to: email,
+    subject: 'Benvingut/da a Alumni Joviat',
+    text: [
+      `Hola ${safeName},`,
+      '',
+      'S\'ha creat el teu compte d\'Alumni Joviat.',
+      `La contrasenya inicial configurada es: ${password}`,
+      '',
+      'Quan iniciis sessio, recorda que pots canviar-la des del teu perfil.',
+      '',
+      'Salutacions,',
+      'Equip Alumni Joviat',
+    ].join('\n'),
+    html: `
+      <p>Hola ${safeName},</p>
+      <p>S'ha creat el teu compte d'Alumni Joviat.</p>
+      <p><strong>La contrasenya inicial configurada es: ${password}</strong></p>
+      <p>Quan iniciis sessio, recorda que pots canviar-la des del teu perfil.</p>
+      <p>Salutacions,<br />Equip Alumni Joviat</p>
+    `,
+  });
+}
 
 function normalizeFileName(fileName) {
   return String(fileName || '')
@@ -273,6 +345,103 @@ async function searchPlaceIdByText(textQuery, apiKey) {
   const data = await response.json();
   return data.places?.[0]?.id || '';
 }
+
+exports.createStudentAccount = onCall(
+  {
+    region: 'europe-west1',
+    timeoutSeconds: 60,
+    memory: '256MiB',
+    cors: true,
+    invoker: 'public',
+    secrets: [GMAIL_APP_PASSWORD],
+  },
+  async (request) => {
+    const auth = getAuth();
+    const db = getFirestore();
+    const rawStudentData = request.data?.studentData ?? {};
+    const password = normalizeOptionalString(request.data?.password);
+    const deleteRegistrationId = normalizeOptionalString(request.data?.deleteRegistrationId);
+    const email = normalizeEmail(rawStudentData.Email ?? rawStudentData.email);
+    const name = normalizeOptionalString(rawStudentData.Name ?? rawStudentData.name);
+
+    if (!email || !name || !password) {
+      throw new HttpsError('invalid-argument', 'Missing required student account data.');
+    }
+
+    if (password.length < 6) {
+      throw new HttpsError('invalid-argument', 'Password must be at least 6 characters long.');
+    }
+
+    const alumniCollection = db.collection('Alumni');
+    const existingAlumniSnapshot = await alumniCollection.where('Email', '==', email).limit(1).get();
+
+    if (!existingAlumniSnapshot.empty) {
+      throw new HttpsError('already-exists', 'An alumni user already exists with this email.');
+    }
+
+    let authUserRecord;
+    let studentReference;
+
+    try {
+      authUserRecord = await auth.createUser({
+        email,
+        password,
+      });
+
+      studentReference = await alumniCollection.add({
+        Name: name,
+        PhotoURL: normalizeOptionalString(rawStudentData.PhotoURL),
+        Email: email,
+        Phone: normalizeOptionalString(rawStudentData.Phone),
+        LinkedIn: normalizeOptionalString(rawStudentData.LinkedIn),
+        Instagram: normalizeOptionalString(rawStudentData.Instagram),
+        VisibleContactToAlumniNetwork: rawStudentData.VisibleContactToAlumniNetwork !== false,
+        PromotionYear: normalizePromotionYear(rawStudentData.PromotionYear),
+        Password: password,
+        isExAlumni: Boolean(rawStudentData.isExAlumni),
+        createdAt: FieldValue.serverTimestamp(),
+      });
+
+      await sendStudentWelcomeEmail({
+        email,
+        name,
+        password,
+      });
+
+      if (deleteRegistrationId) {
+        await db.collection('UserRegistrations').doc(deleteRegistrationId).delete();
+      }
+
+      return {
+        studentId: studentReference.id,
+        emailSent: true,
+      };
+    } catch (error) {
+      if (studentReference?.id) {
+        await studentReference.delete().catch(() => {});
+      }
+
+      if (authUserRecord?.uid) {
+        await auth.deleteUser(authUserRecord.uid).catch(() => {});
+      }
+
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+
+      if (error?.code === 'auth/email-already-exists') {
+        throw new HttpsError('already-exists', 'An auth user already exists with this email.');
+      }
+
+      logger.error('Unable to create student account', {
+        email,
+        deleteRegistrationId,
+        error,
+      });
+      throw new HttpsError('internal', 'Unable to create the student account.');
+    }
+  }
+);
 
 async function fetchPlacePhotoUri(photoName, apiKey) {
   if (!photoName || !photoName.startsWith('places/')) {

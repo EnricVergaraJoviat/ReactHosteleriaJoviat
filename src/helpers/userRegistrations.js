@@ -1,10 +1,10 @@
-import { deleteApp, initializeApp } from 'firebase/app';
-import { createUserWithEmailAndPassword, getAuth, signOut } from 'firebase/auth';
 import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp } from 'firebase/firestore';
-import { app, db } from './firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from './firebase';
 
 const USER_REGISTRATIONS_COLLECTION = 'UserRegistrations';
 const DEFAULT_STUDENT_PASSWORD = 'joviat123';
+const createStudentAccount = httpsCallable(functions, 'createStudentAccount');
 
 function normalizeEmail(value) {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -85,35 +85,15 @@ async function acceptUserRegistration(registration) {
     );
   }
 
-  const secondaryApp = initializeApp(
-    app.options,
-    `user-registration-${registration.id}-${Date.now()}`
-  );
-  const secondaryAuth = getAuth(secondaryApp);
-
-  try {
-    await createUserWithEmailAndPassword(
-      secondaryAuth,
-      normalizedEmail,
-      DEFAULT_STUDENT_PASSWORD
-    );
-
-    await addDoc(collection(db, 'Alumni'), {
+  await createStudentAccount({
+    studentData: {
       Name: normalizedName,
       Email: normalizedEmail,
-      Password: DEFAULT_STUDENT_PASSWORD,
       isExAlumni: false,
-      createdAt: serverTimestamp(),
-    });
-
-    await deleteDoc(doc(db, USER_REGISTRATIONS_COLLECTION, registration.id));
-  } finally {
-    try {
-      await signOut(secondaryAuth);
-    } catch (error) {}
-
-    await deleteApp(secondaryApp);
-  }
+    },
+    password: DEFAULT_STUDENT_PASSWORD,
+    deleteRegistrationId: registration.id,
+  });
 }
 
 async function rejectUserRegistration(registrationId) {

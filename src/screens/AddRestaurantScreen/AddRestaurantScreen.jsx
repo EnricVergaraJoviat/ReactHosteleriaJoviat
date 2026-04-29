@@ -176,7 +176,27 @@ function buildFormDataFromRestaurant(restaurant) {
 
 const copyPlacePhotoToStorage = httpsCallable(functions, 'copyPlacePhotoToStorage');
 
+function isGooglePermissionError(error) {
+  const errorCode = String(error?.code ?? '').toUpperCase();
+  const errorMessage = String(error?.message ?? '').toUpperCase();
+
+  return [
+    '403',
+    'REQUEST_DENIED',
+    'PERMISSION_DENIED',
+    'APIKEY',
+    'APITARGETBLOCKEDMAPERROR',
+    'APINOTACTIVATEDMAPERROR',
+    'BILLINGNOTENABLEDMAPERROR',
+    'REFERERNOTALLOWEDMAPERROR',
+  ].some((token) => errorCode.includes(token) || errorMessage.includes(token));
+}
+
 function getPlacesErrorMessage(error, t) {
+  if (isGooglePermissionError(error)) {
+    return t('forms.googleDenied');
+  }
+
   switch (error?.message) {
     case 'missing-api-key':
       return t('forms.missingGoogleApiKey');
@@ -440,6 +460,12 @@ function AddRestaurantScreen({
         setErrorMessage(t('forms.noRestaurantsFound'));
       }
     } catch (error) {
+      console.error('Google Places search failed', {
+        searchTerm: trimmedSearch,
+        error,
+        errorCode: error?.code ?? null,
+        errorMessage: error?.message ?? null,
+      });
       setErrorMessage(getPlacesErrorMessage(error, t));
     } finally {
       setIsSearching(false);
@@ -477,6 +503,12 @@ function AddRestaurantScreen({
       });
       setSuccessMessage(t('forms.restaurantImported'));
     } catch (error) {
+      console.error('Google Places details import failed', {
+        placeId: selectedPlaceId,
+        error,
+        errorCode: error?.code ?? null,
+        errorMessage: error?.message ?? null,
+      });
       setErrorMessage(getPlacesErrorMessage(error, t));
     } finally {
       setIsImporting(false);

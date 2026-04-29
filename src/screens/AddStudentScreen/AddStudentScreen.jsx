@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { deleteApp, initializeApp } from 'firebase/app';
 import {
-  createUserWithEmailAndPassword,
-  getAuth,
   sendPasswordResetEmail,
-  signOut,
   updatePassword,
 } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 import {
   addDoc,
   collection,
@@ -17,7 +14,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { app, auth, db, storage } from '../../helpers/firebase';
+import { auth, db, functions, storage } from '../../helpers/firebase';
 import { getFallbackImage } from '../../helpers/imageFallbacks';
 import {
   CURRENTLY_STUDYING_PROMOTION_VALUE,
@@ -65,23 +62,7 @@ function isValidGoogleMapsUrl(value) {
   }
 }
 
-async function createStudentAuthUser(email, password) {
-  const secondaryApp = initializeApp(
-    app.options,
-    `student-create-${email}-${Date.now()}`
-  );
-  const secondaryAuth = getAuth(secondaryApp);
-
-  try {
-    return await createUserWithEmailAndPassword(secondaryAuth, email, password);
-  } finally {
-    try {
-      await signOut(secondaryAuth);
-    } catch (error) {}
-
-    await deleteApp(secondaryApp);
-  }
-}
+const createStudentAccount = httpsCallable(functions, 'createStudentAccount');
 
 function PasswordVisibilityIcon({ isVisible }) {
   if (isVisible) {
@@ -566,26 +547,26 @@ function AddStudentScreen({
         setSuccessMessage(t('forms.studentUpdated'));
         onSaved?.(student.id);
       } else {
-        await createStudentAuthUser(trimmedEmail, trimmedPassword);
-
-        const studentReference = await addDoc(collection(db, 'Alumni'), {
-          Name: trimmedName,
-          PhotoURL: photoUrl,
-          Email: trimmedEmail,
-          Phone: formData.phone.trim(),
-          LinkedIn: formData.linkedIn.trim(),
-          Instagram: formData.instagram.trim(),
-          VisibleContactToAlumniNetwork: Boolean(formData.visibleContactToAlumniNetwork),
-          PromotionYear: normalizePromotionYearValue(formData.promotionYear),
-          Password: trimmedPassword,
-          isExAlumni: formData.status === 'exalumne',
-          createdAt: serverTimestamp(),
+        const studentAccountResult = await createStudentAccount({
+          studentData: {
+            Name: trimmedName,
+            PhotoURL: photoUrl,
+            Email: trimmedEmail,
+            Phone: formData.phone.trim(),
+            LinkedIn: formData.linkedIn.trim(),
+            Instagram: formData.instagram.trim(),
+            VisibleContactToAlumniNetwork: Boolean(formData.visibleContactToAlumniNetwork),
+            PromotionYear: normalizePromotionYearValue(formData.promotionYear),
+            isExAlumni: formData.status === 'exalumne',
+          },
+          password: trimmedPassword,
         });
+        const studentId = studentAccountResult.data?.studentId;
 
         await Promise.all(
           completedLinks.map((entry) =>
             addDoc(collection(db, 'Rest-Alum'), {
-              id_alumni: doc(db, 'Alumni', studentReference.id),
+              id_alumni: doc(db, 'Alumni', studentId),
               id_restaurant: doc(db, 'Restaurant', entry.restaurantId),
               rol: entry.role,
               current_job: entry.currentJob,
@@ -618,16 +599,20 @@ function AddStudentScreen({
         setSuccessMessage(t('forms.studentSaved'));
       }
     } catch (error) {
-      if (error?.code === 'auth/email-already-in-use') {
+      if (error?.code === 'auth/email-already-in-use' || error?.code === 'already-exists') {
         setErrorMessage(t('forms.emailAlreadyInUse'));
         return;
       }
-      if (error?.code === 'auth/invalid-email') {
+      if (error?.code === 'auth/invalid-email' || error?.code === 'invalid-argument') {
         setErrorMessage(t('forms.invalidEmail'));
         return;
       }
       if (error?.code === 'auth/weak-password') {
         setErrorMessage(t('forms.weakPassword'));
+        return;
+      }
+      if (error?.code === 'failed-precondition') {
+        setErrorMessage(t('forms.passwordResetError'));
         return;
       }
       setErrorMessage(t('forms.studentSaveError'));

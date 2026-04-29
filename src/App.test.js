@@ -21,7 +21,11 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import App from './App';
-import { copyPlacePhotoToStorage, resolveGoogleMapsShareLink } from 'firebase/functions';
+import {
+  copyPlacePhotoToStorage,
+  createStudentAccount,
+  resolveGoogleMapsShareLink,
+} from 'firebase/functions';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { deleteApp, initializeApp } from 'firebase/app';
 import { auth } from './helpers/firebase';
@@ -57,14 +61,20 @@ jest.mock('firebase/firestore', () => ({
 
 jest.mock('firebase/functions', () => {
   const copyPlacePhotoToStorageMock = jest.fn();
+  const createStudentAccountMock = jest.fn();
   const resolveGoogleMapsShareLinkMock = jest.fn();
 
   return {
     copyPlacePhotoToStorage: copyPlacePhotoToStorageMock,
+    createStudentAccount: createStudentAccountMock,
     resolveGoogleMapsShareLink: resolveGoogleMapsShareLinkMock,
     httpsCallable: jest.fn((firebaseFunctions, callableName) => {
       if (callableName === 'resolveGoogleMapsShareLink') {
         return resolveGoogleMapsShareLinkMock;
+      }
+
+      if (callableName === 'createStudentAccount') {
+        return createStudentAccountMock;
       }
 
       return copyPlacePhotoToStorageMock;
@@ -207,6 +217,8 @@ beforeEach(() => {
   URL.revokeObjectURL.mockReset();
   createUserWithEmailAndPassword.mockReset();
   createUserWithEmailAndPassword.mockResolvedValue({ user: { uid: 'student-new' } });
+  createStudentAccount.mockReset();
+  createStudentAccount.mockResolvedValue({ data: { studentId: 'student-new', emailSent: true } });
   sendPasswordResetEmail.mockReset();
   sendPasswordResetEmail.mockResolvedValue();
   updatePassword.mockReset();
@@ -796,21 +808,14 @@ test('allows an administrator to accept a pending registration', async () => {
     await userEvent.click(screen.getByRole('button', { name: /^si$/i }));
   });
 
-  expect(createUserWithEmailAndPassword).toHaveBeenCalledWith(
-    expect.objectContaining({ appInstance: expect.any(Object) }),
-    'pepito@joviat.cat',
-    'joviat123'
-  );
-  expect(addDoc).toHaveBeenCalledWith('Alumni', {
-    Name: 'Pepito Perez',
-    Email: 'pepito@joviat.cat',
-    Password: 'joviat123',
-    isExAlumni: false,
-    createdAt: 'SERVER_TIMESTAMP',
-  });
-  expect(deleteDoc).toHaveBeenCalledWith({
-    id: 'registration-1',
-    path: 'UserRegistrations/registration-1',
+  expect(createStudentAccount).toHaveBeenCalledWith({
+    studentData: {
+      Name: 'Pepito Perez',
+      Email: 'pepito@joviat.cat',
+      isExAlumni: false,
+    },
+    password: 'joviat123',
+    deleteRegistrationId: 'registration-1',
   });
   expect(await screen.findByText(/s'ha donat d'alta pepito perez/i)).toBeInTheDocument();
 });
@@ -1068,12 +1073,8 @@ test('warns when accepting a registration whose alumni email already exists', as
     await userEvent.click(await screen.findByRole('button', { name: /^si$/i }));
   });
 
-  expect(createUserWithEmailAndPassword).not.toHaveBeenCalled();
+  expect(createStudentAccount).not.toHaveBeenCalled();
   expect(addDoc).not.toHaveBeenCalledWith('Alumni', expect.anything());
-  expect(deleteDoc).not.toHaveBeenCalledWith({
-    id: 'registration-1',
-    path: 'UserRegistrations/registration-1',
-  });
   expect(await screen.findByText(/aquest usuari ja estava creat/i)).toBeInTheDocument();
   expect(screen.queryByText(/estas segur que vols donar d'alta/i)).not.toBeInTheDocument();
 });
@@ -1319,29 +1320,19 @@ test('allows an administrator to add a student with photo and restaurant links',
     file
   );
   expect(getDownloadURL).toHaveBeenCalled();
-  expect(initializeApp).toHaveBeenCalled();
-  expect(getAuth).toHaveBeenCalled();
-  expect(createUserWithEmailAndPassword).toHaveBeenCalledWith(
-    { appInstance: expect.objectContaining({ name: expect.stringMatching(/^student-create-clara@joviat\.cat-/) }) },
-    'clara@joviat.cat',
-    'securepass'
-  );
-  expect(signOut).toHaveBeenCalledWith(
-    { appInstance: expect.objectContaining({ name: expect.stringMatching(/^student-create-clara@joviat\.cat-/) }) }
-  );
-  expect(deleteApp).toHaveBeenCalled();
-  expect(addDoc).toHaveBeenCalledWith('Alumni', {
-    Name: 'Clara Font i Soler',
-    PhotoURL: 'https://storage.example/alumni/nova.jpg',
-    Email: 'clara@joviat.cat',
-    Phone: '600777888',
-    LinkedIn: 'https://linkedin.com/in/clara-font',
-    Instagram: '',
-    VisibleContactToAlumniNetwork: true,
-    PromotionYear: 'currently-studying',
-    Password: 'securepass',
-    isExAlumni: true,
-    createdAt: 'SERVER_TIMESTAMP',
+  expect(createStudentAccount).toHaveBeenCalledWith({
+    studentData: {
+      Name: 'Clara Font i Soler',
+      PhotoURL: 'https://storage.example/alumni/nova.jpg',
+      Email: 'clara@joviat.cat',
+      Phone: '600777888',
+      LinkedIn: 'https://linkedin.com/in/clara-font',
+      Instagram: '',
+      VisibleContactToAlumniNetwork: true,
+      PromotionYear: 'currently-studying',
+      isExAlumni: true,
+    },
+    password: 'securepass',
   });
   expect(addDoc).toHaveBeenCalledWith('Rest-Alum', {
     id_alumni: { id: 'student-new', path: 'Alumni/student-new' },

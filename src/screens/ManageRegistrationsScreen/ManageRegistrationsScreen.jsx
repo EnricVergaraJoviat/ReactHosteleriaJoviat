@@ -173,9 +173,13 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
         current.filter((entry) => entry.id !== action.registration.id)
       );
     } catch (error) {
-      if (error?.code === 'auth/email-already-in-use' || error?.code === 'alumni/email-already-exists') {
+      if (
+        error?.code === 'auth/email-already-in-use'
+        || error?.code === 'alumni/email-already-exists'
+        || error?.code === 'already-exists'
+      ) {
         setErrorMessage(t('registrations.userExists'));
-      } else if (error?.code === 'auth/invalid-email') {
+      } else if (error?.code === 'auth/invalid-email' || error?.code === 'invalid-argument') {
         setErrorMessage(t('registrations.invalidEmail'));
       } else if (error?.code === 'auth/weak-password') {
         setErrorMessage(t('registrations.weakPassword'));
