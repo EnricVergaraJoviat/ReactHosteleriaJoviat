@@ -4,6 +4,7 @@ import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-markercluster';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import { joviatMapIcon } from '../../helpers/joviatMapIcon';
+import { getRestaurantPrimaryType, getTranslatedPlaceType } from '../../helpers/placeTypes';
 import SmartImage from '../../components/SmartImage/SmartImage';
 import LinkedStudentsPreview from '../../components/LinkedStudentsPreview/LinkedStudentsPreview';
 import { ReactComponent as SearchIcon } from '../../assets/icons/search.svg';
@@ -139,8 +140,12 @@ function MapBounds({ locations }) {
 }
 
 function RestaurantCard({ restaurant, onOpenRestaurantDetails, isCompact = false }) {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const restaurantName = restaurant.Name ?? t('common.noName');
+  const restaurantPrimaryType = getRestaurantPrimaryType(restaurant);
+  const categoryLabel = restaurantPrimaryType
+    ? getTranslatedPlaceType(restaurantPrimaryType, language)
+    : '';
   const openDetailsLabel = isCompact
     ? t('restaurants.openDetailsMap', { name: restaurant.Name ?? t('common.restaurant') })
     : t('restaurants.openDetails', { name: restaurant.Name ?? t('common.restaurant') });
@@ -157,6 +162,9 @@ function RestaurantCard({ restaurant, onOpenRestaurantDetails, isCompact = false
         />
       </div>
       <div className="restaurant-card__body">
+        {categoryLabel ? (
+          <p className="restaurant-card__category">{categoryLabel}</p>
+        ) : null}
         <h2>{restaurantName}</h2>
         <p className="restaurant-card__address">
           <span className="restaurant-card__address-icon" aria-hidden="true">
@@ -186,7 +194,7 @@ function RestaurantCard({ restaurant, onOpenRestaurantDetails, isCompact = false
 }
 
 function RestaurantsScreen({ onOpenRestaurantDetails }) {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const [restaurants, setRestaurants] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -195,6 +203,7 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
   const [viewMode, setViewMode] = useState('map');
   const [areFiltersOpen, setAreFiltersOpen] = useState(true);
   const [cityFilter, setCityFilter] = useState('all');
+  const [selectedCategories, setSelectedCategories] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -233,12 +242,27 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
 
     return [...new Set(cities)].sort((a, b) => a.localeCompare(b));
   }, [restaurants]);
+  const categoryOptions = useMemo(() => {
+    const uniqueTypes = restaurants
+      .map((restaurant) => getRestaurantPrimaryType(restaurant))
+      .filter(Boolean);
+
+    return [...new Set(uniqueTypes)]
+      .map((type) => ({
+        value: type,
+        label: getTranslatedPlaceType(type, language),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, language));
+  }, [language, restaurants]);
   const filteredRestaurants = restaurants.filter((restaurant) => {
     const matchesSearch = (restaurant.Name ?? '').toLowerCase().includes(normalizedSearchTerm);
     const restaurantCity = getRestaurantCity(restaurant.Address);
     const matchesCity = cityFilter === 'all' || restaurantCity === cityFilter;
+    const restaurantPrimaryType = getRestaurantPrimaryType(restaurant);
+    const matchesCategory = selectedCategories.length === 0
+      || (restaurantPrimaryType && selectedCategories.includes(restaurantPrimaryType));
 
-    return matchesSearch && matchesCity;
+    return matchesSearch && matchesCity && matchesCategory;
   });
   const totalPages = Math.ceil(filteredRestaurants.length / RESTAURANTS_PER_PAGE);
   const visibleRestaurants = filteredRestaurants.slice(
@@ -252,13 +276,21 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [normalizedSearchTerm, cityFilter]);
+  }, [normalizedSearchTerm, cityFilter, selectedCategories]);
 
   useEffect(() => {
     if (totalPages > 0 && currentPage > totalPages) {
       setCurrentPage(totalPages);
     }
   }, [currentPage, totalPages]);
+
+  function handleToggleCategory(categoryValue) {
+    setSelectedCategories((current) => (
+      current.includes(categoryValue)
+        ? current.filter((entry) => entry !== categoryValue)
+        : [...current, categoryValue]
+    ));
+  }
 
   const restaurantsWithCoordinates = filteredRestaurants
     .map((restaurant) => ({
@@ -371,6 +403,35 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
                 ))}
               </select>
             </label>
+            <div className="restaurants-filters__field restaurants-filters__field--categories">
+              <div className="restaurants-filters__field-heading">
+                <span>{t('filters.category')}</span>
+                <button
+                  className="restaurants-filters__clear-link"
+                  type="button"
+                  onClick={() => setSelectedCategories([])}
+                >
+                  {t('filters.anyCategory')}
+                </button>
+              </div>
+              <div className="restaurants-filters__chips" role="group" aria-label={t('filters.category')}>
+                {categoryOptions.map((category) => (
+                  <button
+                    key={category.value}
+                    className={`restaurants-filters__chip${
+                      selectedCategories.includes(category.value)
+                        ? ' restaurants-filters__chip--active'
+                        : ''
+                    }`}
+                    type="button"
+                    aria-pressed={selectedCategories.includes(category.value)}
+                    onClick={() => handleToggleCategory(category.value)}
+                  >
+                    {category.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         ) : null}
       </div>

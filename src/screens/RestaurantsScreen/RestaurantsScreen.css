@@ -264,6 +264,17 @@
   gap: 0.45rem;
 }
 
+.restaurants-filters__field--categories {
+  grid-column: 1 / -1;
+}
+
+.restaurants-filters__field-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .restaurants-filters__field span {
   color: #5c4a31;
   font-size: 0.74rem;
@@ -287,6 +298,49 @@
   background-repeat: no-repeat;
   background-position: right 1rem center;
   background-size: 1rem;
+}
+
+.restaurants-filters__clear-link {
+  border: 0;
+  background: transparent;
+  color: #8b6d3d;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.restaurants-filters__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.restaurants-filters__chip {
+  border: 1px solid rgba(109, 85, 50, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #4e412f;
+  padding: 0.55rem 0.9rem;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.restaurants-filters__chip:hover {
+  transform: translateY(-1px);
+}
+
+.restaurants-filters__chip--active {
+  background: #111111;
+  color: #ffffff;
+  border-color: #111111;
 }
 
 .restaurants-map {
@@ -556,6 +610,19 @@
   display: grid;
   gap: 0.65rem;
   padding: 1rem 1rem 1.1rem;
+}
+
+.restaurant-card__category {
+  margin: 0;
+  justify-self: start;
+  border-radius: 999px;
+  background: rgba(139, 109, 61, 0.14);
+  color: #6e542d;
+  padding: 0.35rem 0.72rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .restaurant-card__body h2 {

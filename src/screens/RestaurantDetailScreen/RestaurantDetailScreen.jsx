@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import { joviatMapIcon } from '../../helpers/joviatMapIcon';
+import { getRestaurantPrimaryType, getTranslatedPlaceType } from '../../helpers/placeTypes';
 import { formatPromotionYear } from '../../helpers/promotionYears';
 import { translateRestaurantRole } from '../../helpers/restaurantRoles';
 import { deleteRestaurant } from '../../helpers/restaurantDeletion';
@@ -199,7 +200,7 @@ function RestaurantDetailScreen({
   onEdit,
   onOpenStudentDetails,
 }) {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const [restaurant, setRestaurant] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -302,6 +303,10 @@ function RestaurantDetailScreen({
   }
 
   const coordinates = parseLocation(restaurant.Location);
+  const restaurantPrimaryType = getRestaurantPrimaryType(restaurant);
+  const categoryLabel = restaurantPrimaryType
+    ? getTranslatedPlaceType(restaurantPrimaryType, language)
+    : '';
 
   return (
     <section className="restaurant-detail">
@@ -367,6 +372,10 @@ function RestaurantDetailScreen({
 
       <section className="restaurant-detail__panel">
         <div className="restaurant-detail__contacts">
+          <ContactItem
+            label={t('detail.category')}
+            value={categoryLabel}
+          />
           <ContactItem
             label={t('common.phone')}
             value={restaurant.Phone}

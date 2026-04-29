@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import AppShell from './components/AppShell/AppShell';
 import AdminScreen from './screens/AdminScreen/AdminScreen';
 import AddRestaurantScreen from './screens/AddRestaurantScreen/AddRestaurantScreen';
 import AddStudentScreen from './screens/AddStudentScreen/AddStudentScreen';
-import { auth } from './helpers/firebase';
-import { db } from './helpers/firebase';
+import { auth, db, functions } from './helpers/firebase';
 import AuthScreen from './screens/AuthScreen/AuthScreen';
 import HomeScreen from './screens/HomeScreen/HomeScreen';
 import ManageRegistrationsScreen from './screens/ManageRegistrationsScreen/ManageRegistrationsScreen';
@@ -41,6 +41,7 @@ function normalizeEmail(value) {
 
 function App() {
   const { t } = useI18n();
+  const notifyRestaurantRegistrationApproved = httpsCallable(functions, 'sendRestaurantRegistrationApprovedEmail');
   const [activeView, setActiveView] = useState('home');
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [studentDetailOrigin, setStudentDetailOrigin] = useState('students');
@@ -50,7 +51,7 @@ function App() {
   const [restaurantDetailOrigin, setRestaurantDetailOrigin] = useState('restaurants');
   const [restaurantFormMode, setRestaurantFormMode] = useState('create');
   const [restaurantFormInitialData, setRestaurantFormInitialData] = useState(null);
-  const [pendingRestaurantRegistrationId, setPendingRestaurantRegistrationId] = useState('');
+  const [pendingRestaurantRegistration, setPendingRestaurantRegistration] = useState(null);
   const [authViewMode, setAuthViewMode] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
   const [authErrorMessage, setAuthErrorMessage] = useState('');
@@ -164,7 +165,7 @@ function App() {
     if (view !== 'add-restaurant' && view !== 'edit-restaurant') {
       setRestaurantFormMode('create');
       setRestaurantFormInitialData(null);
-      setPendingRestaurantRegistrationId('');
+      setPendingRestaurantRegistration(null);
     }
   }
 
@@ -234,7 +235,7 @@ function App() {
 
   function handleManageRestaurantRegistration(registration, placeDetails) {
     setRestaurantFormMode('create');
-    setPendingRestaurantRegistrationId(registration.id);
+    setPendingRestaurantRegistration(registration);
     setRestaurantFormInitialData({
       Name: placeDetails.name ?? '',
       Address: placeDetails.address ?? '',
@@ -247,6 +248,9 @@ function App() {
       BusinessStatus: placeDetails.businessStatus ?? '',
       GooglePlaceId: placeDetails.googlePlaceId ?? '',
       GooglePhotoName: placeDetails.googlePhotoName ?? '',
+      PrimaryType: placeDetails.primaryType ?? '',
+      PrimaryTypeDisplayName: placeDetails.primaryTypeDisplayName ?? '',
+      Types: Array.isArray(placeDetails.types) ? placeDetails.types : [],
       Location:
         typeof placeDetails.latitude === 'number' && typeof placeDetails.longitude === 'number'
           ? {
@@ -258,14 +262,22 @@ function App() {
     setActiveView('add-restaurant');
   }
 
-  async function handleRestaurantCreated(restaurantId) {
-    if (pendingRestaurantRegistrationId) {
+  async function handleRestaurantCreated(restaurantId, restaurantName) {
+    if (pendingRestaurantRegistration?.id) {
       try {
-        await deleteDoc(doc(db, 'RestaruantsRegistrations', pendingRestaurantRegistrationId));
+        if (normalizeEmail(pendingRestaurantRegistration.Email)) {
+          await notifyRestaurantRegistrationApproved({
+            email: pendingRestaurantRegistration.Email,
+            alumniName: pendingRestaurantRegistration.Name ?? '',
+            restaurantName: restaurantName ?? restaurantFormInitialData?.Name ?? '',
+          });
+        }
+
+        await deleteDoc(doc(db, 'RestaruantsRegistrations', pendingRestaurantRegistration.id));
       } catch (error) {}
     }
 
-    setPendingRestaurantRegistrationId('');
+    setPendingRestaurantRegistration(null);
   }
 
   function handleAuthAction() {

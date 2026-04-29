@@ -31,6 +31,9 @@ const INITIAL_FORM_DATA = {
   longitude: '',
   googlePlaceId: '',
   googlePhotoName: '',
+  primaryType: '',
+  primaryTypeDisplayName: '',
+  types: [],
 };
 
 function normalizeFileName(fileName) {
@@ -171,6 +174,9 @@ function buildFormDataFromRestaurant(restaurant) {
     longitude: longitude === '' ? '' : String(longitude),
     googlePlaceId: restaurant.GooglePlaceId ?? '',
     googlePhotoName: restaurant.GooglePhotoName ?? '',
+    primaryType: restaurant.PrimaryType ?? '',
+    primaryTypeDisplayName: restaurant.PrimaryTypeDisplayName ?? '',
+    types: Array.isArray(restaurant.Types) ? restaurant.Types : [],
   };
 }
 
@@ -500,6 +506,9 @@ function AddRestaurantScreen({
         longitude: details.longitude != null ? String(details.longitude) : '',
         googlePlaceId: details.googlePlaceId,
         googlePhotoName: details.googlePhotoName ?? '',
+        primaryType: details.primaryType ?? '',
+        primaryTypeDisplayName: details.primaryTypeDisplayName ?? '',
+        types: Array.isArray(details.types) ? details.types : [],
       });
       setSuccessMessage(t('forms.restaurantImported'));
     } catch (error) {
@@ -595,6 +604,9 @@ function AddRestaurantScreen({
         BusinessStatus: formData.businessStatus.trim(),
         GooglePlaceId: formData.googlePlaceId.trim(),
         GooglePhotoName: formData.googlePhotoName.trim(),
+        PrimaryType: formData.primaryType.trim(),
+        PrimaryTypeDisplayName: formData.primaryTypeDisplayName.trim(),
+        Types: Array.isArray(formData.types) ? formData.types : [],
         Location: hasValidCoordinates ? { latitude, longitude } : '',
       };
 
@@ -605,14 +617,14 @@ function AddRestaurantScreen({
         });
         setSuccessTone(photoUploadWarning ? 'warning' : 'success');
         setSuccessMessage(photoUploadWarning || t('forms.restaurantUpdated'));
-        onSaved?.(restaurant.id);
+        onSaved?.(restaurant.id, trimmedName);
       } else {
         const createdRestaurant = await addDoc(collection(db, 'Restaurant'), {
           ...restaurantPayload,
           createdAt: serverTimestamp(),
         });
 
-        await onSaved?.(createdRestaurant.id);
+        await onSaved?.(createdRestaurant.id, trimmedName);
         setSuccessTone('success');
         setSuccessMessage(t('forms.restaurantCreated'));
         setCreatedRestaurantInfo({

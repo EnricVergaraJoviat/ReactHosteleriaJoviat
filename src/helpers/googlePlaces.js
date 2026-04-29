@@ -142,6 +142,8 @@ function normalizeSearchResult(place) {
     address: place.formattedAddress ?? '',
     photoUrl: getPhotoUrl(primaryPhoto),
     photoName: getPhotoName(primaryPhoto),
+    primaryType: place.primaryType ?? '',
+    types: Array.isArray(place.types) ? place.types : [],
   };
 }
 
@@ -163,6 +165,9 @@ function normalizePlaceDetails(place) {
     businessStatus: place.businessStatus ?? '',
     latitude,
     longitude,
+    primaryType: place.primaryType ?? '',
+    primaryTypeDisplayName: getDisplayName(place.primaryTypeDisplayName),
+    types: Array.isArray(place.types) ? place.types : [],
   };
 }
 
@@ -175,7 +180,7 @@ async function searchRestaurants(query) {
 
   const Place = await getPlaceClass();
   const response = await Place.searchByText({
-    fields: ['id', 'displayName', 'formattedAddress', 'photos'],
+    fields: ['id', 'displayName', 'formattedAddress', 'photos', 'primaryType', 'types'],
     maxResultCount: 10,
     textQuery: trimmedQuery,
   });
@@ -201,7 +206,10 @@ async function fetchPlaceDetails(placeId) {
       'location',
       'nationalPhoneNumber',
       'photos',
+      'primaryType',
+      'primaryTypeDisplayName',
       'rating',
+      'types',
       'websiteURI',
     ],
   });

@@ -80,6 +80,54 @@ async function sendStudentWelcomeEmail({ email, name, password }) {
   });
 }
 
+async function sendRestaurantRegistrationApprovedEmail({
+  email,
+  alumniName,
+  restaurantName,
+}) {
+  const gmailEmail = GMAIL_EMAIL.value();
+  const gmailAppPassword = GMAIL_APP_PASSWORD.value();
+
+  if (!gmailEmail || !gmailAppPassword) {
+    throw new HttpsError(
+      'failed-precondition',
+      'Email delivery is not configured. Missing Gmail credentials.'
+    );
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: gmailEmail,
+      pass: gmailAppPassword,
+    },
+  });
+
+  const safeName = alumniName || 'alumne';
+  const safeRestaurantName = restaurantName || 'el teu establiment';
+
+  await transporter.sendMail({
+    from: gmailEmail,
+    to: email,
+    subject: 'El teu establiment ja està disponible a Alumni Joviat',
+    text: [
+      `Hola ${safeName},`,
+      '',
+      `Ja hem donat d'alta ${safeRestaurantName} a Alumni Joviat.`,
+      'A partir d\'ara ja el pots vincular al teu compte des de la plataforma.',
+      '',
+      'Salutacions,',
+      'Equip Alumni Joviat',
+    ].join('\n'),
+    html: `
+      <p>Hola ${safeName},</p>
+      <p>Ja hem donat d'alta <strong>${safeRestaurantName}</strong> a Alumni Joviat.</p>
+      <p>A partir d'ara ja el pots vincular al teu compte des de la plataforma.</p>
+      <p>Salutacions,<br />Equip Alumni Joviat</p>
+    `,
+  });
+}
+
 function normalizeFileName(fileName) {
   return String(fileName || '')
     .normalize('NFD')
@@ -439,6 +487,54 @@ exports.createStudentAccount = onCall(
         error,
       });
       throw new HttpsError('internal', 'Unable to create the student account.');
+    }
+  }
+);
+
+exports.sendRestaurantRegistrationApprovedEmail = onCall(
+  {
+    region: 'europe-west1',
+    timeoutSeconds: 60,
+    memory: '256MiB',
+    cors: true,
+    invoker: 'public',
+    secrets: [GMAIL_APP_PASSWORD],
+  },
+  async (request) => {
+    const email = normalizeEmail(request.data?.email);
+    const alumniName = normalizeOptionalString(request.data?.alumniName);
+    const restaurantName = normalizeOptionalString(request.data?.restaurantName);
+
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'Authentication is required.');
+    }
+
+    if (!email || !restaurantName) {
+      throw new HttpsError('invalid-argument', 'Missing restaurant notification data.');
+    }
+
+    try {
+      await sendRestaurantRegistrationApprovedEmail({
+        email,
+        alumniName,
+        restaurantName,
+      });
+
+      return {
+        emailSent: true,
+      };
+    } catch (error) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+
+      logger.error('Unable to send restaurant registration approved email', {
+        email,
+        alumniName,
+        restaurantName,
+        error,
+      });
+      throw new HttpsError('internal', 'Unable to send restaurant registration approved email.');
     }
   }
 );
