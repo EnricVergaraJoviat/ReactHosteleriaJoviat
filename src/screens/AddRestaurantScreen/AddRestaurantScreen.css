@@ -149,6 +149,12 @@
   border-color: #a77a3a;
 }
 
+.add-restaurant-form__field-help {
+  color: #7d705f;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
 .add-restaurant-form__action,
 .add-restaurant-form__submit {
   border: none;

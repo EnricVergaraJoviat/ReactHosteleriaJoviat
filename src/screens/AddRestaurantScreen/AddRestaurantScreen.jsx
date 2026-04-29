@@ -10,6 +10,7 @@ import {
   loadGooglePlacesApi,
   searchRestaurants,
 } from '../../helpers/googlePlaces';
+import { getTranslatedPlaceType } from '../../helpers/placeTypes';
 import { useI18n } from '../../i18n/I18nContext';
 import 'leaflet/dist/leaflet.css';
 import './AddRestaurantScreen.css';
@@ -332,7 +333,7 @@ function AddRestaurantScreen({
   onSaved,
   onOpenCreatedRestaurant,
 }) {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const [googleStatus, setGoogleStatus] = useState(
     GOOGLE_MAPS_API_KEY ? 'loading' : 'missing-key'
   );
@@ -397,6 +398,10 @@ function AddRestaurantScreen({
   const googleEmbedUrl = useMemo(
     () => buildGoogleEmbedUrl(formData),
     [formData]
+  );
+  const translatedPrimaryType = useMemo(
+    () => (formData.primaryType ? getTranslatedPlaceType(formData.primaryType, language) : ''),
+    [formData.primaryType, language]
   );
 
   useEffect(() => {
@@ -860,6 +865,22 @@ function AddRestaurantScreen({
                 onChange={handleFormChange}
                 placeholder="OPERATIONAL"
               />
+            </label>
+
+            <label className="add-restaurant-form__field">
+              <span>{t('common.category')}</span>
+              <input
+                name="primaryTypeDisplay"
+                type="text"
+                value={translatedPrimaryType || ''}
+                readOnly
+                placeholder={t('forms.categoryPending')}
+              />
+              <small className="add-restaurant-form__field-help">
+                {formData.primaryType
+                  ? `${t('forms.googleCategoryCode')}: ${formData.primaryType}`
+                  : t('forms.categoryHelp')}
+              </small>
             </label>
 
             <label className="add-restaurant-form__field add-restaurant-form__field--full">
