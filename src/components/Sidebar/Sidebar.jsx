@@ -245,10 +245,12 @@ function Sidebar({
               </ul>
             </>
           ) : null}
-          <div className="sidebar__world-art" aria-hidden="true">
-            <img src={worldImage} alt="" />
+          <div className="sidebar__footer">
+            <div className="sidebar__world-art" aria-hidden="true">
+              <img src={worldImage} alt="" />
+            </div>
+            <p className="sidebar__version">v{APP_VERSION}</p>
           </div>
-          <p className="sidebar__version">v{APP_VERSION}</p>
         </nav>
       </aside>
     </>

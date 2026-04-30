@@ -614,8 +614,11 @@ async function fetchPlaceDetailsById(placeId, apiKey) {
             'websiteUri',
             'location',
             'photos',
+            'primaryType',
+            'primaryTypeDisplayName',
             'rating',
             'businessStatus',
+            'types',
           ].join(','),
         },
       }
@@ -652,6 +655,9 @@ async function fetchPlaceDetailsById(placeId, apiKey) {
     businessStatus: place.businessStatus || '',
     latitude: typeof place.location?.latitude === 'number' ? place.location.latitude : null,
     longitude: typeof place.location?.longitude === 'number' ? place.location.longitude : null,
+    primaryType: place.primaryType || '',
+    primaryTypeDisplayName: place.primaryTypeDisplayName?.text || '',
+    types: Array.isArray(place.types) ? place.types : [],
   };
 }
 

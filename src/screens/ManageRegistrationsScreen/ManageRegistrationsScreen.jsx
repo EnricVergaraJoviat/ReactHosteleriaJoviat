@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../../helpers/firebase';
+import { getTranslatedPlaceType } from '../../helpers/placeTypes';
 import {
   USER_REGISTRATIONS_COLLECTION,
   acceptUserRegistration,
@@ -14,7 +15,7 @@ const RESTAURANT_REGISTRATIONS_COLLECTION = 'RestaruantsRegistrations';
 const resolveGoogleMapsShareLink = httpsCallable(functions, 'resolveGoogleMapsShareLink');
 
 function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const [registrations, setRegistrations] = useState([]);
   const [restaurantRegistrations, setRestaurantRegistrations] = useState([]);
   const [existingRestaurants, setExistingRestaurants] = useState([]);
@@ -195,6 +196,9 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
   const existingRestaurantMatch = restaurantPreview?.googlePlaceId
     ? existingRestaurants.find((entry) => entry.GooglePlaceId === restaurantPreview.googlePlaceId)
     : null;
+  const restaurantPreviewCategory = restaurantPreview?.primaryType
+    ? getTranslatedPlaceType(restaurantPreview.primaryType, language)
+    : '';
 
   return (
     <section className="manage-registrations">
@@ -404,6 +408,9 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
                 <div className="manage-registrations__preview-content">
                   <h3>{restaurantPreview.name || t('common.noName')}</h3>
                   <p>{restaurantPreview.address || t('common.addressUnavailable')}</p>
+                  {restaurantPreviewCategory ? (
+                    <p>{t('common.category')}: {restaurantPreviewCategory}</p>
+                  ) : null}
                   {restaurantPreview.phone ? (
                     <p>{restaurantPreview.phone}</p>
                   ) : null}

@@ -171,9 +171,15 @@
   color: #8b6a3d;
 }
 
-.sidebar__world-art {
+.sidebar__footer {
   margin-top: auto;
   padding-top: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sidebar__world-art {
   display: flex;
   justify-content: center;
 }
