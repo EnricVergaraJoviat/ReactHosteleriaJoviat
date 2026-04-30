@@ -97,6 +97,8 @@ firebase use --add
 npm run deploy:hosting
 ```
 
+This command increments the web version automatically before building and deploying.
+
 To test the hosting setup locally:
 
 ```bash

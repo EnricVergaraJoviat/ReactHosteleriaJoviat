@@ -186,6 +186,15 @@
   filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.22));
 }
 
+.sidebar__version {
+  margin: 0.65rem 0 0;
+  color: rgba(246, 236, 222, 0.48);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
 .sidebar--desktop {
   position: sticky;
   top: 0;

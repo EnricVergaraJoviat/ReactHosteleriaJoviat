@@ -304,18 +304,37 @@ function extractJsonLdQuery(html) {
   return '';
 }
 
+function isLikelyGenericGoogleQuery(value) {
+  const normalizedValue = String(value || '').trim().toLowerCase();
+
+  if (!normalizedValue) {
+    return true;
+  }
+
+  return [
+    'google maps',
+    'google map',
+    'google',
+    'google brussels',
+    'google belgium',
+    'google barcelona',
+    'google madrid',
+    'google spain',
+  ].includes(normalizedValue);
+}
+
 function collectCandidateQueries({ html, finalUrl, sharedUrl }) {
   const candidates = [
-    extractMetaContent(html, 'og:title'),
-    extractMetaContent(html, 'twitter:title'),
-    extractTitleTag(html),
-    extractJsonLdQuery(html),
-    extractMetaContent(html, 'og:description'),
-    extractMetaContent(html, 'twitter:description'),
     extractGoogleMapsParamQuery(finalUrl),
     extractGoogleMapsParamQuery(sharedUrl),
     extractPathQuery(finalUrl),
     extractPathQuery(sharedUrl),
+    extractMetaContent(html, 'og:title'),
+    extractMetaContent(html, 'twitter:title'),
+    extractJsonLdQuery(html),
+    extractTitleTag(html),
+    extractMetaContent(html, 'og:description'),
+    extractMetaContent(html, 'twitter:description'),
   ]
     .map((value) => String(value || '').trim())
     .filter(Boolean);
@@ -325,7 +344,7 @@ function collectCandidateQueries({ html, finalUrl, sharedUrl }) {
   return candidates.filter((candidate) => {
     const normalized = candidate.toLowerCase();
 
-    if (normalizedSeen.has(normalized)) {
+    if (normalizedSeen.has(normalized) || isLikelyGenericGoogleQuery(candidate)) {
       return false;
     }
 
