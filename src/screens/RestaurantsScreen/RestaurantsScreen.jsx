@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-markercluster';
@@ -56,6 +56,21 @@ function DetailsIcon() {
       <path
         d="M12 5c5.5 0 9.5 5.9 9.7 6.2a1.4 1.4 0 0 1 0 1.6C21.5 13.1 17.5 19 12 19S2.5 13.1 2.3 12.8a1.4 1.4 0 0 1 0-1.6C2.5 10.9 6.5 5 12 5Zm0 2C8.4 7 5.4 10.4 4.4 12 5.4 13.6 8.4 17 12 17s6.6-3.4 7.6-5C18.6 10.4 15.6 7 12 7Zm0 1.8a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4Zm0 2a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z"
         fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function MultiSelectIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path
+        d="M5 7.5 10 12.5 15 7.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
@@ -202,8 +217,11 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState('map');
   const [areFiltersOpen, setAreFiltersOpen] = useState(true);
-  const [cityFilter, setCityFilter] = useState('all');
-  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedCities, setSelectedCities] = useState(['all']);
+  const [selectedCategories, setSelectedCategories] = useState(['all']);
+  const [openFilterDropdown, setOpenFilterDropdown] = useState('');
+  const cityDropdownRef = useRef(null);
+  const categoryDropdownRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -257,9 +275,10 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
   const filteredRestaurants = restaurants.filter((restaurant) => {
     const matchesSearch = (restaurant.Name ?? '').toLowerCase().includes(normalizedSearchTerm);
     const restaurantCity = getRestaurantCity(restaurant.Address);
-    const matchesCity = cityFilter === 'all' || restaurantCity === cityFilter;
+    const matchesCity = selectedCities.includes('all')
+      || (restaurantCity && selectedCities.includes(restaurantCity));
     const restaurantPrimaryType = getRestaurantPrimaryType(restaurant);
-    const matchesCategory = selectedCategories.length === 0
+    const matchesCategory = selectedCategories.includes('all')
       || (restaurantPrimaryType && selectedCategories.includes(restaurantPrimaryType));
 
     return matchesSearch && matchesCity && matchesCategory;
@@ -276,7 +295,7 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [normalizedSearchTerm, cityFilter, selectedCategories]);
+  }, [normalizedSearchTerm, selectedCities, selectedCategories]);
 
   useEffect(() => {
     if (totalPages > 0 && currentPage > totalPages) {
@@ -284,12 +303,60 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
     }
   }, [currentPage, totalPages]);
 
+  useEffect(() => {
+    function handleDocumentClick(event) {
+      const target = event.target;
+
+      if (
+        cityDropdownRef.current?.contains(target)
+        || categoryDropdownRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      setOpenFilterDropdown('');
+    }
+
+    document.addEventListener('mousedown', handleDocumentClick);
+
+    return () => {
+      document.removeEventListener('mousedown', handleDocumentClick);
+    };
+  }, []);
+
+  function toggleSelection(currentValues, nextValue) {
+    if (nextValue === 'all') {
+      return ['all'];
+    }
+
+    const withoutAll = currentValues.filter((value) => value !== 'all');
+
+    if (withoutAll.includes(nextValue)) {
+      const nextValues = withoutAll.filter((value) => value !== nextValue);
+      return nextValues.length > 0 ? nextValues : ['all'];
+    }
+
+    return [...withoutAll, nextValue];
+  }
+
+  function handleToggleCity(cityValue) {
+    setSelectedCities((current) => toggleSelection(current, cityValue));
+  }
+
   function handleToggleCategory(categoryValue) {
-    setSelectedCategories((current) => (
-      current.includes(categoryValue)
-        ? current.filter((entry) => entry !== categoryValue)
-        : [...current, categoryValue]
-    ));
+    setSelectedCategories((current) => toggleSelection(current, categoryValue));
+  }
+
+  function getMultiSelectSummary(selectedValues, options, anyLabel) {
+    if (selectedValues.includes('all')) {
+      return anyLabel;
+    }
+
+    const selectedLabels = options
+      .filter((option) => selectedValues.includes(option.value))
+      .map((option) => option.label);
+
+    return selectedLabels.join(', ');
   }
 
   const restaurantsWithCoordinates = filteredRestaurants
@@ -300,6 +367,20 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
     .filter((restaurant) => restaurant.coordinates);
 
   const mapCenter = restaurantsWithCoordinates[0]?.coordinates ?? [41.3851, 2.1734];
+  const cityFilterOptions = [
+    { value: 'all', label: t('filters.anyCity') },
+    ...cityOptions.map((city) => ({ value: city, label: city })),
+  ];
+  const categoryFilterOptions = [
+    { value: 'all', label: t('filters.anyCategory') },
+    ...categoryOptions,
+  ];
+  const citySummary = getMultiSelectSummary(selectedCities, cityFilterOptions, t('filters.anyCity'));
+  const categorySummary = getMultiSelectSummary(
+    selectedCategories,
+    categoryFilterOptions,
+    t('filters.anyCategory')
+  );
 
   return (
     <section className="restaurants-screen">
@@ -390,47 +471,77 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
       <div className="restaurants-filters">
         {areFiltersOpen ? (
           <div className="restaurants-filters__panel">
-            <label className="restaurants-filters__field" htmlFor="restaurants-city-filter">
-              <span>{t('filters.city')}</span>
-              <select
-                id="restaurants-city-filter"
-                value={cityFilter}
-                onChange={(event) => setCityFilter(event.target.value)}
+            <div
+              ref={cityDropdownRef}
+              className="restaurants-filters__field restaurants-filters__field--dropdown"
+            >
+              <div className="restaurants-filters__field-heading">
+                <span>{t('filters.city')}</span>
+              </div>
+              <button
+                className={`restaurants-filters__dropdown-trigger${
+                  openFilterDropdown === 'city' ? ' restaurants-filters__dropdown-trigger--open' : ''
+                }`}
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={openFilterDropdown === 'city'}
+                onClick={() => setOpenFilterDropdown((current) => (current === 'city' ? '' : 'city'))}
               >
-                <option value="all">{t('filters.anyCity')}</option>
-                {cityOptions.map((city) => (
-                  <option key={city} value={city}>{city}</option>
-                ))}
-              </select>
-            </label>
-            <div className="restaurants-filters__field restaurants-filters__field--categories">
+                <span className="restaurants-filters__dropdown-summary">{citySummary}</span>
+                <span className="restaurants-filters__dropdown-icon">
+                  <MultiSelectIcon />
+                </span>
+              </button>
+              {openFilterDropdown === 'city' ? (
+                <div className="restaurants-filters__dropdown-menu" role="listbox" aria-label={t('filters.city')}>
+                  {cityFilterOptions.map((city) => (
+                    <label key={city.value} className="restaurants-filters__dropdown-option">
+                      <input
+                        type="checkbox"
+                        checked={selectedCities.includes(city.value)}
+                        onChange={() => handleToggleCity(city.value)}
+                      />
+                      <span>{city.label}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <div
+              ref={categoryDropdownRef}
+              className="restaurants-filters__field restaurants-filters__field--dropdown"
+            >
               <div className="restaurants-filters__field-heading">
                 <span>{t('filters.category')}</span>
-                <button
-                  className="restaurants-filters__clear-link"
-                  type="button"
-                  onClick={() => setSelectedCategories([])}
-                >
-                  {t('filters.anyCategory')}
-                </button>
               </div>
-              <div className="restaurants-filters__chips" role="group" aria-label={t('filters.category')}>
-                {categoryOptions.map((category) => (
-                  <button
-                    key={category.value}
-                    className={`restaurants-filters__chip${
-                      selectedCategories.includes(category.value)
-                        ? ' restaurants-filters__chip--active'
-                        : ''
-                    }`}
-                    type="button"
-                    aria-pressed={selectedCategories.includes(category.value)}
-                    onClick={() => handleToggleCategory(category.value)}
-                  >
-                    {category.label}
-                  </button>
-                ))}
-              </div>
+              <button
+                className={`restaurants-filters__dropdown-trigger${
+                  openFilterDropdown === 'category' ? ' restaurants-filters__dropdown-trigger--open' : ''
+                }`}
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={openFilterDropdown === 'category'}
+                onClick={() => setOpenFilterDropdown((current) => (current === 'category' ? '' : 'category'))}
+              >
+                <span className="restaurants-filters__dropdown-summary">{categorySummary}</span>
+                <span className="restaurants-filters__dropdown-icon">
+                  <MultiSelectIcon />
+                </span>
+              </button>
+              {openFilterDropdown === 'category' ? (
+                <div className="restaurants-filters__dropdown-menu" role="listbox" aria-label={t('filters.category')}>
+                  {categoryFilterOptions.map((category) => (
+                    <label key={category.value} className="restaurants-filters__dropdown-option">
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories.includes(category.value)}
+                        onChange={() => handleToggleCategory(category.value)}
+                      />
+                      <span>{category.label}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}
