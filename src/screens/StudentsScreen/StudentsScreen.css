@@ -234,6 +234,7 @@
   background-size: 1rem;
 }
 
+.students-filters__field--studies,
 .students-filters__field--roles {
   gap: 0.7rem;
   grid-column: 1 / -1;

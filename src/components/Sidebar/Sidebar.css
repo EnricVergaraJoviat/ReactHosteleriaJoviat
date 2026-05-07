@@ -173,10 +173,12 @@
 
 .sidebar__footer {
   margin-top: auto;
-  padding-top: 1.4rem;
+  padding-top: 0.85rem;
+  padding-bottom: 0.55rem;
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 0.35rem;
 }
 
 .sidebar__world-art {
@@ -186,16 +188,16 @@
 
 .sidebar__world-art img {
   display: block;
-  width: min(100%, 90px);
+  width: min(100%, 84px);
   height: auto;
   object-fit: contain;
   filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.22));
 }
 
 .sidebar__version {
-  margin: 0.65rem 0 0;
+  margin: 0;
   color: rgba(246, 236, 222, 0.48);
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-align: center;

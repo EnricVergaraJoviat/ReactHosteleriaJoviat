@@ -463,7 +463,7 @@ test('switches from login to logout after a successful login', async () => {
     await userEvent.click(screen.getByRole('button', { name: /fer login/i }));
   });
 
-  expect(await screen.findByRole('heading', { name: /sessio iniciada/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /sessió iniciada/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /^logout$/i })).toBeInTheDocument();
 
   await act(async () => {
@@ -812,7 +812,6 @@ test('allows an administrator to accept a pending registration', async () => {
     studentData: {
       Name: 'Pepito Perez',
       Email: 'pepito@joviat.cat',
-      isExAlumni: false,
     },
     password: 'joviat123',
     deleteRegistrationId: 'registration-1',
@@ -1279,7 +1278,8 @@ test('allows an administrator to add a student with photo and restaurant links',
 
   await act(async () => {
     await userEvent.type(screen.getByLabelText(/nom complet/i), 'Clara Font');
-    await userEvent.selectOptions(screen.getByLabelText(/estat de l'alumne/i), 'exalumne');
+    await userEvent.click(screen.getByRole('button', { name: /selecciona els estudis/i }));
+    await userEvent.click(screen.getByLabelText(/CFGM Cuina i gastronomia/i));
     await userEvent.type(screen.getByLabelText(/contrasenya/i), 'securepass');
     await userEvent.type(screen.getByLabelText(/correu electronic/i), 'clara@joviat.cat');
     await userEvent.type(screen.getByLabelText(/telefon de contacte/i), '600777888');
@@ -1307,7 +1307,7 @@ test('allows an administrator to add a student with photo and restaurant links',
 
   await act(async () => {
     await userEvent.selectOptions(screen.getByLabelText(/^establiment$/i), 'restaurant-2');
-    await userEvent.selectOptions(screen.getByLabelText(/^rol$/i), 'diningRoom');
+    await userEvent.selectOptions(screen.getByLabelText(/^àmbit professional$/i), 'diningRoom');
     await userEvent.click(screen.getByLabelText(/està treballant actualment/i));
     const addRestaurantButtons = screen.getAllByRole('button', { name: /afegir establiment/i });
     await userEvent.click(addRestaurantButtons[addRestaurantButtons.length - 1]);
@@ -1330,7 +1330,7 @@ test('allows an administrator to add a student with photo and restaurant links',
       Instagram: '',
       VisibleContactToAlumniNetwork: true,
       PromotionYear: 'currently-studying',
-      isExAlumni: true,
+      JoviatStudies: ['cfgm-cuina-gastronomia-serveis-restauracio'],
     },
     password: 'securepass',
   });
@@ -1391,7 +1391,7 @@ test('filters students by name and clears the search', async () => {
   expect(screen.getByText(/marc pujol/i)).toBeInTheDocument();
 });
 
-test('filters students by role and lets you select or clear all roles', async () => {
+test('filters students by professional area and lets you select or clear all professional areas', async () => {
   getDocs.mockImplementation(async (collectionName) => {
     if (collectionName === 'Rest-Alum') {
       return {
@@ -1450,7 +1450,7 @@ test('filters students by role and lets you select or clear all roles', async ()
   await screen.findByText(/aina serra/i);
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^rol$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^àmbit professional$/i }));
   });
 
   await act(async () => {
@@ -1461,18 +1461,18 @@ test('filters students by role and lets you select or clear all roles', async ()
   expect(screen.queryByText(/marc pujol/i)).not.toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /treure tots els rols/i }));
+    await userEvent.click(screen.getByRole('button', { name: /treure tots els àmbits professionals/i }));
   });
 
   expect(screen.getByText(/aina serra/i)).toBeInTheDocument();
   expect(screen.getByText(/marc pujol/i)).toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /seleccionar tots els rols/i }));
+    await userEvent.click(screen.getByRole('button', { name: /seleccionar tots els àmbits professionals/i }));
   });
 
   expect(screen.getByLabelText(/comercial/i)).toBeChecked();
-  expect(screen.getByLabelText(/docent/i)).toBeChecked();
+  expect(screen.getByLabelText(/docència/i)).toBeChecked();
 });
 
 test('paginates the students list in groups of 8 below the search field', async () => {
@@ -1892,7 +1892,7 @@ test('shows edit and delete actions on the student detail for administrators', a
             Phone: '600123123',
             LinkedIn: 'linkedin.com/in/aina-serra',
             Password: 'aina-pass',
-            isExAlumni: true,
+            JoviatStudies: ['cfgm-cuina-gastronomia-serveis-restauracio'],
           }),
         },
       ],
@@ -1922,7 +1922,7 @@ test('shows edit and delete actions on the student detail for administrators', a
   });
 
   expect(await screen.findByRole('button', { name: /^editar$/i })).toBeInTheDocument();
-  expect(screen.getByText(/^exalumne$/i)).toBeInTheDocument();
+  expect(screen.getByText(/CFGM Cuina i gastronomia/i)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /^eliminar$/i })).toBeInTheDocument();
 });
 
@@ -1997,7 +1997,7 @@ test('reuses the add student form in edit mode for administrators', async () => 
             Phone: '600123123',
             LinkedIn: 'linkedin.com/in/aina-serra',
             Password: 'aina-pass',
-            isExAlumni: false,
+            JoviatStudies: ['cfgm-cuina-gastronomia-serveis-restauracio'],
           }),
         },
       ],
@@ -2047,7 +2047,7 @@ test('reuses the add student form in edit mode for administrators', async () => 
     await userEvent.clear(screen.getByLabelText(/filtrar establiments pel nom/i));
     await userEvent.type(screen.getByLabelText(/filtrar establiments pel nom/i), 'Disfr');
     await userEvent.selectOptions(screen.getByLabelText(/^establiment$/i), 'restaurant-2');
-    await userEvent.selectOptions(screen.getByLabelText(/^rol$/i), 'diningRoom');
+    await userEvent.selectOptions(screen.getByLabelText(/^àmbit professional$/i), 'diningRoom');
     const addRestaurantButtons = screen.getAllByRole('button', { name: /afegir establiment/i });
     await userEvent.click(addRestaurantButtons[addRestaurantButtons.length - 1]);
     await userEvent.click(screen.getByRole('button', { name: /desar canvis/i }));
@@ -2064,7 +2064,7 @@ test('reuses the add student form in edit mode for administrators', async () => 
       Instagram: '',
       VisibleContactToAlumniNetwork: true,
       PromotionYear: '',
-      isExAlumni: false,
+      JoviatStudies: ['cfgm-cuina-gastronomia-serveis-restauracio'],
       updatedAt: 'SERVER_TIMESTAMP',
     }
   );
@@ -2142,7 +2142,7 @@ test('shows the password recovery button only for administrators in edit mode', 
             Email: 'aina@joviat.cat',
             Phone: '600123123',
             LinkedIn: 'linkedin.com/in/aina-serra',
-            isExAlumni: false,
+            JoviatStudies: ['cfgm-cuina-gastronomia-serveis-restauracio'],
           }),
         },
       ],
@@ -2239,7 +2239,7 @@ test('does not show the password recovery button for a non administrator editing
             Email: 'aina@joviat.cat',
             Phone: '600123123',
             LinkedIn: 'linkedin.com/in/aina-serra',
-            isExAlumni: false,
+            JoviatStudies: ['cfgm-cuina-gastronomia-serveis-restauracio'],
           }),
         },
       ],
@@ -2331,7 +2331,7 @@ test('opens the logged student edit form from the header avatar', async () => {
             Email: 'aina@joviat.cat',
             Phone: '600123123',
             LinkedIn: 'linkedin.com/in/aina-serra',
-            isExAlumni: false,
+            JoviatStudies: ['cfgm-cuina-gastronomia-serveis-restauracio'],
           }),
         },
       ],

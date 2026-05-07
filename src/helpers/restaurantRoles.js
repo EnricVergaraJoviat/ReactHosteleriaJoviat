@@ -1,28 +1,32 @@
 export const RESTAURANT_ROLE_KEYS = [
   'owner',
-  'manager',
-  'kitchen',
   'diningRoom',
+  'kitchen',
+  'advisory',
+  'manager',
   'pastryBakery',
-  'teacher',
   'innovation',
   'sales',
+  'teacher',
 ];
 
 const ROLE_ALIASES = {
-  owner: ['owner', 'propietari/a', 'propietario/a'],
-  manager: ['manager', 'directiu/iva-gerent', 'directivo/a-gerente', 'director-manager'],
-  kitchen: ['kitchen', 'departament de cuina', 'departamento de cocina', 'kitchen department'],
-  diningRoom: ['diningroom', 'departament de sala', 'departamento de sala', 'dining room department'],
+  owner: ['owner', 'propietari/a', 'propietario/a', 'restaurador/a o propietari/a', 'restaurador/a o propietario/a'],
+  diningRoom: ['diningroom', 'departament de sala', 'departamento de sala', 'dining room department', 'professional de sala', 'profesional de sala'],
+  kitchen: ['kitchen', 'departament de cuina', 'departamento de cocina', 'kitchen department', 'professional de cuina', 'profesional de cocina'],
+  advisory: ['advisory', 'assessoria', 'asesoria', 'asesoría', 'consultancy'],
+  manager: ['manager', 'directiu/iva-gerent', 'directivo/a-gerente', 'director-manager', 'direccio-gerencia', 'dirección-gerencia', 'management'],
   pastryBakery: [
     'pastrybakery',
     'departament de pastisseria/forneria',
     'departamento de pasteleria/panaderia',
     'pastry/bakery department',
+    'professional de pastisseria i/o forneria',
+    'profesional de pasteleria y/o panaderia',
   ],
-  teacher: ['teacher', 'docent', 'docente'],
   innovation: ['innovation', 'i+d', 'r+d', 'r&d'],
   sales: ['sales', 'comercial'],
+  teacher: ['teacher', 'docent', 'docente', 'docencia', 'docència', 'teaching'],
 };
 
 function normalizeComparableValue(value) {

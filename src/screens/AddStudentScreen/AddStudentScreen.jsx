@@ -26,11 +26,16 @@ import {
   normalizeRestaurantRole,
   translateRestaurantRole,
 } from '../../helpers/restaurantRoles';
+import {
+  getJoviatStudyOptions,
+  normalizeJoviatStudies,
+} from '../../helpers/joviatStudies';
 import googleMapsShareExampleImage from '../../assets/images/google-maps-share-example.png';
 import { useI18n } from '../../i18n/I18nContext';
 import './AddStudentScreen.css';
 
 const RESTAURANT_REGISTRATIONS_COLLECTION = 'RestaruantsRegistrations';
+const joviatStudyOptions = getJoviatStudyOptions();
 
 function normalizeFileName(fileName) {
   return fileName
@@ -151,7 +156,7 @@ function AddStudentScreen({
   const isEditMode = mode === 'edit' && Boolean(student?.id);
   const [formData, setFormData] = useState({
     name: '',
-    status: 'alumne',
+    joviatStudies: [],
     email: '',
     phone: '',
     linkedIn: '',
@@ -191,6 +196,7 @@ function AddStudentScreen({
     passwordConfirmation: false,
   });
   const [restaurantError, setRestaurantError] = useState('');
+  const [areStudyOptionsOpen, setAreStudyOptionsOpen] = useState(false);
   const [restaurantRequestMapsUrl, setRestaurantRequestMapsUrl] = useState('');
   const [restaurantRequestError, setRestaurantRequestError] = useState('');
   const [restaurantRequestMessage, setRestaurantRequestMessage] = useState('');
@@ -211,7 +217,7 @@ function AddStudentScreen({
 
     setFormData({
       name: student.Name ?? '',
-      status: student.isExAlumni ? 'exalumne' : 'alumne',
+      joviatStudies: normalizeJoviatStudies(student.JoviatStudies ?? student.Studies),
       email: student.Email ?? student.email ?? '',
       phone: student.Phone ?? student.phone ?? '',
       linkedIn: student.LinkedIn ?? student.linkedIn ?? '',
@@ -234,6 +240,7 @@ function AddStudentScreen({
     );
     setRestaurantSearch('');
     setRestaurantError('');
+    setAreStudyOptionsOpen(false);
     setRestaurantRequestMapsUrl('');
     setRestaurantRequestError('');
     setRestaurantRequestMessage('');
@@ -308,6 +315,21 @@ function AddStudentScreen({
       ...current,
       [name]: type === 'checkbox' ? checked : value,
     }));
+  }
+
+  function handleStudyToggle(studyValue) {
+    setErrorMessage('');
+    setFormData((current) => {
+      const currentStudies = normalizeJoviatStudies(current.joviatStudies);
+      const nextStudies = currentStudies.includes(studyValue)
+        ? currentStudies.filter((entry) => entry !== studyValue)
+        : [...currentStudies, studyValue];
+
+      return {
+        ...current,
+        joviatStudies: nextStudies,
+      };
+    });
   }
 
   function handlePasswordFormChange(event) {
@@ -475,6 +497,13 @@ function AddStudentScreen({
       return;
     }
 
+    const normalizedJoviatStudies = normalizeJoviatStudies(formData.joviatStudies);
+
+    if (normalizedJoviatStudies.length === 0) {
+      setErrorMessage(t('forms.joviatStudiesRequired'));
+      return;
+    }
+
     const completedLinks = restaurantLinks.map((entry) => ({
       ...entry,
       role: normalizeRestaurantRole(entry.role),
@@ -518,7 +547,7 @@ function AddStudentScreen({
           Instagram: formData.instagram.trim(),
           VisibleContactToAlumniNetwork: Boolean(formData.visibleContactToAlumniNetwork),
           PromotionYear: normalizePromotionYearValue(formData.promotionYear),
-          isExAlumni: formData.status === 'exalumne',
+          JoviatStudies: normalizedJoviatStudies,
           updatedAt: serverTimestamp(),
         });
 
@@ -557,7 +586,7 @@ function AddStudentScreen({
             Instagram: formData.instagram.trim(),
             VisibleContactToAlumniNetwork: Boolean(formData.visibleContactToAlumniNetwork),
             PromotionYear: normalizePromotionYearValue(formData.promotionYear),
-            isExAlumni: formData.status === 'exalumne',
+            JoviatStudies: normalizedJoviatStudies,
           },
           password: trimmedPassword,
         });
@@ -577,7 +606,7 @@ function AddStudentScreen({
 
         setFormData({
           name: '',
-          status: 'alumne',
+          joviatStudies: [],
           email: '',
           phone: '',
           linkedIn: '',
@@ -714,6 +743,10 @@ function AddStudentScreen({
     ? t('forms.studentEditDescription')
     : t('forms.studentCreateDescription');
   const submitLabel = isEditMode ? t('common.saveChanges') : t('forms.saveStudent');
+  const selectedJoviatStudies = normalizeJoviatStudies(formData.joviatStudies);
+  const studySummary = selectedJoviatStudies.length
+    ? t('forms.joviatStudiesSelected', { count: selectedJoviatStudies.length })
+    : t('forms.joviatStudiesPlaceholder');
 
   const restaurantListContent = restaurantLinks.length
     ? restaurantLinks.map((entry) => {
@@ -813,21 +846,34 @@ function AddStudentScreen({
               </span>
             </label>
 
-            <label className="add-student-form__field" htmlFor="student-status">
-              <span className="add-student-form__label">
+            <fieldset className="add-student-form__field add-student-form__field--studies">
+              <legend className="add-student-form__label">
                 <FieldIcon name="status" />
-                {t('forms.studentStatus')}
-              </span>
-              <select
-                id="student-status"
-                name="status"
-                value={formData.status}
-                onChange={handleFormChange}
+                {t('forms.joviatStudies')} <span className="add-student-form__required">*</span>
+              </legend>
+              <button
+                className={`add-student-form__study-trigger${areStudyOptionsOpen ? ' add-student-form__study-trigger--open' : ''}`}
+                type="button"
+                aria-expanded={areStudyOptionsOpen}
+                onClick={() => setAreStudyOptionsOpen((current) => !current)}
               >
-                <option value="alumne">{t('common.student')}</option>
-                <option value="exalumne">{t('common.exStudent')}</option>
-              </select>
-            </label>
+                <span>{studySummary}</span>
+              </button>
+              {areStudyOptionsOpen ? (
+                <div className="add-student-form__study-list">
+                  {joviatStudyOptions.map((studyOption) => (
+                    <label className="add-student-form__study-option" key={studyOption.value}>
+                      <input
+                        type="checkbox"
+                        checked={selectedJoviatStudies.includes(studyOption.value)}
+                        onChange={() => handleStudyToggle(studyOption.value)}
+                      />
+                      <span>{studyOption.label}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : null}
+            </fieldset>
           </section>
 
           <section className="add-student-form__card add-student-form__card--main">

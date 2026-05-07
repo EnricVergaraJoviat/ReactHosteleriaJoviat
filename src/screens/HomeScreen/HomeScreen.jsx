@@ -123,19 +123,26 @@ function HomeScreen({ onNavigate }) {
           <div className="home-screen__headline-copy">
             <h1>{t('home.title')}</h1>
             <div className="home-screen__cta-group">
-              <button
-                className="home-screen__register-button"
-                type="button"
-                onClick={() => onNavigate('register')}
-              >
-                <img
-                  className="home-screen__register-icon"
-                  src={alumniIcon}
-                  alt=""
-                  aria-hidden="true"
-                />
-                <span>{t('home.register')}</span>
-              </button>
+              <div className="home-screen__register-cta">
+                <button
+                  className="home-screen__register-button"
+                  type="button"
+                  onClick={() => onNavigate('register')}
+                >
+                  <img
+                    className="home-screen__register-icon"
+                    src={alumniIcon}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                  <span className="home-screen__register-copy">
+                    <span>{t('home.register')}</span>
+                    <span className="home-screen__register-note">
+                      {t('home.registerNote')}
+                    </span>
+                  </span>
+                </button>
+              </div>
               {shouldShowInstallButton ? (
                 <button
                   className="home-screen__install-button"

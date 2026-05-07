@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import SmartImage from '../../components/SmartImage/SmartImage';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
+import { getJoviatStudyLabels } from '../../helpers/joviatStudies';
 import { formatPromotionYear } from '../../helpers/promotionYears';
 import { deleteStudentAccount } from '../../helpers/studentDeletion';
 import { useI18n } from '../../i18n/I18nContext';
@@ -295,18 +296,7 @@ function StudentDetailScreen({
     || allowsContactVisibility
     || hasStudentActivity
   );
-  const studentStatusOptions = [
-    {
-      key: 'student',
-      label: t('common.student'),
-      isActive: !student.isExAlumni,
-    },
-    {
-      key: 'exStudent',
-      label: t('common.exStudent'),
-      isActive: student.isExAlumni,
-    },
-  ];
+  const joviatStudyLabels = getJoviatStudyLabels(student.JoviatStudies ?? student.Studies);
 
   return (
     <section className="student-detail">
@@ -334,17 +324,19 @@ function StudentDetailScreen({
         <div className="student-detail__hero-body">
           <p className="student-detail__eyebrow">{t('detail.studentSheet')}</p>
           <h1>{student.Name ?? t('common.noName')}</h1>
-          <div className="student-detail__student-status" role="group" aria-label={t('forms.studentStatus')}>
-            {studentStatusOptions.map((statusOption) => (
+          <div className="student-detail__student-status" role="group" aria-label={t('forms.joviatStudies')}>
+            {joviatStudyLabels.length ? joviatStudyLabels.map((studyLabel) => (
               <span
-                className={`student-detail__student-status-option${
-                  statusOption.isActive ? ' student-detail__student-status-option--active' : ''
-                }`}
-                key={statusOption.key}
+                className="student-detail__student-status-option student-detail__student-status-option--active"
+                key={studyLabel}
               >
-                {statusOption.label}
+                {studyLabel}
               </span>
-            ))}
+            )) : (
+              <span className="student-detail__student-status-option">
+                {t('forms.joviatStudiesMissing')}
+              </span>
+            )}
           </div>
           {student.PromotionYear ? (
             <p className="student-detail__promotion-year">

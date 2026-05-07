@@ -73,6 +73,10 @@
   outline-offset: 3px;
 }
 
+.site-header__avatar .smart-image__img--student-fallback {
+  padding: 0.28rem;
+}
+
 .site-header__email {
   max-width: min(16rem, 38vw);
   overflow: hidden;

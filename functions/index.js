@@ -34,6 +34,27 @@ function normalizePromotionYear(value) {
   return null;
 }
 
+const JOVIAT_STUDY_VALUES = new Set([
+  'cfgm-cuina-gastronomia-serveis-restauracio',
+  'cfgm-pastisseria-forneria-confiteria',
+  'cfgs-direccio-cuina',
+  'programa-intensiu-cuina-catalana',
+  'diploma-sommelier',
+  'advanced-sommelier-postgraduate-degree',
+]);
+
+function normalizeJoviatStudies(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+    .filter((entry, index, entries) =>
+      JOVIAT_STUDY_VALUES.has(entry) && entries.indexOf(entry) === index
+    );
+}
+
 async function sendStudentWelcomeEmail({ email, name, password }) {
   const gmailEmail = GMAIL_EMAIL.value();
   const gmailAppPassword = GMAIL_APP_PASSWORD.value();
@@ -65,7 +86,7 @@ async function sendStudentWelcomeEmail({ email, name, password }) {
       'S\'ha creat el teu compte d\'Alumni Joviat.',
       `La contrasenya inicial configurada es: ${password}`,
       '',
-      'Quan iniciis sessio, recorda que pots canviar-la des del teu perfil.',
+      'Quan iniciïs sessió, recorda que pots canviar-la des del teu perfil.',
       '',
       'Salutacions,',
       'Equip Alumni Joviat',
@@ -74,7 +95,7 @@ async function sendStudentWelcomeEmail({ email, name, password }) {
       <p>Hola ${safeName},</p>
       <p>S'ha creat el teu compte d'Alumni Joviat.</p>
       <p><strong>La contrasenya inicial configurada es: ${password}</strong></p>
-      <p>Quan iniciis sessio, recorda que pots canviar-la des del teu perfil.</p>
+      <p>Quan iniciïs sessió, recorda que pots canviar-la des del teu perfil.</p>
       <p>Salutacions,<br />Equip Alumni Joviat</p>
     `,
   });
@@ -464,8 +485,8 @@ exports.createStudentAccount = onCall(
         Instagram: normalizeOptionalString(rawStudentData.Instagram),
         VisibleContactToAlumniNetwork: rawStudentData.VisibleContactToAlumniNetwork !== false,
         PromotionYear: normalizePromotionYear(rawStudentData.PromotionYear),
+        JoviatStudies: normalizeJoviatStudies(rawStudentData.JoviatStudies ?? rawStudentData.Studies),
         Password: password,
-        isExAlumni: Boolean(rawStudentData.isExAlumni),
         createdAt: FieldValue.serverTimestamp(),
       });
 

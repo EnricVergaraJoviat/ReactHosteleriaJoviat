@@ -89,7 +89,6 @@ async function acceptUserRegistration(registration) {
     studentData: {
       Name: normalizedName,
       Email: normalizedEmail,
-      isExAlumni: false,
     },
     password: DEFAULT_STUDENT_PASSWORD,
     deleteRegistrationId: registration.id,
