@@ -166,7 +166,7 @@ function Sidebar({
               src={joviatNetworkingLogo}
               alt="Joviat Networking"
             />
-            <p className="sidebar__label">alumni network</p>
+            <p className="sidebar__label">Alumni Network</p>
             <div className="sidebar__language-switcher" aria-label={t('language.label')}>
               {languages.map((languageCode) => (
                 <button

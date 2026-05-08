@@ -39,7 +39,7 @@ async function createUserRegistration({ email, name }) {
   if (alumniExists) {
     throw createRegistrationError(
       'alumni/email-already-exists',
-      'An alumni user already exists with this email.'
+      'An Alumni user already exists with this email.'
     );
   }
 
@@ -81,7 +81,7 @@ async function acceptUserRegistration(registration) {
   if (alumniExists) {
     throw createRegistrationError(
       'alumni/email-already-exists',
-      'An alumni user already exists with this email.'
+      'An Alumni user already exists with this email.'
     );
   }
 

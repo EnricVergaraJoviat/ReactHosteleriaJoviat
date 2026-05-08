@@ -1,7 +1,7 @@
 const JOVIAT_STUDY_OPTIONS = [
   {
     value: 'cfgm-cuina-gastronomia-serveis-restauracio',
-    label: 'CFGM Cuina i gastronomia i Serveis en restauracio',
+    label: 'CFGM Cuina i gastronomia i Serveis en restauració',
   },
   {
     value: 'cfgm-pastisseria-forneria-confiteria',
@@ -9,7 +9,7 @@ const JOVIAT_STUDY_OPTIONS = [
   },
   {
     value: 'cfgs-direccio-cuina',
-    label: 'CFGS Direccio de cuina',
+    label: 'CFGS Direcció de cuina',
   },
   {
     value: 'programa-intensiu-cuina-catalana',

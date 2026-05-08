@@ -399,7 +399,7 @@ test('renders the Joviat home screen', () => {
   expect(screen.getByAltText(/logo joviat/i)).toBeInTheDocument();
   expect(screen.getByText(/cicle formatiu hoteleria/i)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /explorar establiments/i })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /explorar alumnes/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /explorar Alumnis/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /registra't/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /^login$/i })).toBeInTheDocument();
   expect(
@@ -414,7 +414,7 @@ test('opens the request access dialog from the home register button', async () =
     await userEvent.click(screen.getByRole('button', { name: /registra't/i }));
   });
 
-  expect(await screen.findByRole('heading', { name: /sol.licitar acces/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /sol·licitar accés/i })).toBeInTheDocument();
   expect(screen.getByLabelText(/nom i cognoms/i)).toBeInTheDocument();
 });
 
@@ -433,7 +433,7 @@ test('shows an error dialog when login fails', async () => {
   });
 
   expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
-  expect(screen.getByText(/email o la contrasenya no son correctes/i)).toBeInTheDocument();
+  expect(screen.getByText(/email o la contrasenya no són correctes/i)).toBeInTheDocument();
   expect(signInWithEmailAndPassword).toHaveBeenCalledWith({}, 'prova@joviat.cat', 'incorrecta');
 });
 
@@ -605,8 +605,8 @@ test('shows administrator options when the logged user exists in Administrator',
     await userEvent.click(screen.getByRole('button', { name: /fer login/i }));
   });
 
-  expect(await screen.findByRole('button', { name: /afegir restaurant/i })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /afegir alumne/i })).toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: /afegir establiment/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /afegir Alumni/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /gestionar altes/i })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /veure trello/i })).toHaveAttribute(
     'href',
@@ -614,10 +614,10 @@ test('shows administrator options when the logged user exists in Administrator',
   );
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /afegir restaurant/i }));
+    await userEvent.click(screen.getByRole('button', { name: /afegir establiment/i }));
   });
 
-  expect(await screen.findByRole('heading', { name: /afegir restaurant/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /afegir establiment/i })).toBeInTheDocument();
 });
 
 test('allows a visitor to request access from the login dialog', async () => {
@@ -628,16 +628,16 @@ test('allows a visitor to request access from the login dialog', async () => {
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /sol.licita acces/i }));
+    await userEvent.click(screen.getByRole('button', { name: /sol·licita accés/i }));
   });
 
-  expect(await screen.findByRole('heading', { name: /sol.licitar acces/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /sol·licitar accés/i })).toBeInTheDocument();
 
   const emailInputs = screen.getAllByLabelText(/email/i);
   await act(async () => {
     await userEvent.type(emailInputs[emailInputs.length - 1], 'pepito@joviat.cat');
     await userEvent.type(screen.getByLabelText(/nom i cognoms/i), 'Pepito Perez');
-    await userEvent.click(screen.getByRole('button', { name: /sol.licitar acces/i }));
+    await userEvent.click(screen.getByRole('button', { name: /sol·licitar accés/i }));
   });
 
   expect(addDoc).toHaveBeenCalledWith('UserRegistrations', {
@@ -646,14 +646,14 @@ test('allows a visitor to request access from the login dialog', async () => {
     createdAt: 'SERVER_TIMESTAMP',
   });
   expect(
-    await screen.findByText(/s'ha enviat la sol.licitud d'acces/i)
+    await screen.findByText(/s'ha enviat la sol·licitud d'accés/i)
   ).toBeInTheDocument();
   expect(screen.queryByLabelText(/nom i cognoms/i)).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /sol.licitar acces/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /sol·licitar accés/i })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: /tancar/i })).toBeInTheDocument();
 });
 
-test('warns when requesting access with an existing alumni email', async () => {
+test('warns when requesting access with an existing Alumni email', async () => {
   render(<App />);
 
   await act(async () => {
@@ -661,19 +661,19 @@ test('warns when requesting access with an existing alumni email', async () => {
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /sol.licita acces/i }));
+    await userEvent.click(screen.getByRole('button', { name: /sol·licita accés/i }));
   });
 
   const emailInputs = screen.getAllByLabelText(/email/i);
   await act(async () => {
     await userEvent.type(emailInputs[emailInputs.length - 1], 'aina@joviat.cat');
     await userEvent.type(screen.getByLabelText(/nom i cognoms/i), 'Aina Serra');
-    await userEvent.click(screen.getByRole('button', { name: /sol.licitar acces/i }));
+    await userEvent.click(screen.getByRole('button', { name: /sol·licitar accés/i }));
   });
 
   expect(addDoc).not.toHaveBeenCalled();
   expect(
-    await screen.findByText(/aquest email ja existeix com a alumni/i)
+    await screen.findByText(/aquest email ja existeix com a Alumni/i)
   ).toBeInTheDocument();
   expect(screen.queryByLabelText(/nom i cognoms/i)).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: /tancar/i })).toBeInTheDocument();
@@ -709,19 +709,19 @@ test('warns when requesting access with a pending registration email', async () 
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /sol.licita acces/i }));
+    await userEvent.click(screen.getByRole('button', { name: /sol·licita accés/i }));
   });
 
   const emailInputs = screen.getAllByLabelText(/email/i);
   await act(async () => {
     await userEvent.type(emailInputs[emailInputs.length - 1], 'pendent@joviat.cat');
     await userEvent.type(screen.getByLabelText(/nom i cognoms/i), 'Usuari Pendent');
-    await userEvent.click(screen.getByRole('button', { name: /sol.licitar acces/i }));
+    await userEvent.click(screen.getByRole('button', { name: /sol·licitar accés/i }));
   });
 
   expect(addDoc).not.toHaveBeenCalled();
   expect(
-    await screen.findByText(/aquest email ja te una sol.licitud pendent/i)
+    await screen.findByText(/aquest email ja té una sol·licitud pendent/i)
   ).toBeInTheDocument();
   expect(screen.queryByLabelText(/nom i cognoms/i)).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: /tancar/i })).toBeInTheDocument();
@@ -801,11 +801,11 @@ test('allows an administrator to accept a pending registration', async () => {
   });
 
   expect(
-    await screen.findByText(/estas segur que vols donar d'alta a pepito perez/i)
+    await screen.findByText(/estàs segur que vols donar d'alta a pepito perez/i)
   ).toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^si$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^sí$/i }));
   });
 
   expect(createStudentAccount).toHaveBeenCalledWith({
@@ -884,11 +884,11 @@ test('asks for confirmation before canceling a pending registration', async () =
 
   expect(deleteDoc).not.toHaveBeenCalled();
   expect(
-    await screen.findByText(/estas segur que vols cancel.lar la peticio d'alta de pepito perez/i)
+    await screen.findByText(/estàs segur que vols cancel·lar la petició d'alta de pepito perez/i)
   ).toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /cancel.lar peticio/i }));
+    await userEvent.click(screen.getByRole('button', { name: /cancel·lar petició/i }));
   });
 
   expect(deleteDoc).toHaveBeenCalledWith({
@@ -896,7 +896,7 @@ test('asks for confirmation before canceling a pending registration', async () =
     path: 'UserRegistrations/registration-1',
   });
   expect(
-    await screen.findByText(/s'ha cancel.lat la sol.licitud de pepito perez/i)
+    await screen.findByText(/s'ha cancel·lat la sol·licitud de pepito perez/i)
   ).toBeInTheDocument();
 });
 
@@ -970,7 +970,7 @@ test('allows an administrator to review and delete a pending establishment regis
   expect(screen.getByText(/maps.app.goo.gl/i)).toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /veure peticio|ver petición|view request/i }));
+    await userEvent.click(screen.getByRole('button', { name: /veure petició|ver petición|view request/i }));
   });
 
   expect(await screen.findByText(/can jubany/i)).toBeInTheDocument();
@@ -979,7 +979,7 @@ test('allows an administrator to review and delete a pending establishment regis
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /cancel.lar peticio/i }));
+    await userEvent.click(screen.getByRole('button', { name: /cancel·lar petició/i }));
   });
 
   expect(deleteDoc).toHaveBeenCalledWith({
@@ -989,7 +989,7 @@ test('allows an administrator to review and delete a pending establishment regis
   expect(await screen.findByText(/s'ha eliminat la petici/i)).toBeInTheDocument();
 });
 
-test('warns when accepting a registration whose alumni email already exists', async () => {
+test('warns when accepting a registration whose Alumni email already exists', async () => {
   let authListener;
   onAuthStateChanged.mockImplementation((auth, callback) => {
     authListener = callback;
@@ -1069,13 +1069,13 @@ test('warns when accepting a registration whose alumni email already exists', as
   });
 
   await act(async () => {
-    await userEvent.click(await screen.findByRole('button', { name: /^si$/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /^sí$/i }));
   });
 
   expect(createStudentAccount).not.toHaveBeenCalled();
   expect(addDoc).not.toHaveBeenCalledWith('Alumni', expect.anything());
   expect(await screen.findByText(/aquest usuari ja estava creat/i)).toBeInTheDocument();
-  expect(screen.queryByText(/estas segur que vols donar d'alta/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/estàs segur que vols donar d'alta/i)).not.toBeInTheDocument();
 });
 
 test('does not show administrator options for a logged user outside Administrator', async () => {
@@ -1202,8 +1202,8 @@ test('does not show administrator options for a logged user outside Administrato
   });
 
   expect(await screen.findByRole('button', { name: /^logout$/i })).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /afegir restaurant/i })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /afegir alumne/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /afegir establiment/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /afegir Alumni/i })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /gestionar altes/i })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /veure trello/i })).not.toBeInTheDocument();
 });
@@ -1271,20 +1271,20 @@ test('allows an administrator to add a student with photo and restaurant links',
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /afegir alumne/i }));
+    await userEvent.click(screen.getByRole('button', { name: /afegir Alumni/i }));
   });
 
-  expect(await screen.findByRole('heading', { name: /afegir alumne/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /afegir Alumni/i })).toBeInTheDocument();
 
   await act(async () => {
     await userEvent.type(screen.getByLabelText(/nom complet/i), 'Clara Font');
     await userEvent.click(screen.getByRole('button', { name: /selecciona els estudis/i }));
     await userEvent.click(screen.getByLabelText(/CFGM Cuina i gastronomia/i));
     await userEvent.type(screen.getByLabelText(/contrasenya/i), 'securepass');
-    await userEvent.type(screen.getByLabelText(/correu electronic/i), 'clara@joviat.cat');
-    await userEvent.type(screen.getByLabelText(/telefon de contacte/i), '600777888');
+    await userEvent.type(screen.getByLabelText(/correu electrònic/i), 'clara@joviat.cat');
+    await userEvent.type(screen.getByLabelText(/telèfon de contacte/i), '600777888');
     await userEvent.type(screen.getByLabelText(/perfil linkedin/i), 'https://linkedin.com/in/clara-font');
-    await userEvent.selectOptions(screen.getByLabelText(/any de promocio/i), 'currently-studying');
+    await userEvent.selectOptions(screen.getByLabelText(/any de promoció/i), 'currently-studying');
     await userEvent.type(screen.getByLabelText(/filtrar establiments pel nom/i), 'Disfru');
   });
 
@@ -1307,11 +1307,11 @@ test('allows an administrator to add a student with photo and restaurant links',
 
   await act(async () => {
     await userEvent.selectOptions(screen.getByLabelText(/^establiment$/i), 'restaurant-2');
-    await userEvent.selectOptions(screen.getByLabelText(/^àmbit professional$/i), 'diningRoom');
+    await userEvent.selectOptions(screen.getByLabelText(/^perfil professional$/i), 'diningRoom');
     await userEvent.click(screen.getByLabelText(/està treballant actualment/i));
     const addRestaurantButtons = screen.getAllByRole('button', { name: /afegir establiment/i });
     await userEvent.click(addRestaurantButtons[addRestaurantButtons.length - 1]);
-    await userEvent.click(screen.getByRole('button', { name: /desar alumne/i }));
+    await userEvent.click(screen.getByRole('button', { name: /desar Alumni/i }));
   });
 
   expect(ref).toHaveBeenCalledWith({}, expect.stringMatching(/^alumni\//));
@@ -1349,12 +1349,12 @@ test('navigates to the students screen', async () => {
   render(<App />);
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /^alumnes$/i })
+      screen.getByRole('button', { name: /^Alumnis$/i })
     );
   });
 
   expect(
-    await screen.findByRole('heading', { name: /llistat d'alumnis/i })
+    await screen.findByRole('heading', { name: /llistat d'Alumnis/i })
   ).toBeInTheDocument();
   expect(await screen.findByText(/aina serra/i)).toBeInTheDocument();
   expect((await screen.findAllByText(/1 establiment associat/i)).length).toBe(2);
@@ -1368,11 +1368,11 @@ test('filters students by name and clears the search', async () => {
   render(<App />);
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /^alumnes$/i })
+      screen.getByRole('button', { name: /^Alumnis$/i })
     );
   });
 
-  const searchInput = await screen.findByLabelText(/cercar alumne/i);
+  const searchInput = await screen.findByLabelText(/cercar Alumni/i);
 
   await act(async () => {
     await userEvent.type(searchInput, 'aina');
@@ -1383,7 +1383,7 @@ test('filters students by name and clears the search', async () => {
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /esborrar cerca d'alumnes/i })
+      screen.getByRole('button', { name: /esborrar cerca d'Alumnis/i })
     );
   });
 
@@ -1391,7 +1391,7 @@ test('filters students by name and clears the search', async () => {
   expect(screen.getByText(/marc pujol/i)).toBeInTheDocument();
 });
 
-test('filters students by professional area and lets you select or clear all professional areas', async () => {
+test('filters students by professional profile and lets you select or clear all professional profiles', async () => {
   getDocs.mockImplementation(async (collectionName) => {
     if (collectionName === 'Rest-Alum') {
       return {
@@ -1443,14 +1443,14 @@ test('filters students by professional area and lets you select or clear all pro
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /^alumnes$/i })
+      screen.getByRole('button', { name: /^Alumnis$/i })
     );
   });
 
   await screen.findByText(/aina serra/i);
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^àmbit professional$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^perfil professional$/i }));
   });
 
   await act(async () => {
@@ -1461,14 +1461,14 @@ test('filters students by professional area and lets you select or clear all pro
   expect(screen.queryByText(/marc pujol/i)).not.toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /treure tots els àmbits professionals/i }));
+    await userEvent.click(screen.getByRole('button', { name: /treure tots els perfils professionals/i }));
   });
 
   expect(screen.getByText(/aina serra/i)).toBeInTheDocument();
   expect(screen.getByText(/marc pujol/i)).toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /seleccionar tots els àmbits professionals/i }));
+    await userEvent.click(screen.getByRole('button', { name: /seleccionar tots els perfils professionals/i }));
   });
 
   expect(screen.getByLabelText(/comercial/i)).toBeChecked();
@@ -1486,8 +1486,8 @@ test('paginates the students list in groups of 8 below the search field', async 
         docs: Array.from({ length: 10 }, (_, index) => ({
           id: `student-${index + 1}`,
           data: () => ({
-            Name: `Alumne ${index + 1}`,
-            Email: `alumne${index + 1}@joviat.cat`,
+            Name: `Alumni ${index + 1}`,
+            Email: `Alumni${index + 1}@joviat.cat`,
           }),
         })),
       };
@@ -1500,29 +1500,29 @@ test('paginates the students list in groups of 8 below the search field', async 
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /^alumnes$/i })
+      screen.getByRole('button', { name: /^Alumnis$/i })
     );
   });
 
-  const searchInput = await screen.findByLabelText(/cercar alumne/i);
-  const pagination = screen.getByRole('navigation', { name: /paginacio d'alumnes/i });
+  const searchInput = await screen.findByLabelText(/cercar Alumni/i);
+  const pagination = screen.getByRole('navigation', { name: /paginació d'Alumnis/i });
 
   expect(searchInput.compareDocumentPosition(pagination) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(screen.getByText(/1 a 8 de 10 alumnes/i)).toBeInTheDocument();
-  expect(screen.getByText(/^alumne 1$/i)).toBeInTheDocument();
-  expect(screen.getByText(/^alumne 8$/i)).toBeInTheDocument();
-  expect(screen.queryByText(/^alumne 9$/i)).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /anar a la pagina 1/i })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByText(/1 a 8 de 10 Alumnis/i)).toBeInTheDocument();
+  expect(screen.getByText(/^Alumni 1$/i)).toBeInTheDocument();
+  expect(screen.getByText(/^Alumni 8$/i)).toBeInTheDocument();
+  expect(screen.queryByText(/^Alumni 9$/i)).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /anar a la pàgina 1/i })).toHaveAttribute('aria-current', 'page');
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /pagina seguent/i }));
+    await userEvent.click(screen.getByRole('button', { name: /pàgina següent/i }));
   });
 
-  expect(await screen.findByText(/9 a 10 de 10 alumnes/i)).toBeInTheDocument();
-  expect(screen.getByText(/^alumne 9$/i)).toBeInTheDocument();
-  expect(screen.getByText(/^alumne 10$/i)).toBeInTheDocument();
-  expect(screen.queryByText(/^alumne 1$/i)).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /anar a la pagina 2/i })).toHaveAttribute('aria-current', 'page');
+  expect(await screen.findByText(/9 a 10 de 10 Alumnis/i)).toBeInTheDocument();
+  expect(screen.getByText(/^Alumni 9$/i)).toBeInTheDocument();
+  expect(screen.getByText(/^Alumni 10$/i)).toBeInTheDocument();
+  expect(screen.queryByText(/^Alumni 1$/i)).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /anar a la pàgina 2/i })).toHaveAttribute('aria-current', 'page');
 });
 
 test('opens the student detail card from the students list', async () => {
@@ -1530,7 +1530,7 @@ test('opens the student detail card from the students list', async () => {
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /^alumnes$/i })
+      screen.getByRole('button', { name: /^Alumnis$/i })
     );
   });
 
@@ -1541,7 +1541,7 @@ test('opens the student detail card from the students list', async () => {
   });
 
   expect(await screen.findByRole('heading', { name: /aina serra/i })).toBeInTheDocument();
-  expect(screen.getByText(/^alumne$/i)).toBeInTheDocument();
+  expect(screen.getByText(/fitxa d'Alumni/i)).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: /^contacte$/i })).not.toBeInTheDocument();
   expect(screen.queryByText(/aina@joviat.cat/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/600123123/i)).not.toBeInTheDocument();
@@ -1669,7 +1669,7 @@ test('shows the contact section in the student detail when the user is logged in
   expect(await screen.findByRole('button', { name: /^logout$/i })).toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^alumnes$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alumnis$/i }));
   });
 
   await act(async () => {
@@ -1808,7 +1808,7 @@ test('does not show edit or delete actions on another student detail for non adm
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^alumnes$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alumnis$/i }));
   });
 
   await act(async () => {
@@ -1912,7 +1912,7 @@ test('shows edit and delete actions on the student detail for administrators', a
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^alumnes$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alumnis$/i }));
   });
 
   await act(async () => {
@@ -2017,7 +2017,7 @@ test('reuses the add student form in edit mode for administrators', async () => 
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^alumnes$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alumnis$/i }));
   });
 
   await act(async () => {
@@ -2030,10 +2030,10 @@ test('reuses the add student form in edit mode for administrators', async () => 
     await userEvent.click(await screen.findByRole('button', { name: /^editar$/i }));
   });
 
-  expect(await screen.findByRole('heading', { name: /editar alumne/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /editar Alumni/i })).toBeInTheDocument();
   expect(screen.getByLabelText(/nom complet/i)).toHaveValue('Aina Serra');
-  expect(screen.getByLabelText(/correu electronic/i)).toHaveValue('aina@joviat.cat');
-  expect(screen.getByLabelText(/telefon de contacte/i)).toHaveValue('600123123');
+  expect(screen.getByLabelText(/correu electrònic/i)).toHaveValue('aina@joviat.cat');
+  expect(screen.getByLabelText(/telèfon de contacte/i)).toHaveValue('600123123');
   expect(screen.getByLabelText(/perfil linkedin/i)).toHaveValue('linkedin.com/in/aina-serra');
   expect(screen.queryByLabelText(/contrasenya/i)).not.toBeInTheDocument();
   expect(screen.getByAltText(/aina serra/i)).toHaveAttribute('src', 'https://i.pravatar.cc/320?img=12');
@@ -2042,12 +2042,12 @@ test('reuses the add student form in edit mode for administrators', async () => 
   await act(async () => {
     await userEvent.clear(screen.getByLabelText(/nom complet/i));
     await userEvent.type(screen.getByLabelText(/nom complet/i), 'Aina Serra Rovira');
-    await userEvent.clear(screen.getByLabelText(/telefon de contacte/i));
-    await userEvent.type(screen.getByLabelText(/telefon de contacte/i), '699111222');
+    await userEvent.clear(screen.getByLabelText(/telèfon de contacte/i));
+    await userEvent.type(screen.getByLabelText(/telèfon de contacte/i), '699111222');
     await userEvent.clear(screen.getByLabelText(/filtrar establiments pel nom/i));
     await userEvent.type(screen.getByLabelText(/filtrar establiments pel nom/i), 'Disfr');
     await userEvent.selectOptions(screen.getByLabelText(/^establiment$/i), 'restaurant-2');
-    await userEvent.selectOptions(screen.getByLabelText(/^àmbit professional$/i), 'diningRoom');
+    await userEvent.selectOptions(screen.getByLabelText(/^perfil professional$/i), 'diningRoom');
     const addRestaurantButtons = screen.getAllByRole('button', { name: /afegir establiment/i });
     await userEvent.click(addRestaurantButtons[addRestaurantButtons.length - 1]);
     await userEvent.click(screen.getByRole('button', { name: /desar canvis/i }));
@@ -2162,7 +2162,7 @@ test('shows the password recovery button only for administrators in edit mode', 
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^alumnes$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alumnis$/i }));
   });
 
   await act(async () => {
@@ -2175,14 +2175,14 @@ test('shows the password recovery button only for administrators in edit mode', 
     await userEvent.click(await screen.findByRole('button', { name: /^editar$/i }));
   });
 
-  expect(await screen.findByRole('button', { name: /recuperar contrassenya/i })).toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: /recuperar contrasenya/i })).toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /recuperar contrassenya/i }));
+    await userEvent.click(screen.getByRole('button', { name: /recuperar contrasenya/i }));
   });
 
   expect(sendPasswordResetEmail).toHaveBeenCalledWith({}, 'aina@joviat.cat');
-  expect(await screen.findByText(/s'ha enviat el correu per recuperar la contrassenya/i)).toBeInTheDocument();
+  expect(await screen.findByText(/s'ha enviat el correu per recuperar la contrasenya/i)).toBeInTheDocument();
 });
 
 test('does not show the password recovery button for a non administrator editing their own profile', async () => {
@@ -2259,7 +2259,7 @@ test('does not show the password recovery button for a non administrator editing
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^alumnes$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alumnis$/i }));
   });
 
   await act(async () => {
@@ -2272,8 +2272,8 @@ test('does not show the password recovery button for a non administrator editing
     await userEvent.click(await screen.findByRole('button', { name: /^editar$/i }));
   });
 
-  expect(await screen.findByRole('heading', { name: /editar alumne/i })).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /recuperar contrassenya/i })).not.toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /editar Alumni/i })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /recuperar contrasenya/i })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: /modificar password/i })).toBeInTheDocument();
 });
 
@@ -2357,12 +2357,12 @@ test('opens the logged student edit form from the header avatar', async () => {
     await userEvent.click(screen.getByRole('button', { name: /obrir la meva fitxa/i }));
   });
 
-  expect(await screen.findByRole('heading', { name: /editar alumne/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /editar Alumni/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /editar perfil/i })).toHaveClass('sidebar__link--active');
-  expect(screen.getByRole('button', { name: /^alumnes$/i })).not.toHaveClass('sidebar__link--active');
-  expect(screen.getByRole('button', { name: /^restaurants$/i })).not.toHaveClass('sidebar__link--active');
+  expect(screen.getByRole('button', { name: /^Alumnis$/i })).not.toHaveClass('sidebar__link--active');
+  expect(screen.getByRole('button', { name: /^establiments$/i })).not.toHaveClass('sidebar__link--active');
   expect(screen.getByLabelText(/nom complet/i)).toHaveValue('Aina Serra');
-  expect(screen.getByLabelText(/correu electronic/i)).toHaveValue('aina@joviat.cat');
+  expect(screen.getByLabelText(/correu electrònic/i)).toHaveValue('aina@joviat.cat');
   expect(screen.getByAltText(/aina serra/i)).toHaveAttribute(
     'src',
     'https://i.pravatar.cc/320?img=12'
@@ -2371,13 +2371,13 @@ test('opens the logged student edit form from the header avatar', async () => {
   expect(screen.getByRole('button', { name: /modificar password/i })).toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /donar d'alta restaurant/i }));
+    await userEvent.click(screen.getByRole('button', { name: /donar d'alta establiment/i }));
   });
 
   await act(async () => {
     await userEvent.type(
-      screen.getByLabelText(/descrip/i),
-      'Restaurant La Fonda, Manresa'
+      screen.getByLabelText(/enllaç de google maps/i),
+      'https://maps.app.goo.gl/la-fonda'
     );
     await userEvent.click(screen.getByRole('button', { name: /enviar petici/i }));
   });
@@ -2385,7 +2385,8 @@ test('opens the logged student edit form from the header avatar', async () => {
   expect(addDoc).toHaveBeenCalledWith('RestaruantsRegistrations', {
     Name: 'Aina Serra',
     Email: 'aina@joviat.cat',
-    Description: 'Restaurant La Fonda, Manresa',
+    Description: '',
+    GoogleMapsShareUrl: 'https://maps.app.goo.gl/la-fonda',
     id_alumni: { id: 'student-1', path: 'Alumni/student-1' },
     createdAt: 'SERVER_TIMESTAMP',
   });
@@ -2595,7 +2596,7 @@ test('allows an administrator to delete a student from detail view without leavi
   expect(await screen.findByRole('button', { name: /^logout$/i })).toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^alumnes$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alumnis$/i }));
   });
 
   await act(async () => {
@@ -2609,10 +2610,10 @@ test('allows an administrator to delete a student from detail view without leavi
   });
 
   expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
-  expect(screen.getByText(/s'eliminara la foto de l'alumne/i)).toBeInTheDocument();
+  expect(screen.getByText(/s'eliminarà la foto de l'Alumni/i)).toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /confirmar eliminacio/i }));
+    await userEvent.click(screen.getByRole('button', { name: /confirmar eliminació/i }));
   });
 
   expect(initializeApp).toHaveBeenCalled();
@@ -2631,7 +2632,7 @@ test('allows an administrator to delete a student from detail view without leavi
   expect(deleteUser).toHaveBeenCalledWith({ uid: 'student-1-auth', email: 'aina@joviat.cat' });
   expect(deleteApp).toHaveBeenCalled();
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
-  expect(await screen.findByRole('heading', { name: /llistat d'alumnis/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /llistat d'Alumnis/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /^logout$/i })).toBeInTheDocument();
 });
 
@@ -2835,13 +2836,13 @@ test('allows an administrator to delete a restaurant from its detail card', asyn
   expect(screen.getByText(/rest-alum/i)).toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /confirmar eliminacio/i }));
+    await userEvent.click(screen.getByRole('button', { name: /confirmar eliminació/i }));
   });
 
   expect(deleteDoc).toHaveBeenCalledWith({ id: 'relation-1', path: 'Rest-Alum/relation-1' });
   expect(deleteDoc).toHaveBeenCalledWith({ id: 'relation-2', path: 'Rest-Alum/relation-2' });
   expect(deleteDoc).toHaveBeenCalledWith({ id: 'restaurant-1', path: 'Restaurant/restaurant-1' });
-  expect(await screen.findByRole('heading', { name: /llistat de restaurants/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /llistat d'establiments/i })).toBeInTheDocument();
 });
 
 test('allows an administrator to edit a restaurant from its detail card using the same form', async () => {
@@ -3058,7 +3059,7 @@ test('opens the restaurant detail card from the student detail', async () => {
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /^alumnes$/i })
+      screen.getByRole('button', { name: /^Alumnis$/i })
     );
   });
 
@@ -3128,12 +3129,12 @@ test('navigates to the restaurants screen and returns home from the logo', async
   });
 
   expect(
-    await screen.findByRole('heading', { name: /llistat de restaurants/i })
+    await screen.findByRole('heading', { name: /llistat d'establiments/i })
   ).toBeInTheDocument();
   expect(screen.getByTestId('restaurants-map')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /veure mapa/i })).toHaveAttribute('aria-pressed', 'true');
   expect(
-    screen.queryByRole('navigation', { name: /paginacio de restaurants/i })
+    screen.queryByRole('navigation', { name: /paginació d'establiments/i })
   ).not.toBeInTheDocument();
   expect(collection).toHaveBeenCalledWith({}, 'Restaurant');
   expect(collection).toHaveBeenCalledWith({}, 'Rest-Alum');
@@ -3142,7 +3143,7 @@ test('navigates to the restaurants screen and returns home from the logo', async
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /tornar a la pagina principal/i })
+      screen.getByRole('button', { name: /tornar a la pàgina principal/i })
     );
   });
 
@@ -3162,7 +3163,7 @@ test('shows the restaurant card on restaurant map pins and opens the detail from
 
   expect((await screen.findAllByText(/el celler de can roca/i)).length).toBeGreaterThan(0);
   expect(screen.getAllByText(/carrer de can sunyer/i).length).toBeGreaterThan(0);
-  expect(screen.getAllByText(/1 alumni associat/i).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/1 Alumni associat/i).length).toBeGreaterThan(0);
   expect(screen.getAllByRole('button', { name: /obrir fitxa de .* des del mapa/i }).length).toBeGreaterThan(0);
 
   await act(async () => {
@@ -3251,13 +3252,18 @@ test('builds restaurant city filters from the city after the postal code', async
     await userEvent.click(screen.getByRole('button', { name: /veure llistat/i }));
   });
 
-  const cityFilter = await screen.findByLabelText(/ciutat/i);
-  expect(screen.getByRole('option', { name: /^vic$/i })).toBeInTheDocument();
-  expect(screen.getByRole('option', { name: /^sitges$/i })).toBeInTheDocument();
-  expect(screen.queryByRole('option', { name: /^barcelona$/i })).not.toBeInTheDocument();
+  const cityFilter = await screen.findByRole('button', { name: /ciutat/i });
 
   await act(async () => {
-    await userEvent.selectOptions(cityFilter, 'Vic');
+    await userEvent.click(cityFilter);
+  });
+
+  expect(screen.getByLabelText(/^vic$/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/^sitges$/i)).toBeInTheDocument();
+  expect(screen.queryByLabelText(/^barcelona$/i)).not.toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(screen.getByLabelText(/^vic$/i));
   });
 
   expect(screen.getAllByText(/la taula de vic/i).length).toBeGreaterThan(0);
@@ -3292,7 +3298,7 @@ test('paginates the restaurants list in groups of 8 below the search field', asy
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /^restaurants$/i })
+      screen.getByRole('button', { name: /^establiments$/i })
     );
   });
 
@@ -3300,23 +3306,23 @@ test('paginates the restaurants list in groups of 8 below the search field', asy
     await userEvent.click(screen.getByRole('button', { name: /veure llistat/i }));
   });
 
-  const searchInput = await screen.findByLabelText(/cercar restaurant/i);
-  const pagination = screen.getByRole('navigation', { name: /paginacio de restaurants/i });
+  const searchInput = await screen.findByLabelText(/cercar establiment/i);
+  const pagination = screen.getByRole('navigation', { name: /paginació d'establiments/i });
 
   expect(searchInput.compareDocumentPosition(pagination) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(screen.getByText(/1 a 8 de 10 restaurants/i)).toBeInTheDocument();
+  expect(screen.getByText(/1 a 8 de 10 establiments/i)).toBeInTheDocument();
   expect(screen.getByText(/^restaurant 1$/i)).toBeInTheDocument();
   expect(screen.getByText(/^restaurant 8$/i)).toBeInTheDocument();
   expect(screen.queryByText(/^restaurant 9$/i)).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /anar a la pagina 1/i })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByRole('button', { name: /anar a la pàgina 1/i })).toHaveAttribute('aria-current', 'page');
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /pagina seguent/i }));
+    await userEvent.click(screen.getByRole('button', { name: /pàgina següent/i }));
   });
 
-  expect(await screen.findByText(/9 a 10 de 10 restaurants/i)).toBeInTheDocument();
+  expect(await screen.findByText(/9 a 10 de 10 establiments/i)).toBeInTheDocument();
   expect(screen.getByText(/^restaurant 9$/i)).toBeInTheDocument();
   expect(screen.getByText(/^restaurant 10$/i)).toBeInTheDocument();
   expect(screen.queryByText(/^restaurant 1$/i)).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /anar a la pagina 2/i })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByRole('button', { name: /anar a la pàgina 2/i })).toHaveAttribute('aria-current', 'page');
 });

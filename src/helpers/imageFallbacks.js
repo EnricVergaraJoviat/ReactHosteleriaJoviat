@@ -1,7 +1,7 @@
 import alumniFallbackImage from '../assets/images/Alumni.png';
 
 function createSvgPlaceholder(type, label) {
-  const safeLabel = label || (type === 'student' ? 'Alumne' : 'Restaurant');
+  const safeLabel = label || (type === 'student' ? 'Alumni' : 'Restaurant');
   const subtitle = type === 'student' ? 'Perfil' : 'Hostaleria';
   const accent = type === 'student' ? '#6d5532' : '#8b3d1f';
   const background = type === 'student' ? '#efe6d4' : '#f3dfd0';

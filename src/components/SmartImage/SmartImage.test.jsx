@@ -22,7 +22,7 @@ test('falls back to a generated placeholder when the remote image fails', () => 
   expect(image.getAttribute('src')).toMatch(/^data:image\/svg\+xml;charset=UTF-8,/);
 });
 
-test('student fallback placeholder uses the alumni image asset', () => {
+test('student fallback placeholder uses the Alumni image asset', () => {
   const { container } = render(
     <SmartImage
       src=""
@@ -59,7 +59,7 @@ test('hides the loader when the browser already has the image loaded', async () 
 
   const { container } = render(
     <SmartImage
-      src="https://images.example/alumne.jpg"
+      src="https://images.example/Alumni.jpg"
       type="student"
       label="Aina Serra"
       alt="Aina Serra"

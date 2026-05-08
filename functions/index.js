@@ -74,7 +74,7 @@ async function sendStudentWelcomeEmail({ email, name, password }) {
     },
   });
 
-  const safeName = name || 'alumne';
+  const safeName = name || 'Alumni';
 
   await transporter.sendMail({
     from: gmailEmail,
@@ -84,7 +84,7 @@ async function sendStudentWelcomeEmail({ email, name, password }) {
       `Hola ${safeName},`,
       '',
       'S\'ha creat el teu compte d\'Alumni Joviat.',
-      `La contrasenya inicial configurada es: ${password}`,
+      `La contrasenya inicial configurada és: ${password}`,
       '',
       'Quan iniciïs sessió, recorda que pots canviar-la des del teu perfil.',
       '',
@@ -94,7 +94,7 @@ async function sendStudentWelcomeEmail({ email, name, password }) {
     html: `
       <p>Hola ${safeName},</p>
       <p>S'ha creat el teu compte d'Alumni Joviat.</p>
-      <p><strong>La contrasenya inicial configurada es: ${password}</strong></p>
+      <p><strong>La contrasenya inicial configurada és: ${password}</strong></p>
       <p>Quan iniciïs sessió, recorda que pots canviar-la des del teu perfil.</p>
       <p>Salutacions,<br />Equip Alumni Joviat</p>
     `,
@@ -124,7 +124,7 @@ async function sendRestaurantRegistrationApprovedEmail({
     },
   });
 
-  const safeName = alumniName || 'alumne';
+  const safeName = alumniName || 'Alumni';
   const safeRestaurantName = restaurantName || 'el teu establiment';
 
   await transporter.sendMail({
@@ -464,7 +464,7 @@ exports.createStudentAccount = onCall(
     const existingAlumniSnapshot = await alumniCollection.where('Email', '==', email).limit(1).get();
 
     if (!existingAlumniSnapshot.empty) {
-      throw new HttpsError('already-exists', 'An alumni user already exists with this email.');
+      throw new HttpsError('already-exists', 'An Alumni user already exists with this email.');
     }
 
     let authUserRecord;
