@@ -239,7 +239,7 @@ const ca = {
   'forms.restaurantAlreadyAdded': 'Aquest establiment ja està afegit.',
   'forms.passwordRequired': 'La contrasenya és obligatòria.',
   'forms.emailRequired': 'El correu electrònic és obligatori.',
-  'forms.duplicateRestaurant': 'No pots repetir el mateix establiment mes d\'una vegada.',
+  'forms.duplicateRestaurant': 'No pots repetir el mateix establiment més d\'una vegada.',
   'forms.emailAlreadyInUse': 'Ja hi ha un usuari a la base de dades amb aquest email.',
   'forms.invalidEmail': 'El correu electrònic introduït no és vàlid.',
   'forms.weakPassword': 'La contrasenya ha de tenir com a mínim 6 caràcters.',

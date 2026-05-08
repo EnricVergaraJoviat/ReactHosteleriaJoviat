@@ -2367,7 +2367,7 @@ test('opens the logged student edit form from the header avatar', async () => {
     'src',
     'https://i.pravatar.cc/320?img=12'
   );
-  expect(screen.queryByRole('button', { name: /recuperar contrassenya/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /recuperar contrasenya/i })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: /modificar password/i })).toBeInTheDocument();
 
   await act(async () => {
