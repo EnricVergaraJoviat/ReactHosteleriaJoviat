@@ -1,6 +1,6 @@
 {
   "name": "react_hosteleria_joviat",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
@@ -20,9 +20,11 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "version:bump": "node scripts/bump-version.js",
+    "build:release": "npm run version:bump && npm run build",
     "serve:hosting": "firebase emulators:start --only hosting",
-    "deploy:hosting": "node scripts/bump-version.js && npm run build && firebase deploy --only hosting",
-    "deploy:all": "node scripts/bump-version.js && npm run build && firebase deploy",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "deploy:all": "firebase deploy",
     "release:hosting": "npm run deploy:hosting",
     "release:all": "npm run deploy:all",
     "test": "react-scripts test",
