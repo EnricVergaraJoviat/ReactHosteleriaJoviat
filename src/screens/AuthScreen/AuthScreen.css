@@ -161,6 +161,12 @@
   line-height: 1.5;
 }
 
+.auth-screen__reset-description {
+  margin: 0.85rem 0 0;
+  color: #4b4b4b;
+  line-height: 1.55;
+}
+
 .auth-screen__request-feedback--error {
   color: #9a2f2f;
 }

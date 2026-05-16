@@ -11,6 +11,7 @@ function AuthScreen({
   onClearError,
   onLogin,
   onLogout,
+  onPasswordReset,
   onRequestAccess,
 }) {
   const { t } = useI18n();
@@ -21,12 +22,19 @@ function AuthScreen({
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [requestErrorMessage, setRequestErrorMessage] = useState('');
   const [requestSuccessMessage, setRequestSuccessMessage] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isResetSubmitting, setIsResetSubmitting] = useState(false);
+  const [resetErrorMessage, setResetErrorMessage] = useState('');
+  const [resetSuccessMessage, setResetSuccessMessage] = useState('');
 
   const isLoginMode = mode === 'login';
   const isLogoutMode = mode === 'logout';
   const shouldOpenRequestDialog = mode === 'request';
   const requestResultMessage = requestSuccessMessage || requestErrorMessage;
   const isRequestSuccess = Boolean(requestSuccessMessage);
+  const resetResultMessage = resetSuccessMessage || resetErrorMessage;
+  const isResetSuccess = Boolean(resetSuccessMessage);
 
   useEffect(() => {
     if (shouldOpenRequestDialog) {
@@ -40,6 +48,19 @@ function AuthScreen({
     setIsRequestDialogOpen(false);
     setRequestErrorMessage('');
     setRequestSuccessMessage('');
+  }
+
+  function openResetDialog() {
+    setResetEmail(email);
+    setResetErrorMessage('');
+    setResetSuccessMessage('');
+    setIsResetDialogOpen(true);
+  }
+
+  function closeResetDialog() {
+    setIsResetDialogOpen(false);
+    setResetErrorMessage('');
+    setResetSuccessMessage('');
   }
 
   async function handleSubmit(event) {
@@ -68,6 +89,24 @@ function AuthScreen({
       } else {
         setRequestErrorMessage(t('auth.requestError'));
       }
+    }
+  }
+
+  async function handlePasswordResetSubmit(event) {
+    event.preventDefault();
+    setResetErrorMessage('');
+    setResetSuccessMessage('');
+    setIsResetSubmitting(true);
+
+    try {
+      await onPasswordReset({
+        email: resetEmail,
+      });
+      setResetSuccessMessage(t('auth.passwordResetSent'));
+    } catch (error) {
+      setResetErrorMessage(error?.message || t('auth.passwordResetError'));
+    } finally {
+      setIsResetSubmitting(false);
     }
   }
 
@@ -126,6 +165,16 @@ function AuthScreen({
                 }}
               >
                 {t('auth.requestAccess')}
+              </button>
+            </div>
+            <div className="auth-screen__request-access">
+              <p>{t('auth.forgotPasswordPrompt')}</p>
+              <button
+                className="auth-screen__request-access-link"
+                type="button"
+                onClick={openResetDialog}
+              >
+                {t('auth.recoverPassword')}
               </button>
             </div>
           </>
@@ -251,6 +300,88 @@ function AuthScreen({
                 </button>
               </div>
               </form>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {isResetDialogOpen ? (
+        <div className="auth-screen__error-layer">
+          <div
+            className="auth-screen__error-dialog auth-screen__request-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="auth-password-reset-title"
+          >
+            <h2 id="auth-password-reset-title">{t('auth.passwordResetTitle')}</h2>
+            {resetResultMessage ? (
+              <>
+                <p
+                  className={`auth-screen__request-feedback ${
+                    isResetSuccess
+                      ? 'auth-screen__request-feedback--success'
+                      : 'auth-screen__request-feedback--error'
+                  }`}
+                  role={isResetSuccess ? 'status' : 'alert'}
+                >
+                  {resetResultMessage}
+                </p>
+                <div className="auth-screen__dialog-actions">
+                  {!isResetSuccess ? (
+                    <button
+                      className="auth-screen__secondary-button"
+                      type="button"
+                      onClick={() => {
+                        setResetErrorMessage('');
+                      }}
+                    >
+                      {t('auth.tryAgain')}
+                    </button>
+                  ) : null}
+                  <button
+                    className="auth-screen__primary-action"
+                    type="button"
+                    onClick={closeResetDialog}
+                  >
+                    {t('common.close')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="auth-screen__reset-description">
+                  {t('auth.passwordResetDescription')}
+                </p>
+                <form className="auth-screen__form" onSubmit={handlePasswordResetSubmit}>
+                  <label className="auth-screen__field">
+                    <span>Email</span>
+                    <input
+                      autoComplete="email"
+                      name="password-reset-email"
+                      type="email"
+                      value={resetEmail}
+                      onChange={(event) => setResetEmail(event.target.value)}
+                      required
+                    />
+                  </label>
+                  <div className="auth-screen__dialog-actions">
+                    <button
+                      className="auth-screen__secondary-button"
+                      type="button"
+                      onClick={closeResetDialog}
+                    >
+                      {t('common.close')}
+                    </button>
+                    <button
+                      className="auth-screen__primary-action"
+                      type="submit"
+                      disabled={isResetSubmitting}
+                    >
+                      {isResetSubmitting ? t('auth.passwordResetSending') : t('auth.passwordResetSubmit')}
+                    </button>
+                  </div>
+                </form>
+              </>
             )}
           </div>
         </div>

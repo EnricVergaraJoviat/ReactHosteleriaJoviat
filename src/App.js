@@ -35,14 +35,44 @@ function getAuthErrorMessage(error, t) {
   }
 }
 
+function getPasswordResetErrorMessage(error, t) {
+  switch (error?.code) {
+    case 'functions/invalid-argument':
+    case 'invalid-argument':
+      return t('auth.invalidEmail');
+    case 'functions/not-found':
+    case 'not-found':
+    case 'auth/user-not-found':
+      return t('auth.passwordResetEmailNotFound');
+    case 'functions/failed-precondition':
+    case 'failed-precondition':
+      return t('auth.passwordResetEmailNotConfigured');
+    default:
+      return t('auth.passwordResetError');
+  }
+}
+
 function normalizeEmail(value) {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function getInitialActiveView() {
+  const pathname = typeof window !== 'undefined'
+    ? window.location.pathname.replace(/\/+$/, '')
+    : '';
+
+  if (pathname === '/login') {
+    return 'auth';
+  }
+
+  return 'home';
 }
 
 function App() {
   const { t } = useI18n();
   const notifyRestaurantRegistrationApproved = httpsCallable(functions, 'sendRestaurantRegistrationApprovedEmail');
-  const [activeView, setActiveView] = useState('home');
+  const sendLoginPasswordResetEmail = httpsCallable(functions, 'sendPasswordResetEmail');
+  const [activeView, setActiveView] = useState(getInitialActiveView);
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [studentDetailOrigin, setStudentDetailOrigin] = useState('students');
   const [studentFormMode, setStudentFormMode] = useState('create');
@@ -326,6 +356,14 @@ function App() {
     await createUserRegistration({ email, name });
   }
 
+  async function handlePasswordReset({ email }) {
+    try {
+      await sendLoginPasswordResetEmail({ email: normalizeEmail(email) });
+    } catch (error) {
+      throw new Error(getPasswordResetErrorMessage(error, t));
+    }
+  }
+
   let screen = (
     <HomeScreen
       onNavigate={(view) => {
@@ -386,6 +424,7 @@ function App() {
         onClearError={() => setAuthErrorMessage('')}
         onLogin={handleLogin}
         onLogout={handleLogout}
+        onPasswordReset={handlePasswordReset}
         onRequestAccess={handleRequestAccess}
       />
     );

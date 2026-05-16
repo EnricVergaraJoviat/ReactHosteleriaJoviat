@@ -11,6 +11,9 @@ initializeApp();
 
 const GOOGLE_MAPS_API_KEY = defineString('GOOGLE_MAPS_API_KEY');
 const GMAIL_EMAIL = defineString('GMAIL_EMAIL');
+const APP_LOGIN_URL = defineString('APP_LOGIN_URL', {
+  default: 'https://reacthosteleriajoviat.web.app/login',
+});
 const GMAIL_APP_PASSWORD = defineSecret('GMAIL_APP_PASSWORD');
 
 function normalizeEmail(value) {
@@ -58,6 +61,7 @@ function normalizeJoviatStudies(value) {
 async function sendStudentWelcomeEmail({ email, name, password }) {
   const gmailEmail = GMAIL_EMAIL.value();
   const gmailAppPassword = GMAIL_APP_PASSWORD.value();
+  const loginUrl = APP_LOGIN_URL.value();
 
   if (!gmailEmail || !gmailAppPassword) {
     throw new HttpsError(
@@ -84,6 +88,9 @@ async function sendStudentWelcomeEmail({ email, name, password }) {
       `Hola ${safeName},`,
       '',
       'S\'ha creat el teu compte d\'Alumni Joviat.',
+      'Ja pots iniciar sessió a la plataforma des d\'aquest enllaç:',
+      loginUrl,
+      '',
       `La contrasenya inicial configurada és: ${password}`,
       '',
       'Quan iniciïs sessió, recorda que pots canviar-la des del teu perfil.',
@@ -94,6 +101,8 @@ async function sendStudentWelcomeEmail({ email, name, password }) {
     html: `
       <p>Hola ${safeName},</p>
       <p>S'ha creat el teu compte d'Alumni Joviat.</p>
+      <p>Ja pots iniciar sessió a la plataforma des d'aquest enllaç:</p>
+      <p><a href="${loginUrl}">Inicia sessió a Alumni Joviat</a></p>
       <p><strong>La contrasenya inicial configurada és: ${password}</strong></p>
       <p>Quan iniciïs sessió, recorda que pots canviar-la des del teu perfil.</p>
       <p>Salutacions,<br />Equip Alumni Joviat</p>
@@ -144,6 +153,50 @@ async function sendRestaurantRegistrationApprovedEmail({
       <p>Hola ${safeName},</p>
       <p>Ja hem donat d'alta <strong>${safeRestaurantName}</strong> a Alumni Joviat.</p>
       <p>A partir d'ara ja el pots vincular al teu compte des de la plataforma.</p>
+      <p>Salutacions,<br />Equip Alumni Joviat</p>
+    `,
+  });
+}
+
+async function sendPasswordResetEmailMessage({ email, resetLink }) {
+  const gmailEmail = GMAIL_EMAIL.value();
+  const gmailAppPassword = GMAIL_APP_PASSWORD.value();
+
+  if (!gmailEmail || !gmailAppPassword) {
+    throw new HttpsError(
+      'failed-precondition',
+      'Email delivery is not configured. Missing Gmail credentials.'
+    );
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: gmailEmail,
+      pass: gmailAppPassword,
+    },
+  });
+
+  await transporter.sendMail({
+    from: gmailEmail,
+    to: email,
+    subject: 'Recupera la contrasenya d\'Alumni Joviat',
+    text: [
+      'Hola,',
+      '',
+      'Hem rebut una petició per recuperar la contrasenya del teu compte d\'Alumni Joviat.',
+      `Obre aquest enllaç per crear una nova contrasenya: ${resetLink}`,
+      '',
+      'Si no has demanat aquest canvi, pots ignorar aquest correu.',
+      '',
+      'Salutacions,',
+      'Equip Alumni Joviat',
+    ].join('\n'),
+    html: `
+      <p>Hola,</p>
+      <p>Hem rebut una petició per recuperar la contrasenya del teu compte d'Alumni Joviat.</p>
+      <p><a href="${resetLink}">Crea una nova contrasenya</a></p>
+      <p>Si no has demanat aquest canvi, pots ignorar aquest correu.</p>
       <p>Salutacions,<br />Equip Alumni Joviat</p>
     `,
   });
@@ -575,6 +628,64 @@ exports.sendRestaurantRegistrationApprovedEmail = onCall(
         error,
       });
       throw new HttpsError('internal', 'Unable to send restaurant registration approved email.');
+    }
+  }
+);
+
+exports.sendPasswordResetEmail = onCall(
+  {
+    region: 'europe-west1',
+    timeoutSeconds: 60,
+    memory: '256MiB',
+    cors: true,
+    invoker: 'public',
+    secrets: [GMAIL_APP_PASSWORD],
+  },
+  async (request) => {
+    const auth = getAuth();
+    const db = getFirestore();
+    const email = normalizeEmail(request.data?.email);
+
+    if (!email) {
+      throw new HttpsError('invalid-argument', 'A valid email is required.');
+    }
+
+    try {
+      const alumniSnapshot = await db
+        .collection('Alumni')
+        .where('Email', '==', email)
+        .limit(1)
+        .get();
+
+      if (alumniSnapshot.empty) {
+        throw new HttpsError('not-found', 'No Alumni user exists with this email.');
+      }
+
+      await auth.getUserByEmail(email);
+      const resetLink = await auth.generatePasswordResetLink(email);
+
+      await sendPasswordResetEmailMessage({
+        email,
+        resetLink,
+      });
+
+      return {
+        emailSent: true,
+      };
+    } catch (error) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+
+      if (error?.code === 'auth/user-not-found') {
+        throw new HttpsError('not-found', 'No Authentication user exists with this email.');
+      }
+
+      logger.error('Unable to send password reset email', {
+        email,
+        error,
+      });
+      throw new HttpsError('internal', 'Unable to send password reset email.');
     }
   }
 );
