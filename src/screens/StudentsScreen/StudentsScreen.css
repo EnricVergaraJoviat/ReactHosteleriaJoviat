@@ -494,11 +494,21 @@
   font-weight: 800;
 }
 
+.student-card__studies {
+  display: grid;
+  gap: 0.16rem;
+  margin: -0.15rem 0 0;
+}
+
 .student-card__status {
   margin: -0.15rem 0 0;
   color: #5b5348;
   font-size: 0.93rem;
   line-height: 1.35;
+}
+
+.student-card__studies .student-card__status {
+  margin: 0;
 }
 
 .student-card__promotion-year {

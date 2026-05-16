@@ -386,11 +386,17 @@ function StudentsScreen({ onOpenStudentDetails }) {
               </div>
               <div className="student-card__body">
                 <h2>{student.Name ?? t('common.noName')}</h2>
-                <p className="student-card__status">
-                  {joviatStudyLabels.length
-                    ? joviatStudyLabels.join(', ')
-                    : t('forms.joviatStudiesMissing')}
-                </p>
+                <div className="student-card__studies">
+                  {joviatStudyLabels.length ? joviatStudyLabels.map((studyLabel) => (
+                    <p className="student-card__status" key={studyLabel}>
+                      {studyLabel}
+                    </p>
+                  )) : (
+                    <p className="student-card__status">
+                      {t('forms.joviatStudiesMissing')}
+                    </p>
+                  )}
+                </div>
                 {student.PromotionYear ? (
                   <p className="student-card__promotion-year">
                     {formatPromotionYear(t, student.PromotionYear)}
