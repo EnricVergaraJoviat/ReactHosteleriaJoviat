@@ -3,6 +3,7 @@ import SmartImage from '../../components/SmartImage/SmartImage';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import { getJoviatStudyLabels } from '../../helpers/joviatStudies';
 import { formatPromotionYear } from '../../helpers/promotionYears';
+import { translateRestaurantRoles } from '../../helpers/restaurantRoles';
 import { deleteStudentAccount } from '../../helpers/studentDeletion';
 import { useI18n } from '../../i18n/I18nContext';
 import './StudentDetailScreen.css';
@@ -48,6 +49,39 @@ function formatInstagramDisplayValue(value) {
   }
 
   return value.startsWith('@') ? value : `@${value}`;
+}
+
+function formatRestaurantCityCountry(address) {
+  if (!address || typeof address !== 'string') {
+    return '';
+  }
+
+  const segments = address
+    .split(',')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  if (segments.length === 0) {
+    return '';
+  }
+
+  const knownCountries = ['espanya', 'españa', 'spain'];
+  const lastSegment = segments[segments.length - 1] ?? '';
+  const hasCountrySegment = knownCountries.includes(lastSegment.toLowerCase());
+  const country = hasCountrySegment ? lastSegment : '';
+  const postalCodeCityMatch = address.match(/\b(?:ES[-\s]?)?\d{5}\s+([^,]+)/i);
+  const citySegments = hasCountrySegment ? segments.slice(0, -1) : segments;
+  const city = postalCodeCityMatch?.[1]?.trim()
+    ?? citySegments.reverse().find((segment) => {
+      const normalizedSegment = segment.toLowerCase();
+      return !knownCountries.includes(normalizedSegment);
+    })
+    ?? '';
+
+  const cleanedCity = city.replace(/^\d{4,5}\s+/, '').trim();
+  const locationParts = [cleanedCity, country].filter(Boolean);
+
+  return [...new Set(locationParts)].join(', ');
 }
 
 function DetailIcon({ type }) {
@@ -297,6 +331,9 @@ function StudentDetailScreen({
     || hasStudentActivity
   );
   const joviatStudyLabels = getJoviatStudyLabels(student.JoviatStudies ?? student.Studies);
+  const studentBio = typeof student.Bio === 'string'
+    ? student.Bio.trim()
+    : '';
 
   return (
     <section className="student-detail">
@@ -324,6 +361,9 @@ function StudentDetailScreen({
         <div className="student-detail__hero-body">
           <p className="student-detail__eyebrow">{t('detail.studentSheet')}</p>
           <h1>{student.Name ?? t('common.noName')}</h1>
+          {studentBio ? (
+            <p className="student-detail__bio">{studentBio}</p>
+          ) : null}
           <div className="student-detail__student-status" role="group" aria-label={t('forms.joviatStudies')}>
             {joviatStudyLabels.length ? joviatStudyLabels.map((studyLabel) => (
               <span
@@ -425,36 +465,44 @@ function StudentDetailScreen({
 
         {student.linkedRestaurants?.length ? (
           <div className="student-detail__restaurants">
-            {student.linkedRestaurants.map((restaurant) => (
-              <article className="student-detail__restaurant-card" key={`${student.id}-${restaurant.id}`}>
-                <div className="student-detail__restaurant-image-wrap">
-                  <SmartImage
-                    className="student-detail__restaurant-image"
-                    src={restaurant.PhotoURL}
-                    type="restaurant"
-                    label={restaurant.Name}
-                    alt={restaurant.Name ?? t('common.restaurant')}
-                  />
-                </div>
-                <div className="student-detail__restaurant-body">
-                  <h3>{restaurant.Name ?? t('common.noName')}</h3>
-                  <p className="student-detail__restaurant-address">
-                    {restaurant.Address ?? t('common.addressUnavailable')}
-                  </p>
-                  <p className={`student-detail__restaurant-status${restaurant.currentJob ? '' : ' student-detail__restaurant-status--muted'}`}>
-                    {restaurant.currentJob ? t('common.currentJob') : t('common.previousExperience')}
-                  </p>
-                  <button
-                    className="student-detail__details"
-                    type="button"
-                    aria-label={t('restaurants.openDetails', { name: restaurant.Name ?? t('common.restaurant') })}
-                    onClick={() => onOpenRestaurantDetails(restaurant.id, 'student-detail')}
-                  >
-                    {t('common.details')}
-                  </button>
-                </div>
-              </article>
-            ))}
+            {student.linkedRestaurants.map((restaurant) => {
+              const roleLabels = translateRestaurantRoles(restaurant.roles ?? restaurant.role, t);
+              const cityCountry = formatRestaurantCityCountry(restaurant.Address);
+
+              return (
+                <article className="student-detail__restaurant-card" key={`${student.id}-${restaurant.id}`}>
+                  <div className="student-detail__restaurant-image-wrap">
+                    <SmartImage
+                      className="student-detail__restaurant-image"
+                      src={restaurant.PhotoURL}
+                      type="restaurant"
+                      label={restaurant.Name}
+                      alt={restaurant.Name ?? t('common.restaurant')}
+                    />
+                  </div>
+                  <div className="student-detail__restaurant-body">
+                    <h3>{restaurant.Name ?? t('common.noName')}</h3>
+                    <p className="student-detail__restaurant-address">
+                      {cityCountry || t('common.addressUnavailable')}
+                    </p>
+                    <p className="student-detail__restaurant-roles">
+                      {roleLabels.length ? roleLabels.join(', ') : t('common.roleUnavailable')}
+                    </p>
+                    <p className={`student-detail__restaurant-status${restaurant.currentJob ? '' : ' student-detail__restaurant-status--muted'}`}>
+                      {restaurant.currentJob ? t('common.currentJob') : t('common.previousExperience')}
+                    </p>
+                    <button
+                      className="student-detail__details"
+                      type="button"
+                      aria-label={t('restaurants.openDetails', { name: restaurant.Name ?? t('common.restaurant') })}
+                      onClick={() => onOpenRestaurantDetails(restaurant.id, 'student-detail')}
+                    >
+                      {t('common.details')}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : null}
       </section>

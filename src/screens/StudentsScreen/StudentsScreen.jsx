@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import {
   getRestaurantRoleOptions,
-  normalizeRestaurantRole,
+  normalizeRestaurantRoles as normalizeRestaurantRoleList,
 } from '../../helpers/restaurantRoles';
 import {
   getJoviatStudyLabels,
@@ -86,7 +86,7 @@ function StudentsScreen({ onOpenStudentDetails }) {
     const matchesPromotionYear = promotionYearFilter === 'all'
       || String(student.PromotionYear ?? '') === promotionYearFilter;
     const normalizedStudentRoles = (student.linkedRestaurants ?? [])
-      .map((restaurant) => normalizeRestaurantRole(restaurant.role))
+      .flatMap((restaurant) => normalizeRestaurantRoleList(restaurant.roles ?? restaurant.role))
       .filter(Boolean);
     const matchesRole = roleFilters.length === 0
       || roleFilters.some((roleFilter) => normalizedStudentRoles.includes(roleFilter));

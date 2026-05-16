@@ -533,6 +533,7 @@ exports.createStudentAccount = onCall(
         Name: name,
         PhotoURL: normalizeOptionalString(rawStudentData.PhotoURL),
         Email: email,
+        Bio: normalizeOptionalString(rawStudentData.Bio ?? rawStudentData.bio),
         Phone: normalizeOptionalString(rawStudentData.Phone),
         LinkedIn: normalizeOptionalString(rawStudentData.LinkedIn),
         Instagram: normalizeOptionalString(rawStudentData.Instagram),

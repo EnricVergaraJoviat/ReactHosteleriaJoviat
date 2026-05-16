@@ -58,6 +58,15 @@ export function normalizeRestaurantRole(value) {
   return matchedKey ?? trimmedValue;
 }
 
+export function normalizeRestaurantRoles(value) {
+  const roleValues = Array.isArray(value) ? value : [value];
+  const normalizedRoles = roleValues
+    .map((roleValue) => normalizeRestaurantRole(roleValue))
+    .filter(Boolean);
+
+  return [...new Set(normalizedRoles)];
+}
+
 export function getRestaurantRoleOptions(t) {
   return RESTAURANT_ROLE_KEYS.map((roleKey) => ({
     value: roleKey,
@@ -73,4 +82,10 @@ export function translateRestaurantRole(value, t) {
   }
 
   return String(value ?? '').trim();
+}
+
+export function translateRestaurantRoles(value, t) {
+  return normalizeRestaurantRoles(value)
+    .map((roleValue) => translateRestaurantRole(roleValue, t))
+    .filter(Boolean);
 }

@@ -362,6 +362,7 @@ beforeEach(() => {
             Name: 'Aina Serra',
             PhotoURL: 'https://i.pravatar.cc/320?img=12',
             Email: 'aina@joviat.cat',
+            Bio: 'Cuinera creativa formada a la Joviat.',
             Phone: '600123123',
             LinkedIn: 'linkedin.com/in/aina-serra',
             Password: 'aina-pass',
@@ -1373,6 +1374,7 @@ test('allows an administrator to add a student with photo and restaurant links',
     await userEvent.click(screen.getByLabelText(/CFGM Cuina i gastronomia/i));
     await userEvent.type(screen.getByLabelText(/contrasenya/i), 'securepass');
     await userEvent.type(screen.getByLabelText(/correu electrònic/i), 'clara@joviat.cat');
+    await userEvent.type(screen.getByLabelText(/^bio$/i), 'Alumni amb passió per la sala.');
     await userEvent.type(screen.getByLabelText(/telèfon de contacte/i), '600777888');
     await userEvent.type(screen.getByLabelText(/perfil linkedin/i), 'https://linkedin.com/in/clara-font');
     await userEvent.selectOptions(screen.getByLabelText(/any de promoció/i), 'currently-studying');
@@ -1398,7 +1400,7 @@ test('allows an administrator to add a student with photo and restaurant links',
 
   await act(async () => {
     await userEvent.selectOptions(screen.getByLabelText(/^establiment$/i), 'restaurant-2');
-    await userEvent.selectOptions(screen.getByLabelText(/^perfil professional$/i), 'diningRoom');
+    await userEvent.click(screen.getByLabelText(/^professional de sala$/i));
     await userEvent.click(screen.getByLabelText(/està treballant actualment/i));
     const addRestaurantButtons = screen.getAllByRole('button', { name: /afegir establiment/i });
     await userEvent.click(addRestaurantButtons[addRestaurantButtons.length - 1]);
@@ -1416,6 +1418,7 @@ test('allows an administrator to add a student with photo and restaurant links',
       Name: 'Clara Font i Soler',
       PhotoURL: 'https://storage.example/alumni/nova.jpg',
       Email: 'clara@joviat.cat',
+      Bio: 'Alumni amb passió per la sala.',
       Phone: '600777888',
       LinkedIn: 'https://linkedin.com/in/clara-font',
       Instagram: '',
@@ -1428,7 +1431,7 @@ test('allows an administrator to add a student with photo and restaurant links',
   expect(addDoc).toHaveBeenCalledWith('Rest-Alum', {
     id_alumni: { id: 'student-new', path: 'Alumni/student-new' },
     id_restaurant: { id: 'restaurant-2', path: 'Restaurant/restaurant-2' },
-    rol: 'diningRoom',
+    rol: ['diningRoom'],
     current_job: false,
     createdAt: 'SERVER_TIMESTAMP',
   });
@@ -1633,11 +1636,13 @@ test('opens the student detail card from the students list', async () => {
 
   expect(await screen.findByRole('heading', { name: /aina serra/i })).toBeInTheDocument();
   expect(screen.getByText(/fitxa d'Alumni/i)).toBeInTheDocument();
+  expect(screen.getByText(/cuinera creativa formada a la joviat/i)).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: /^contacte$/i })).not.toBeInTheDocument();
   expect(screen.queryByText(/aina@joviat.cat/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/600123123/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/linkedin.com\/in\/aina-serra/i)).not.toBeInTheDocument();
-  expect(screen.getByText(/carrer de can sunyer, 48, girona/i)).toBeInTheDocument();
+  expect(screen.getByText(/^girona$/i)).toBeInTheDocument();
+  expect(screen.queryByText(/carrer de can sunyer/i)).not.toBeInTheDocument();
   expect(screen.getByText(/^treballa actualment$/i)).toBeInTheDocument();
 });
 
@@ -1726,6 +1731,7 @@ test('shows the contact section in the student detail when the user is logged in
             Name: 'Aina Serra',
             PhotoURL: 'https://i.pravatar.cc/320?img=12',
             Email: 'aina@joviat.cat',
+            Bio: 'Cuinera creativa formada a la Joviat.',
             Phone: '600123123',
             LinkedIn: 'linkedin.com/in/aina-serra',
             Password: 'aina-pass',
@@ -1980,6 +1986,7 @@ test('shows edit and delete actions on the student detail for administrators', a
             Name: 'Aina Serra',
             PhotoURL: 'https://i.pravatar.cc/320?img=12',
             Email: 'aina@joviat.cat',
+            Bio: 'Cuinera creativa formada a la Joviat.',
             Phone: '600123123',
             LinkedIn: 'linkedin.com/in/aina-serra',
             Password: 'aina-pass',
@@ -2085,6 +2092,7 @@ test('reuses the add student form in edit mode for administrators', async () => 
             Name: 'Aina Serra',
             PhotoURL: 'https://i.pravatar.cc/320?img=12',
             Email: 'aina@joviat.cat',
+            Bio: 'Cuinera creativa formada a la Joviat.',
             Phone: '600123123',
             LinkedIn: 'linkedin.com/in/aina-serra',
             Password: 'aina-pass',
@@ -2123,6 +2131,7 @@ test('reuses the add student form in edit mode for administrators', async () => 
 
   expect(await screen.findByRole('heading', { name: /editar Alumni/i })).toBeInTheDocument();
   expect(screen.getByLabelText(/nom complet/i)).toHaveValue('Aina Serra');
+  expect(screen.getByLabelText(/^bio$/i)).toHaveValue('Cuinera creativa formada a la Joviat.');
   expect(screen.getByLabelText(/correu electrònic/i)).toHaveValue('aina@joviat.cat');
   expect(screen.getByLabelText(/telèfon de contacte/i)).toHaveValue('600123123');
   expect(screen.getByLabelText(/perfil linkedin/i)).toHaveValue('linkedin.com/in/aina-serra');
@@ -2133,12 +2142,14 @@ test('reuses the add student form in edit mode for administrators', async () => 
   await act(async () => {
     await userEvent.clear(screen.getByLabelText(/nom complet/i));
     await userEvent.type(screen.getByLabelText(/nom complet/i), 'Aina Serra Rovira');
+    await userEvent.clear(screen.getByLabelText(/^bio$/i));
+    await userEvent.type(screen.getByLabelText(/^bio$/i), 'Cap de cuina amb experiència internacional.');
     await userEvent.clear(screen.getByLabelText(/telèfon de contacte/i));
     await userEvent.type(screen.getByLabelText(/telèfon de contacte/i), '699111222');
     await userEvent.clear(screen.getByLabelText(/filtrar establiments pel nom/i));
     await userEvent.type(screen.getByLabelText(/filtrar establiments pel nom/i), 'Disfr');
     await userEvent.selectOptions(screen.getByLabelText(/^establiment$/i), 'restaurant-2');
-    await userEvent.selectOptions(screen.getByLabelText(/^perfil professional$/i), 'diningRoom');
+    await userEvent.click(screen.getByLabelText(/^professional de sala$/i));
     const addRestaurantButtons = screen.getAllByRole('button', { name: /afegir establiment/i });
     await userEvent.click(addRestaurantButtons[addRestaurantButtons.length - 1]);
     await userEvent.click(screen.getByRole('button', { name: /desar canvis/i }));
@@ -2150,6 +2161,7 @@ test('reuses the add student form in edit mode for administrators', async () => 
       Name: 'Aina Serra Rovira',
       PhotoURL: 'https://i.pravatar.cc/320?img=12',
       Email: 'aina@joviat.cat',
+      Bio: 'Cap de cuina amb experiència internacional.',
       Phone: '699111222',
       LinkedIn: 'linkedin.com/in/aina-serra',
       Instagram: '',
@@ -2163,7 +2175,7 @@ test('reuses the add student form in edit mode for administrators', async () => 
   expect(addDoc).toHaveBeenCalledWith('Rest-Alum', {
     id_alumni: { id: 'student-1', path: 'Alumni/student-1' },
     id_restaurant: { id: 'restaurant-2', path: 'Restaurant/restaurant-2' },
-    rol: 'diningRoom',
+    rol: ['diningRoom'],
     current_job: true,
     createdAt: 'SERVER_TIMESTAMP',
   });
@@ -2481,7 +2493,20 @@ test('opens the logged student edit form from the header avatar', async () => {
     id_alumni: { id: 'student-1', path: 'Alumni/student-1' },
     createdAt: 'SERVER_TIMESTAMP',
   });
-  expect(await screen.findByText(/s'ha enviat la petici/i)).toBeInTheDocument();
+  expect(
+    await screen.findByRole('dialog', { name: /petició enviada/i })
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(/rebràs un correu electrònic/i)
+  ).toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /acceptar/i }));
+  });
+
+  expect(
+    screen.queryByRole('dialog', { name: /petició enviada/i })
+  ).not.toBeInTheDocument();
 });
 
 test('allows a logged student to change their password from editar perfil', async () => {

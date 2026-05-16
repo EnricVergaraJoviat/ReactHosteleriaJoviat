@@ -9,7 +9,7 @@ async function deleteRestaurant(restaurant) {
   const relationIds = [
     ...new Set(
       (restaurant.linkedStudents ?? [])
-        .map((student) => student.relationId)
+        .flatMap((student) => student.relationIds ?? student.relationId)
         .filter(Boolean)
     ),
   ];

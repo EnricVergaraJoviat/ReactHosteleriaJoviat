@@ -1,5 +1,6 @@
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
+import { normalizeRestaurantRoles } from './restaurantRoles';
 
 function mapSnapshot(snapshot) {
   return snapshot.docs.map((entry) => ({
@@ -38,6 +39,42 @@ function createLookupById(items) {
   return new Map(items.map((item) => [item.id, item]));
 }
 
+function addRelationLink(linksByOwnerId, ownerId, linkedItem, relation) {
+  const linksForOwner = linksByOwnerId.get(ownerId) ?? [];
+  const existingLink = linksForOwner.find((entry) => entry.id === linkedItem.id);
+  const relationRoles = normalizeRestaurantRoles(relation.rol);
+
+  if (existingLink) {
+    existingLink.roles = [
+      ...new Set([
+        ...normalizeRestaurantRoles(existingLink.roles ?? existingLink.role),
+        ...relationRoles,
+      ]),
+    ];
+    existingLink.role = existingLink.roles;
+    existingLink.currentJob = existingLink.currentJob || Boolean(relation.current_job);
+    existingLink.relationIds = [
+      ...new Set([
+        ...(existingLink.relationIds ?? []),
+        existingLink.relationId,
+        relation.id,
+      ].filter(Boolean)),
+    ];
+    existingLink.relationId = existingLink.relationIds[0] ?? existingLink.relationId ?? '';
+    return;
+  }
+
+  linksForOwner.push({
+    ...linkedItem,
+    relationId: relation.id,
+    relationIds: relation.id ? [relation.id] : [],
+    role: relationRoles,
+    roles: relationRoles,
+    currentJob: Boolean(relation.current_job),
+  });
+  linksByOwnerId.set(ownerId, linksForOwner);
+}
+
 async function loadFirestoreCollections() {
   const [studentsSnapshot, restaurantsSnapshot, relationsSnapshot] = await Promise.all([
     getDocs(collection(db, 'Alumni')),
@@ -74,27 +111,8 @@ async function loadStudentRestaurantGraph() {
       return;
     }
 
-    const restaurantsForStudent = restaurantLinksByStudentId.get(studentId) ?? [];
-    if (!restaurantsForStudent.some((entry) => entry.id === restaurant.id)) {
-      restaurantsForStudent.push({
-        ...restaurant,
-        relationId: relation.id,
-        role: relation.rol ?? '',
-        currentJob: Boolean(relation.current_job),
-      });
-      restaurantLinksByStudentId.set(studentId, restaurantsForStudent);
-    }
-
-    const studentsForRestaurant = studentLinksByRestaurantId.get(restaurantId) ?? [];
-    if (!studentsForRestaurant.some((entry) => entry.id === student.id)) {
-      studentsForRestaurant.push({
-        ...student,
-        relationId: relation.id,
-        role: relation.rol ?? '',
-        currentJob: Boolean(relation.current_job),
-      });
-      studentLinksByRestaurantId.set(restaurantId, studentsForRestaurant);
-    }
+    addRelationLink(restaurantLinksByStudentId, studentId, restaurant, relation);
+    addRelationLink(studentLinksByRestaurantId, restaurantId, student, relation);
   });
 
   return {
