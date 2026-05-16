@@ -25,11 +25,11 @@ const JOVIAT_STUDY_OPTIONS = [
   },
   {
     value: 'fp-hoteleria',
-    label: 'FP HOTELERIA',
+    label: 'FP Hoteleria',
   },
   {
     value: 'diplomatura-turisme',
-    label: 'DIPLOMATURA DE TURISME',
+    label: 'Diplomatura de Turisme',
   },
 ];
 

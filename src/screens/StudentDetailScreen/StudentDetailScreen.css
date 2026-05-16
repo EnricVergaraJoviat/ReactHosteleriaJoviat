@@ -71,8 +71,9 @@
 
 .student-detail__student-status {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
   margin-top: 1rem;
 }
 
@@ -80,15 +81,8 @@
   color: #6d5532;
   font-size: 0.9rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
   opacity: 0.24;
-  text-transform: uppercase;
-}
-
-.student-detail__student-status-option + .student-detail__student-status-option::before {
-  content: "/";
-  margin-right: 0.65rem;
-  opacity: 0.4;
+  line-height: 1.35;
 }
 
 .student-detail__student-status-option--active {
