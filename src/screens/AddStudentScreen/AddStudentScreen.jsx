@@ -222,7 +222,7 @@ function AddStudentScreen({
       phone: student.Phone ?? student.phone ?? '',
       linkedIn: student.LinkedIn ?? student.linkedIn ?? '',
       instagram: student.Instagram ?? student.instagram ?? '',
-      visibleContactToAlumniNetwork: student.VisibleContactToAlumniNetwork ?? true,
+      visibleContactToAlumniNetwork: true,
       promotionYear: student.PromotionYear ? String(student.PromotionYear) : '',
       password: '',
     });
@@ -545,7 +545,7 @@ function AddStudentScreen({
           Phone: formData.phone.trim(),
           LinkedIn: formData.linkedIn.trim(),
           Instagram: formData.instagram.trim(),
-          VisibleContactToAlumniNetwork: Boolean(formData.visibleContactToAlumniNetwork),
+          VisibleContactToAlumniNetwork: true,
           PromotionYear: normalizePromotionYearValue(formData.promotionYear),
           JoviatStudies: normalizedJoviatStudies,
           updatedAt: serverTimestamp(),
@@ -584,7 +584,7 @@ function AddStudentScreen({
             Phone: formData.phone.trim(),
             LinkedIn: formData.linkedIn.trim(),
             Instagram: formData.instagram.trim(),
-            VisibleContactToAlumniNetwork: Boolean(formData.visibleContactToAlumniNetwork),
+            VisibleContactToAlumniNetwork: true,
             PromotionYear: normalizePromotionYearValue(formData.promotionYear),
             JoviatStudies: normalizedJoviatStudies,
           },
@@ -833,18 +833,9 @@ function AddStudentScreen({
               onChange={handlePhotoChange}
             />
 
-            <label className="add-student-form__checkbox" htmlFor="student-visible-contact">
-              <input
-                id="student-visible-contact"
-                name="visibleContactToAlumniNetwork"
-                type="checkbox"
-                checked={formData.visibleContactToAlumniNetwork}
-                onChange={handleFormChange}
-              />
-              <span>
-                {t('forms.visibleContactToAlumniNetwork')}
-              </span>
-            </label>
+            <p className="add-student-form__contact-visibility-note">
+              {t('forms.visibleContactToAlumniNetwork')}
+            </p>
 
             <fieldset className="add-student-form__field add-student-form__field--studies">
               <legend className="add-student-form__label">

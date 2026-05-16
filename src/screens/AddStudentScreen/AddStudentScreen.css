@@ -387,6 +387,13 @@
   color: #2f2a24;
 }
 
+.add-student-form__contact-visibility-note {
+  margin: 0;
+  color: #2f2a24;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
 .add-student-form__panel-heading p {
   margin: 0.35rem 0 0;
   color: #6f655a;
