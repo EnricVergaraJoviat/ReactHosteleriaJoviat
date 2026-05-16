@@ -20,11 +20,24 @@ root.render(
 reportWebVitals();
 
 if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+  let refreshing = false;
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) {
+      return;
+    }
+
+    refreshing = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register(`${process.env.PUBLIC_URL}/service-worker.js`).catch((error) => {
-      // Keep the app working even if the browser rejects service worker registration.
-      console.error('Service worker registration failed:', error);
-    });
+    navigator.serviceWorker
+      .register(`${process.env.PUBLIC_URL}/service-worker.js`)
+      .catch((error) => {
+        // Keep the app working even if the browser rejects service worker registration.
+        console.error('Service worker registration failed:', error);
+      });
   });
 } else if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations()

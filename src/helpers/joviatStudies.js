@@ -23,6 +23,14 @@ const JOVIAT_STUDY_OPTIONS = [
     value: 'advanced-sommelier-postgraduate-degree',
     label: 'Advanced Sommelier Postgraduate Degree',
   },
+  {
+    value: 'fp-hoteleria',
+    label: 'FP HOTELERIA',
+  },
+  {
+    value: 'diplomatura-turisme',
+    label: 'DIPLOMATURA DE TURISME',
+  },
 ];
 
 const JOVIAT_STUDY_VALUES = new Set(JOVIAT_STUDY_OPTIONS.map((study) => study.value));
