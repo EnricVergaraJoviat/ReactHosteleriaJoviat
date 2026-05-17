@@ -508,7 +508,20 @@
 }
 
 .student-card__studies .student-card__status {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
   margin: 0;
+}
+
+.student-card__studies .student-card__status::before {
+  content: "";
+  width: 0.28rem;
+  height: 0.28rem;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+  transform: translateY(-0.08rem);
 }
 
 .student-card__promotion-year {

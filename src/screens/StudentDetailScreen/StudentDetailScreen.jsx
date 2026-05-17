@@ -364,19 +364,22 @@ function StudentDetailScreen({
           {studentBio ? (
             <p className="student-detail__bio">{studentBio}</p>
           ) : null}
-          <div className="student-detail__student-status" role="group" aria-label={t('forms.joviatStudies')}>
-            {joviatStudyLabels.length ? joviatStudyLabels.map((studyLabel) => (
-              <span
-                className="student-detail__student-status-option student-detail__student-status-option--active"
-                key={studyLabel}
-              >
-                {studyLabel}
-              </span>
-            )) : (
-              <span className="student-detail__student-status-option">
-                {t('forms.joviatStudiesMissing')}
-              </span>
-            )}
+          <div className="student-detail__student-studies" role="group" aria-label={t('forms.joviatStudies')}>
+            <p className="student-detail__student-studies-title">Estudis realitzats a la Joviat:</p>
+            <div className="student-detail__student-status">
+              {joviatStudyLabels.length ? joviatStudyLabels.map((studyLabel) => (
+                <span
+                  className="student-detail__student-status-option student-detail__student-status-option--active"
+                  key={studyLabel}
+                >
+                  {studyLabel}
+                </span>
+              )) : (
+                <span className="student-detail__student-status-option">
+                  {t('forms.joviatStudiesMissing')}
+                </span>
+              )}
+            </div>
           </div>
           {student.PromotionYear ? (
             <p className="student-detail__promotion-year">
@@ -485,9 +488,17 @@ function StudentDetailScreen({
                     <p className="student-detail__restaurant-address">
                       {cityCountry || t('common.addressUnavailable')}
                     </p>
-                    <p className="student-detail__restaurant-roles">
-                      {roleLabels.length ? roleLabels.join(', ') : t('common.roleUnavailable')}
-                    </p>
+                    <div className="student-detail__restaurant-roles">
+                      {roleLabels.length ? roleLabels.map((roleLabel) => (
+                        <p className="student-detail__restaurant-role" key={roleLabel}>
+                          {roleLabel}
+                        </p>
+                      )) : (
+                        <p className="student-detail__restaurant-role">
+                          {t('common.roleUnavailable')}
+                        </p>
+                      )}
+                    </div>
                     <p className={`student-detail__restaurant-status${restaurant.currentJob ? '' : ' student-detail__restaurant-status--muted'}`}>
                       {restaurant.currentJob ? t('common.currentJob') : t('common.previousExperience')}
                     </p>
