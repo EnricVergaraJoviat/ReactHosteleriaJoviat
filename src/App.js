@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
@@ -68,6 +68,12 @@ function getInitialActiveView() {
   return 'home';
 }
 
+const APP_HISTORY_KEY = 'react-hosteleria-joviat';
+
+function isAppHistoryState(state) {
+  return state?.app === APP_HISTORY_KEY;
+}
+
 function App() {
   const { t } = useI18n();
   const notifyRestaurantRegistrationApproved = httpsCallable(functions, 'sendRestaurantRegistrationApprovedEmail');
@@ -88,6 +94,29 @@ function App() {
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
   const [isAdministrator, setIsAdministrator] = useState(false);
   const [currentStudentProfile, setCurrentStudentProfile] = useState(null);
+  const navigationStateRef = useRef({
+    activeView,
+    selectedStudentId,
+    studentDetailOrigin,
+    selectedRestaurantId,
+    restaurantDetailOrigin,
+  });
+
+  useEffect(() => {
+    navigationStateRef.current = {
+      activeView,
+      selectedStudentId,
+      studentDetailOrigin,
+      selectedRestaurantId,
+      restaurantDetailOrigin,
+    };
+  }, [
+    activeView,
+    selectedStudentId,
+    studentDetailOrigin,
+    selectedRestaurantId,
+    restaurantDetailOrigin,
+  ]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -144,31 +173,7 @@ function App() {
     };
   }, [currentUser]);
 
-  async function handleNavigate(view) {
-    if (view === 'edit-profile') {
-      if (currentStudentProfile) {
-        let selectedProfile = currentStudentProfile;
-
-        try {
-          const { students } = await loadStudentRestaurantGraph();
-          selectedProfile = students.find((entry) => entry.id === currentStudentProfile.id)
-            ?? students.find((entry) =>
-              normalizeEmail(entry.Email) === normalizeEmail(currentUser?.email)
-            )
-            ?? currentStudentProfile;
-          setCurrentStudentProfile(selectedProfile);
-        } catch (error) {}
-
-        setSelectedStudentId(selectedProfile.id);
-        setStudentFormMode('edit');
-        setStudentFormInitialData(selectedProfile);
-        setActiveView('edit-student');
-      }
-      return;
-    }
-
-    setActiveView(view);
-
+  const clearViewStateFor = useCallback((view) => {
     if (
       view !== 'student-detail'
       && view !== 'restaurant-detail'
@@ -197,9 +202,110 @@ function App() {
       setRestaurantFormInitialData(null);
       setPendingRestaurantRegistration(null);
     }
+  }, []);
+
+  const navigateToView = useCallback((view) => {
+    setActiveView(view);
+    clearViewStateFor(view);
+  }, [clearViewStateFor]);
+
+  function pushAppHistoryState(historyState) {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.history.pushState(
+      { app: APP_HISTORY_KEY, ...historyState },
+      '',
+      window.location.href
+    );
+  }
+
+  function handleDetailBack(fallbackView) {
+    if (
+      typeof window !== 'undefined'
+      && isAppHistoryState(window.history.state)
+      && (
+        window.history.state.view === 'student-detail'
+        || window.history.state.view === 'restaurant-detail'
+      )
+    ) {
+      window.history.back();
+      return;
+    }
+
+    navigateToView(fallbackView);
+  }
+
+  useEffect(() => {
+    function handlePopState(event) {
+      if (isAppHistoryState(event.state)) {
+        if (event.state.view === 'student-detail' && event.state.studentId) {
+          setSelectedStudentId(event.state.studentId);
+          setStudentDetailOrigin(event.state.origin ?? 'students');
+          setActiveView('student-detail');
+          return;
+        }
+
+        if (event.state.view === 'restaurant-detail' && event.state.restaurantId) {
+          setSelectedRestaurantId(event.state.restaurantId);
+          setRestaurantDetailOrigin(event.state.origin ?? 'restaurants');
+          setActiveView('restaurant-detail');
+          return;
+        }
+      }
+
+      const currentNavigation = navigationStateRef.current;
+
+      if (currentNavigation.activeView === 'student-detail') {
+        navigateToView(currentNavigation.studentDetailOrigin || 'students');
+        return;
+      }
+
+      if (currentNavigation.activeView === 'restaurant-detail') {
+        navigateToView(currentNavigation.restaurantDetailOrigin || 'restaurants');
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [navigateToView]);
+
+  async function handleNavigate(view) {
+    if (view === 'edit-profile') {
+      if (currentStudentProfile) {
+        let selectedProfile = currentStudentProfile;
+
+        try {
+          const { students } = await loadStudentRestaurantGraph();
+          selectedProfile = students.find((entry) => entry.id === currentStudentProfile.id)
+            ?? students.find((entry) =>
+              normalizeEmail(entry.Email) === normalizeEmail(currentUser?.email)
+            )
+            ?? currentStudentProfile;
+          setCurrentStudentProfile(selectedProfile);
+        } catch (error) {}
+
+        setSelectedStudentId(selectedProfile.id);
+        setStudentFormMode('edit');
+        setStudentFormInitialData(selectedProfile);
+        setActiveView('edit-student');
+      }
+      return;
+    }
+
+    navigateToView(view);
   }
 
   function handleOpenStudentDetails(studentId, origin = 'students') {
+    pushAppHistoryState({
+      view: 'student-detail',
+      studentId,
+      origin,
+    });
     setSelectedStudentId(studentId);
     setStudentDetailOrigin(origin);
     setActiveView('student-detail');
@@ -234,7 +340,12 @@ function App() {
     }
   }
 
-  function handleOpenRestaurantDetails(restaurantId, origin) {
+  function handleOpenRestaurantDetails(restaurantId, origin = 'restaurants') {
+    pushAppHistoryState({
+      view: 'restaurant-detail',
+      restaurantId,
+      origin,
+    });
     setSelectedRestaurantId(restaurantId);
     setRestaurantDetailOrigin(origin);
     setActiveView('restaurant-detail');
@@ -392,7 +503,7 @@ function App() {
         isAdministrator={isAdministrator}
         currentUserEmail={currentUser?.email ?? ''}
         studentId={selectedStudentId}
-        onBack={() => handleNavigate(studentDetailOrigin)}
+        onBack={() => handleDetailBack(studentDetailOrigin)}
         onDeleted={() => handleNavigate('students')}
         onEdit={handleEditStudent}
         onOpenRestaurantDetails={handleOpenRestaurantDetails}
@@ -405,7 +516,7 @@ function App() {
       <RestaurantDetailScreen
         isAdministrator={isAdministrator}
         restaurantId={selectedRestaurantId}
-        onBack={() => handleNavigate(restaurantDetailOrigin)}
+        onBack={() => handleDetailBack(restaurantDetailOrigin)}
         onDeleted={() => handleNavigate('restaurants')}
         onEdit={handleEditRestaurant}
         onOpenStudentDetails={handleOpenStudentDetails}

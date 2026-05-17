@@ -1646,6 +1646,32 @@ test('opens the student detail card from the students list', async () => {
   expect(screen.getByText(/^treballa actualment$/i)).toBeInTheDocument();
 });
 
+test('returns to the students list when using browser back from a student detail', async () => {
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(
+      screen.getByRole('button', { name: /^Alumnis$/i })
+    );
+  });
+
+  await act(async () => {
+    await userEvent.click(
+      await screen.findByRole('button', { name: /obrir fitxa de aina serra/i })
+    );
+  });
+
+  expect(await screen.findByRole('heading', { name: /aina serra/i })).toBeInTheDocument();
+
+  await act(async () => {
+    window.history.back();
+  });
+
+  expect(
+    await screen.findByRole('heading', { name: /llistat d'Alumnis/i })
+  ).toBeInTheDocument();
+});
+
 test('shows the contact section in the student detail when the user is logged in', async () => {
   let authListener;
   onAuthStateChanged.mockImplementation((auth, callback) => {

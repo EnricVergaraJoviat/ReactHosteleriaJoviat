@@ -494,43 +494,55 @@ function RestaurantDetailScreen({
 
         {restaurant.linkedStudents?.length ? (
           <div className="restaurant-detail__students">
-            {restaurant.linkedStudents.map((student) => (
-              <article className="restaurant-detail__student-card" key={`${restaurant.id}-${student.id}`}>
-                <div className="restaurant-detail__student-image-wrap">
-                  <SmartImage
-                    className="restaurant-detail__student-image"
-                    src={student.PhotoURL}
-                    type="student"
-                    label={student.Name}
-                    alt={student.Name ?? t('common.student')}
-                  />
-                </div>
-                <div className="restaurant-detail__student-body">
-                  <h3>{student.Name ?? t('common.noName')}</h3>
-                  <p className="restaurant-detail__student-role">
-                    {translateRestaurantRoles(student.roles ?? student.role, t).join(', ') || t('common.roleUnavailable')}
-                  </p>
-                  {student.PromotionYear ? (
-                    <p className="restaurant-detail__student-promotion-year">
-                      {formatPromotionYear(t, student.PromotionYear)}
+            {restaurant.linkedStudents.map((student) => {
+              const roleLabels = translateRestaurantRoles(student.roles ?? student.role, t);
+
+              return (
+                <article className="restaurant-detail__student-card" key={`${restaurant.id}-${student.id}`}>
+                  <div className="restaurant-detail__student-image-wrap">
+                    <SmartImage
+                      className="restaurant-detail__student-image"
+                      src={student.PhotoURL}
+                      type="student"
+                      label={student.Name}
+                      alt={student.Name ?? t('common.student')}
+                    />
+                  </div>
+                  <div className="restaurant-detail__student-body">
+                    <h3>{student.Name ?? t('common.noName')}</h3>
+                    <div className="restaurant-detail__student-roles">
+                      {roleLabels.length ? roleLabels.map((roleLabel) => (
+                        <p className="restaurant-detail__student-role" key={roleLabel}>
+                          {roleLabel}
+                        </p>
+                      )) : (
+                        <p className="restaurant-detail__student-role">
+                          {t('common.roleUnavailable')}
+                        </p>
+                      )}
+                    </div>
+                    {student.PromotionYear ? (
+                      <p className="restaurant-detail__student-promotion-year">
+                        {formatPromotionYear(t, student.PromotionYear)}
+                      </p>
+                    ) : null}
+                    <p className={`restaurant-detail__student-status${student.currentJob ? '' : ' restaurant-detail__student-status--muted'}`}>
+                      {student.currentJob
+                        ? t('common.currentJob')
+                        : t('common.previousExperience')}
                     </p>
-                  ) : null}
-                  <p className={`restaurant-detail__student-status${student.currentJob ? '' : ' restaurant-detail__student-status--muted'}`}>
-                    {student.currentJob
-                      ? t('common.currentJob')
-                      : t('common.previousExperience')}
-                  </p>
-                  <button
-                    className="restaurant-detail__details"
-                    type="button"
-                    aria-label={t('students.openDetails', { name: student.Name ?? t('common.student') })}
-                    onClick={() => onOpenStudentDetails(student.id, 'restaurant-detail')}
-                  >
-                    {t('common.details')}
-                  </button>
-                </div>
-              </article>
-            ))}
+                    <button
+                      className="restaurant-detail__details"
+                      type="button"
+                      aria-label={t('students.openDetails', { name: student.Name ?? t('common.student') })}
+                      onClick={() => onOpenStudentDetails(student.id, 'restaurant-detail')}
+                    >
+                      {t('common.details')}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : null}
       </section>
