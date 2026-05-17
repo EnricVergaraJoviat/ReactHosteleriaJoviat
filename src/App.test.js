@@ -24,6 +24,7 @@ import App from './App';
 import {
   copyPlacePhotoToStorage,
   createStudentAccount,
+  deleteStudentAccount,
   httpsCallable,
   resolveGoogleMapsShareLink,
   sendLoginPasswordResetEmail,
@@ -64,12 +65,14 @@ jest.mock('firebase/firestore', () => ({
 jest.mock('firebase/functions', () => {
   const copyPlacePhotoToStorageMock = jest.fn();
   const createStudentAccountMock = jest.fn();
+  const deleteStudentAccountMock = jest.fn();
   const resolveGoogleMapsShareLinkMock = jest.fn();
   const sendLoginPasswordResetEmailMock = jest.fn();
 
   return {
     copyPlacePhotoToStorage: copyPlacePhotoToStorageMock,
     createStudentAccount: createStudentAccountMock,
+    deleteStudentAccount: deleteStudentAccountMock,
     resolveGoogleMapsShareLink: resolveGoogleMapsShareLinkMock,
     sendLoginPasswordResetEmail: sendLoginPasswordResetEmailMock,
     httpsCallable: jest.fn((firebaseFunctions, callableName) => {
@@ -79,6 +82,10 @@ jest.mock('firebase/functions', () => {
 
       if (callableName === 'createStudentAccount') {
         return createStudentAccountMock;
+      }
+
+      if (callableName === 'deleteStudentAccount') {
+        return deleteStudentAccountMock;
       }
 
       if (callableName === 'sendPasswordResetEmail') {
@@ -228,6 +235,8 @@ beforeEach(() => {
   createUserWithEmailAndPassword.mockResolvedValue({ user: { uid: 'student-new' } });
   createStudentAccount.mockReset();
   createStudentAccount.mockResolvedValue({ data: { studentId: 'student-new', emailSent: true } });
+  deleteStudentAccount.mockReset();
+  deleteStudentAccount.mockResolvedValue({ data: { deleted: true } });
   sendLoginPasswordResetEmail.mockReset();
   sendLoginPasswordResetEmail.mockResolvedValue({ data: { emailSent: true } });
   httpsCallable.mockReset();
@@ -238,6 +247,10 @@ beforeEach(() => {
 
     if (callableName === 'createStudentAccount') {
       return createStudentAccount;
+    }
+
+    if (callableName === 'deleteStudentAccount') {
+      return deleteStudentAccount;
     }
 
     if (callableName === 'sendPasswordResetEmail') {
@@ -1437,6 +1450,72 @@ test('allows an administrator to add a student with photo and restaurant links',
   });
   expect(await screen.findByText(/s'ha desat correctament/i)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /^logout$/i })).toBeInTheDocument();
+});
+
+test('shows a specific message when creating a student with an existing email', async () => {
+  let authListener;
+  onAuthStateChanged.mockImplementation((auth, callback) => {
+    authListener = callback;
+    callback(null);
+    return jest.fn();
+  });
+  signInWithEmailAndPassword.mockImplementation(async () => {
+    authListener({ email: 'evergara@joviat.cat' });
+  });
+  createStudentAccount.mockRejectedValue({ code: 'functions/already-exists' });
+  getDocs.mockImplementation(async (collectionName) => {
+    if (collectionName === 'Administrator') {
+      return {
+        docs: [
+          {
+            id: 'admin-1',
+            data: () => ({
+              Email: 'evergara@joviat.cat',
+            }),
+          },
+        ],
+      };
+    }
+
+    if (collectionName === 'Restaurant') {
+      return { docs: [] };
+    }
+
+    if (collectionName === 'Alumni' || collectionName === 'Rest-Alum') {
+      return { docs: [] };
+    }
+
+    return { docs: [] };
+  });
+
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^login$/i }));
+  });
+
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(/email/i), 'evergara@joviat.cat');
+    await userEvent.type(screen.getByLabelText(/contrasenya/i), '123456');
+    await userEvent.click(screen.getByRole('button', { name: /fer login/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click(await screen.findByRole('button', { name: /afegir Alumni/i }));
+  });
+
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(/nom complet/i), 'Aina Serra');
+    await userEvent.click(screen.getByRole('button', { name: /selecciona els estudis/i }));
+    await userEvent.click(screen.getByLabelText(/CFGM Cuina i gastronomia/i));
+    await userEvent.type(screen.getByLabelText(/contrasenya/i), 'securepass');
+    await userEvent.type(screen.getByLabelText(/correu electrònic/i), 'aina@joviat.cat');
+    await userEvent.click(screen.getByRole('button', { name: /desar Alumni/i }));
+  });
+
+  expect(await screen.findByText(/ja hi ha un usuari a la base de dades amb aquest email/i))
+    .toBeInTheDocument();
+  expect(screen.queryByText(/no s'ha pogut desar l'Alumni/i)).not.toBeInTheDocument();
 });
 
 test('navigates to the students screen', async () => {
@@ -2758,21 +2837,7 @@ test('allows an administrator to delete a student from detail view without leavi
     await userEvent.click(screen.getByRole('button', { name: /confirmar eliminació/i }));
   });
 
-  expect(initializeApp).toHaveBeenCalled();
-  expect(getAuth).toHaveBeenCalled();
-  expect(signInWithEmailAndPassword).toHaveBeenCalledWith(
-    { appInstance: expect.objectContaining({ name: expect.stringMatching(/^student-delete-student-1-/) }) },
-    'aina@joviat.cat',
-    'aina-pass'
-  );
-  expect(deleteObject).toHaveBeenCalledWith(
-    expect.objectContaining({ path: 'https://storage.example/alumni/aina.jpg' })
-  );
-  expect(deleteDoc).toHaveBeenCalledWith({ id: 'relation-1', path: 'Rest-Alum/relation-1' });
-  expect(deleteDoc).toHaveBeenCalledWith({ id: 'relation-2', path: 'Rest-Alum/relation-2' });
-  expect(deleteDoc).toHaveBeenCalledWith({ id: 'student-1', path: 'Alumni/student-1' });
-  expect(deleteUser).toHaveBeenCalledWith({ uid: 'student-1-auth', email: 'aina@joviat.cat' });
-  expect(deleteApp).toHaveBeenCalled();
+  expect(deleteStudentAccount).toHaveBeenCalledWith({ studentId: 'student-1' });
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   expect(await screen.findByRole('heading', { name: /llistat d'Alumnis/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /^logout$/i })).toBeInTheDocument();

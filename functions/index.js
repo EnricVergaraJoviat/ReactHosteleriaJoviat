@@ -44,6 +44,8 @@ const JOVIAT_STUDY_VALUES = new Set([
   'programa-intensiu-cuina-catalana',
   'diploma-sommelier',
   'advanced-sommelier-postgraduate-degree',
+  'fp-hoteleria',
+  'diplomatura-turisme',
 ]);
 
 function normalizeJoviatStudies(value) {
@@ -56,6 +58,57 @@ function normalizeJoviatStudies(value) {
     .filter((entry, index, entries) =>
       JOVIAT_STUDY_VALUES.has(entry) && entries.indexOf(entry) === index
     );
+}
+
+async function assertAdministrator(request, db) {
+  const email = normalizeEmail(request.auth?.token?.email);
+
+  if (!request.auth?.uid || !email) {
+    throw new HttpsError('unauthenticated', 'Authentication is required.');
+  }
+
+  const administratorSnapshot = await db
+    .collection('Administrator')
+    .where('Email', '==', email)
+    .limit(1)
+    .get();
+
+  if (administratorSnapshot.empty) {
+    throw new HttpsError('permission-denied', 'Administrator permissions are required.');
+  }
+}
+
+function getStorageObjectPath(photoUrl, bucketName) {
+  const normalizedPhotoUrl = normalizeOptionalString(photoUrl);
+
+  if (!normalizedPhotoUrl) {
+    return '';
+  }
+
+  if (normalizedPhotoUrl.startsWith('gs://')) {
+    const withoutScheme = normalizedPhotoUrl.slice('gs://'.length);
+    const slashIndex = withoutScheme.indexOf('/');
+
+    return slashIndex >= 0 ? withoutScheme.slice(slashIndex + 1) : '';
+  }
+
+  try {
+    const url = new URL(normalizedPhotoUrl);
+
+    if (url.hostname === 'firebasestorage.googleapis.com') {
+      const match = url.pathname.match(/\/o\/([^/]+)/);
+      return match?.[1] ? decodeURIComponent(match[1]) : '';
+    }
+
+    if (url.hostname === 'storage.googleapis.com') {
+      const bucketPrefix = `/${bucketName}/`;
+      return url.pathname.startsWith(bucketPrefix)
+        ? decodeURIComponent(url.pathname.slice(bucketPrefix.length))
+        : '';
+    }
+  } catch (error) {}
+
+  return '';
 }
 
 async function sendStudentWelcomeEmail({ email, name, password }) {
@@ -581,6 +634,96 @@ exports.createStudentAccount = onCall(
         error,
       });
       throw new HttpsError('internal', 'Unable to create the student account.');
+    }
+  }
+);
+
+exports.deleteStudentAccount = onCall(
+  {
+    region: 'europe-west1',
+    timeoutSeconds: 60,
+    memory: '256MiB',
+    cors: true,
+    invoker: 'public',
+  },
+  async (request) => {
+    const auth = getAuth();
+    const db = getFirestore();
+    const bucket = getStorage().bucket();
+    const studentId = normalizeOptionalString(request.data?.studentId);
+
+    if (!studentId) {
+      throw new HttpsError('invalid-argument', 'A student id is required.');
+    }
+
+    await assertAdministrator(request, db);
+
+    const studentReference = db.collection('Alumni').doc(studentId);
+    const studentSnapshot = await studentReference.get();
+
+    if (!studentSnapshot.exists) {
+      throw new HttpsError('not-found', 'The Alumni record does not exist.');
+    }
+
+    const studentData = studentSnapshot.data() ?? {};
+    const email = normalizeEmail(studentData.Email);
+    const photoObjectPath = getStorageObjectPath(studentData.PhotoURL, bucket.name);
+
+    try {
+      const relationSnapshots = await Promise.all([
+        db.collection('Rest-Alum').where('id_alumni.id', '==', studentId).get(),
+        db.collection('Rest-Alum').where('id_alumni.path', '==', `Alumni/${studentId}`).get(),
+      ]);
+      const relationReferences = new Map();
+
+      relationSnapshots.forEach((snapshot) => {
+        snapshot.docs.forEach((entry) => {
+          relationReferences.set(entry.ref.path, entry.ref);
+        });
+      });
+
+      const batch = db.batch();
+      relationReferences.forEach((reference) => {
+        batch.delete(reference);
+      });
+      batch.delete(studentReference);
+      await batch.commit();
+
+      if (email) {
+        try {
+          const authUser = await auth.getUserByEmail(email);
+          await auth.deleteUser(authUser.uid);
+        } catch (error) {
+          if (error?.code !== 'auth/user-not-found') {
+            throw error;
+          }
+        }
+      }
+
+      if (photoObjectPath) {
+        await bucket.file(photoObjectPath).delete({ ignoreNotFound: true }).catch((error) => {
+          logger.warn('Unable to delete Alumni photo from Storage', {
+            studentId,
+            photoObjectPath,
+            error,
+          });
+        });
+      }
+
+      return {
+        deleted: true,
+      };
+    } catch (error) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+
+      logger.error('Unable to delete student account', {
+        studentId,
+        email,
+        error,
+      });
+      throw new HttpsError('internal', 'Unable to delete the student account.');
     }
   }
 );

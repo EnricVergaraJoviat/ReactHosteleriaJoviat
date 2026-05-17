@@ -460,6 +460,14 @@
   line-height: 1.6;
 }
 
+.student-detail__dialog .student-detail__dialog-error {
+  border-radius: 14px;
+  background: rgba(150, 47, 47, 0.1);
+  color: #962f2f;
+  font-weight: 700;
+  padding: 0.75rem 0.9rem;
+}
+
 .student-detail__dialog-actions {
   display: flex;
   justify-content: flex-end;

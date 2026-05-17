@@ -69,6 +69,41 @@ function isValidGoogleMapsUrl(value) {
 
 const createStudentAccount = httpsCallable(functions, 'createStudentAccount');
 
+function getFirebaseErrorCode(error) {
+  return typeof error?.code === 'string' ? error.code : '';
+}
+
+function isEmailAlreadyInUseError(error) {
+  const errorCode = getFirebaseErrorCode(error);
+
+  return [
+    'already-exists',
+    'functions/already-exists',
+    'auth/email-already-in-use',
+    'auth/email-already-exists',
+  ].includes(errorCode);
+}
+
+function isInvalidEmailError(error) {
+  const errorCode = getFirebaseErrorCode(error);
+
+  return [
+    'invalid-argument',
+    'functions/invalid-argument',
+    'auth/invalid-email',
+  ].includes(errorCode);
+}
+
+function isWeakPasswordError(error) {
+  return getFirebaseErrorCode(error) === 'auth/weak-password';
+}
+
+function isPasswordResetConfigurationError(error) {
+  const errorCode = getFirebaseErrorCode(error);
+
+  return errorCode === 'failed-precondition' || errorCode === 'functions/failed-precondition';
+}
+
 function PasswordVisibilityIcon({ isVisible }) {
   if (isVisible) {
     return (
@@ -663,19 +698,19 @@ function AddStudentScreen({
         setSuccessMessage(t('forms.studentSaved'));
       }
     } catch (error) {
-      if (error?.code === 'auth/email-already-in-use' || error?.code === 'already-exists') {
+      if (isEmailAlreadyInUseError(error)) {
         setErrorMessage(t('forms.emailAlreadyInUse'));
         return;
       }
-      if (error?.code === 'auth/invalid-email' || error?.code === 'invalid-argument') {
+      if (isInvalidEmailError(error)) {
         setErrorMessage(t('forms.invalidEmail'));
         return;
       }
-      if (error?.code === 'auth/weak-password') {
+      if (isWeakPasswordError(error)) {
         setErrorMessage(t('forms.weakPassword'));
         return;
       }
-      if (error?.code === 'failed-precondition') {
+      if (isPasswordResetConfigurationError(error)) {
         setErrorMessage(t('forms.passwordResetError'));
         return;
       }

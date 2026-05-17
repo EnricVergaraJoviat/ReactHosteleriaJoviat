@@ -536,6 +536,11 @@ function StudentDetailScreen({
             <p id="student-delete-description">
               {t('detail.deleteStudentDescription')}
             </p>
+            {actionMessage ? (
+              <p className="student-detail__dialog-error" role="alert">
+                {actionMessage}
+              </p>
+            ) : null}
             <div className="student-detail__dialog-actions">
               <button
                 className="student-detail__action student-detail__action--secondary"
