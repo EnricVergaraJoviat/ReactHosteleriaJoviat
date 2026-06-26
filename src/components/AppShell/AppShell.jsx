@@ -14,6 +14,7 @@ function AppShell({
   hasStudentProfile,
   onAuthAction,
   onNavigate,
+  onReportIncident,
   children,
 }) {
   const isDesktop = useIsDesktop();
@@ -57,6 +58,12 @@ function AppShell({
           isOpen={isMenuOpen}
           onClose={() => setIsMenuOpen(false)}
           onNavigate={handleNavigate}
+          onReportIncident={() => {
+            onReportIncident?.();
+            if (!isDesktop) {
+              setIsMenuOpen(false);
+            }
+          }}
         />
         <main className="app-shell__content">{children}</main>
       </div>

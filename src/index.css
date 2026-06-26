@@ -17,3 +17,119 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.incident-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(17, 17, 17, 0.38);
+}
+
+.incident-dialog {
+  width: min(100%, 520px);
+  border-radius: 24px;
+  background: #fffdf7;
+  padding: 1.6rem;
+  box-shadow: 0 28px 70px rgba(17, 17, 17, 0.2);
+}
+
+.incident-dialog h2 {
+  margin: 0;
+  color: #111111;
+  font-size: 1.65rem;
+}
+
+.incident-dialog p {
+  margin: 0.75rem 0 0;
+  color: #5b4c38;
+  line-height: 1.55;
+}
+
+.incident-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 1.2rem;
+}
+
+.incident-dialog__field span {
+  color: #64553f;
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.incident-dialog__field textarea {
+  width: 100%;
+  min-height: 150px;
+  border: 1px solid rgba(228, 222, 214, 0.9);
+  border-radius: 14px;
+  background: rgba(255, 253, 250, 0.96);
+  color: #1c1711;
+  padding: 0.95rem 1.05rem;
+  font: inherit;
+  resize: vertical;
+}
+
+.incident-dialog__field textarea:focus {
+  outline: 2px solid rgba(141, 95, 28, 0.18);
+  border-color: #a77a3a;
+}
+
+.incident-dialog__feedback {
+  border-radius: 16px;
+  padding: 0.85rem 0.95rem;
+}
+
+.incident-dialog__feedback--error {
+  background: rgba(183, 54, 54, 0.1);
+  color: #8f2020;
+}
+
+.incident-dialog__feedback--success {
+  background: rgba(56, 130, 78, 0.12);
+  color: #215f34;
+}
+
+.incident-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.85rem;
+  margin-top: 1.2rem;
+}
+
+.incident-dialog__button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.9rem 1.2rem;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.incident-dialog__button--secondary {
+  background: #fffdf5;
+  color: #8d5f1c;
+  border: 1px solid rgba(141, 95, 28, 0.2);
+}
+
+.incident-dialog__button--primary {
+  background: #8d5f1c;
+  color: #fff8f0;
+  box-shadow: 0 14px 30px rgba(141, 95, 28, 0.24);
+}
+
+.incident-dialog__button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+@media (max-width: 560px) {
+  .incident-dialog__actions {
+    flex-direction: column;
+  }
+}

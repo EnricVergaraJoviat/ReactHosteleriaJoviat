@@ -15,6 +15,7 @@ const APP_LOGIN_URL = defineString('APP_LOGIN_URL', {
   default: 'https://reacthosteleriajoviat.web.app/login',
 });
 const GMAIL_APP_PASSWORD = defineSecret('GMAIL_APP_PASSWORD');
+const INCIDENT_REPORT_EMAIL = 'joviat.web.hoteleria@gmail.com';
 
 function normalizeEmail(value) {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -22,6 +23,15 @@ function normalizeEmail(value) {
 
 function normalizeOptionalString(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function normalizePromotionYear(value) {
@@ -281,6 +291,52 @@ async function sendPasswordResetEmailMessage({ email, resetLink }) {
       <p><a href="${resetLink}">Crea una nova contrasenya</a></p>
       <p>Si no has demanat aquest canvi, pots ignorar aquest correu.</p>
       <p>Salutacions,<br />Equip Alumni Joviat</p>
+    `,
+  });
+}
+
+async function sendIncidentReportEmailMessage({ alumniName, alumniEmail, incident }) {
+  const gmailEmail = GMAIL_EMAIL.value();
+  const gmailAppPassword = GMAIL_APP_PASSWORD.value();
+
+  if (!gmailEmail || !gmailAppPassword) {
+    throw new HttpsError(
+      'failed-precondition',
+      'Email delivery is not configured. Missing Gmail credentials.'
+    );
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: gmailEmail,
+      pass: gmailAppPassword,
+    },
+  });
+
+  const safeAlumniName = alumniName || 'Alumni sense nom';
+  const safeIncident = incident || 'Incidència no informada';
+
+  await transporter.sendMail({
+    from: gmailEmail,
+    to: INCIDENT_REPORT_EMAIL,
+    replyTo: alumniEmail,
+    subject: 'Incidència reportada',
+    text: [
+      'S\'ha reportat una incidència des d\'Alumni Joviat.',
+      '',
+      `Alumni: ${safeAlumniName}`,
+      `Email: ${alumniEmail}`,
+      '',
+      'Incidència:',
+      safeIncident,
+    ].join('\n'),
+    html: `
+      <p>S'ha reportat una incidència des d'Alumni Joviat.</p>
+      <p><strong>Alumni:</strong> ${escapeHtml(safeAlumniName)}</p>
+      <p><strong>Email:</strong> ${escapeHtml(alumniEmail)}</p>
+      <p><strong>Incidència:</strong></p>
+      <p style="white-space: pre-wrap;">${escapeHtml(safeIncident)}</p>
     `,
   });
 }
@@ -919,6 +975,60 @@ exports.sendPasswordResetEmail = onCall(
         error,
       });
       throw new HttpsError('internal', 'Unable to send password reset email.');
+    }
+  }
+);
+
+exports.sendIncidentReportEmail = onCall(
+  {
+    region: 'europe-west1',
+    timeoutSeconds: 60,
+    memory: '256MiB',
+    cors: true,
+    invoker: 'public',
+    secrets: [GMAIL_APP_PASSWORD],
+  },
+  async (request) => {
+    const db = getFirestore();
+    const incident = normalizeOptionalString(request.data?.incident);
+    const fallbackAlumniName = normalizeOptionalString(request.data?.alumniName);
+    const alumniEmail = normalizeEmail(request.auth?.token?.email);
+
+    if (!request.auth?.uid || !alumniEmail) {
+      throw new HttpsError('unauthenticated', 'Authentication is required.');
+    }
+
+    if (!incident) {
+      throw new HttpsError('invalid-argument', 'Incident text is required.');
+    }
+
+    try {
+      const alumniSnapshot = await db
+        .collection('Alumni')
+        .where('Email', '==', alumniEmail)
+        .limit(1)
+        .get();
+      const storedAlumniName = normalizeOptionalString(alumniSnapshot.docs[0]?.data()?.Name);
+
+      await sendIncidentReportEmailMessage({
+        alumniName: storedAlumniName || fallbackAlumniName,
+        alumniEmail,
+        incident,
+      });
+
+      return {
+        emailSent: true,
+      };
+    } catch (error) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+
+      logger.error('Unable to send incident report email', {
+        alumniEmail,
+        error,
+      });
+      throw new HttpsError('internal', 'Unable to send incident report email.');
     }
   }
 );

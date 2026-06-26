@@ -27,6 +27,7 @@ import {
   deleteStudentAccount,
   httpsCallable,
   resolveGoogleMapsShareLink,
+  sendIncidentReportEmail,
   sendLoginPasswordResetEmail,
 } from 'firebase/functions';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
@@ -67,6 +68,7 @@ jest.mock('firebase/functions', () => {
   const createStudentAccountMock = jest.fn();
   const deleteStudentAccountMock = jest.fn();
   const resolveGoogleMapsShareLinkMock = jest.fn();
+  const sendIncidentReportEmailMock = jest.fn();
   const sendLoginPasswordResetEmailMock = jest.fn();
 
   return {
@@ -74,6 +76,7 @@ jest.mock('firebase/functions', () => {
     createStudentAccount: createStudentAccountMock,
     deleteStudentAccount: deleteStudentAccountMock,
     resolveGoogleMapsShareLink: resolveGoogleMapsShareLinkMock,
+    sendIncidentReportEmail: sendIncidentReportEmailMock,
     sendLoginPasswordResetEmail: sendLoginPasswordResetEmailMock,
     httpsCallable: jest.fn((firebaseFunctions, callableName) => {
       if (callableName === 'resolveGoogleMapsShareLink') {
@@ -90,6 +93,10 @@ jest.mock('firebase/functions', () => {
 
       if (callableName === 'sendPasswordResetEmail') {
         return sendLoginPasswordResetEmailMock;
+      }
+
+      if (callableName === 'sendIncidentReportEmail') {
+        return sendIncidentReportEmailMock;
       }
 
       return copyPlacePhotoToStorageMock;
@@ -237,6 +244,8 @@ beforeEach(() => {
   createStudentAccount.mockResolvedValue({ data: { studentId: 'student-new', emailSent: true } });
   deleteStudentAccount.mockReset();
   deleteStudentAccount.mockResolvedValue({ data: { deleted: true } });
+  sendIncidentReportEmail.mockReset();
+  sendIncidentReportEmail.mockResolvedValue({ data: { emailSent: true } });
   sendLoginPasswordResetEmail.mockReset();
   sendLoginPasswordResetEmail.mockResolvedValue({ data: { emailSent: true } });
   httpsCallable.mockReset();
@@ -255,6 +264,10 @@ beforeEach(() => {
 
     if (callableName === 'sendPasswordResetEmail') {
       return sendLoginPasswordResetEmail;
+    }
+
+    if (callableName === 'sendIncidentReportEmail') {
+      return sendIncidentReportEmail;
     }
 
     return copyPlacePhotoToStorage;
@@ -1334,6 +1347,54 @@ test('does not show administrator options for a logged user outside Administrato
   expect(screen.queryByRole('button', { name: /afegir Alumni/i })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /gestionar altes/i })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /veure trello/i })).not.toBeInTheDocument();
+});
+
+test('allows a logged user to report an incident by email', async () => {
+  let authListener;
+  onAuthStateChanged.mockImplementation((authValue, callback) => {
+    authListener = callback;
+    callback(null);
+    return jest.fn();
+  });
+  signInWithEmailAndPassword.mockImplementation(async () => {
+    const user = { email: 'aina@joviat.cat', uid: 'auth-student-1' };
+    auth.currentUser = user;
+    authListener(user);
+  });
+
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^login$/i }));
+  });
+
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(/email/i), 'aina@joviat.cat');
+    await userEvent.type(screen.getByLabelText(/contrasenya/i), '123456');
+    await userEvent.click(screen.getByRole('button', { name: /fer login/i }));
+  });
+
+  expect(await screen.findByRole('button', { name: /editar perfil/i })).toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(await screen.findByRole('button', { name: /reportar incidència/i }));
+  });
+
+  expect(await screen.findByRole('dialog', { name: /reportar incidència/i })).toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.type(
+      screen.getByLabelText(/^incidència$/i),
+      'No puc vincular el meu establiment.'
+    );
+    await userEvent.click(screen.getByRole('button', { name: /^enviar$/i }));
+  });
+
+  expect(sendIncidentReportEmail).toHaveBeenCalledWith({
+    alumniName: 'Aina Serra',
+    incident: 'No puc vincular el meu establiment.',
+  });
+  expect(await screen.findByText(/la incidència s'ha enviat correctament/i)).toBeInTheDocument();
 });
 
 test('allows an administrator to add a student with photo and restaurant links', async () => {

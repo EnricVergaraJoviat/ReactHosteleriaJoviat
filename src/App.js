@@ -78,6 +78,7 @@ function App() {
   const { t } = useI18n();
   const notifyRestaurantRegistrationApproved = httpsCallable(functions, 'sendRestaurantRegistrationApprovedEmail');
   const sendLoginPasswordResetEmail = httpsCallable(functions, 'sendPasswordResetEmail');
+  const sendIncidentReportEmail = httpsCallable(functions, 'sendIncidentReportEmail');
   const [activeView, setActiveView] = useState(getInitialActiveView);
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [studentDetailOrigin, setStudentDetailOrigin] = useState('students');
@@ -94,6 +95,11 @@ function App() {
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
   const [isAdministrator, setIsAdministrator] = useState(false);
   const [currentStudentProfile, setCurrentStudentProfile] = useState(null);
+  const [isIncidentDialogOpen, setIsIncidentDialogOpen] = useState(false);
+  const [incidentText, setIncidentText] = useState('');
+  const [incidentMessage, setIncidentMessage] = useState('');
+  const [incidentErrorMessage, setIncidentErrorMessage] = useState('');
+  const [isIncidentSubmitting, setIsIncidentSubmitting] = useState(false);
   const navigationStateRef = useRef({
     activeView,
     selectedStudentId,
@@ -480,6 +486,52 @@ function App() {
     await createUserRegistration({ email, name, hasAcceptedLegalTerms });
   }
 
+  function handleOpenIncidentDialog() {
+    setIncidentMessage('');
+    setIncidentErrorMessage('');
+    setIncidentText('');
+    setIsIncidentDialogOpen(true);
+  }
+
+  function handleCloseIncidentDialog() {
+    if (isIncidentSubmitting) {
+      return;
+    }
+
+    setIsIncidentDialogOpen(false);
+    setIncidentText('');
+    setIncidentMessage('');
+    setIncidentErrorMessage('');
+  }
+
+  async function handleSubmitIncidentReport(event) {
+    event.preventDefault();
+    const trimmedIncident = incidentText.trim();
+
+    setIncidentMessage('');
+    setIncidentErrorMessage('');
+
+    if (!trimmedIncident) {
+      setIncidentErrorMessage(t('incident.required'));
+      return;
+    }
+
+    setIsIncidentSubmitting(true);
+
+    try {
+      await sendIncidentReportEmail({
+        alumniName: currentStudentProfile?.Name ?? '',
+        incident: trimmedIncident,
+      });
+      setIncidentText('');
+      setIncidentMessage(t('incident.sent'));
+    } catch (error) {
+      setIncidentErrorMessage(t('incident.sendError'));
+    } finally {
+      setIsIncidentSubmitting(false);
+    }
+  }
+
   async function handlePasswordReset({ email }) {
     try {
       await sendLoginPasswordResetEmail({ email: normalizeEmail(email) });
@@ -633,8 +685,69 @@ function App() {
       hasStudentProfile={Boolean(currentStudentProfile)}
       onAuthAction={handleAuthAction}
       onNavigate={handleNavigate}
+      onReportIncident={handleOpenIncidentDialog}
     >
       {screen}
+      {isIncidentDialogOpen ? (
+        <div
+          className="incident-dialog__backdrop"
+          role="presentation"
+          onClick={handleCloseIncidentDialog}
+        >
+          <form
+            className="incident-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="incident-dialog-title"
+            aria-describedby="incident-dialog-description"
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={handleSubmitIncidentReport}
+          >
+            <h2 id="incident-dialog-title">{t('incident.title')}</h2>
+            <p id="incident-dialog-description">{t('incident.description')}</p>
+            <label className="incident-dialog__field" htmlFor="incident-report-text">
+              <span>{t('incident.label')}</span>
+              <textarea
+                id="incident-report-text"
+                value={incidentText}
+                rows={6}
+                onChange={(event) => {
+                  setIncidentText(event.target.value);
+                  setIncidentErrorMessage('');
+                  setIncidentMessage('');
+                }}
+              />
+            </label>
+            {incidentErrorMessage ? (
+              <p className="incident-dialog__feedback incident-dialog__feedback--error" role="alert">
+                {incidentErrorMessage}
+              </p>
+            ) : null}
+            {incidentMessage ? (
+              <p className="incident-dialog__feedback incident-dialog__feedback--success" role="status">
+                {incidentMessage}
+              </p>
+            ) : null}
+            <div className="incident-dialog__actions">
+              <button
+                className="incident-dialog__button incident-dialog__button--secondary"
+                type="button"
+                onClick={handleCloseIncidentDialog}
+                disabled={isIncidentSubmitting}
+              >
+                {incidentMessage ? t('common.close') : t('common.cancel')}
+              </button>
+              <button
+                className="incident-dialog__button incident-dialog__button--primary"
+                type="submit"
+                disabled={isIncidentSubmitting}
+              >
+                {isIncidentSubmitting ? t('incident.sending') : t('incident.send')}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </AppShell>
   );
 }

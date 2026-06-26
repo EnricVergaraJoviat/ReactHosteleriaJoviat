@@ -134,6 +134,7 @@ function Sidebar({
   isOpen,
   onClose,
   onNavigate,
+  onReportIncident,
 }) {
   const { language, languages, setLanguage, t } = useI18n();
   const secondaryMenuItems = isAuthenticated
@@ -242,6 +243,32 @@ function Sidebar({
                     </a>
                   </li>
                 ) : null}
+              </ul>
+            </>
+          ) : null}
+          {isAuthenticated ? (
+            <>
+              <div className="sidebar__divider" aria-hidden="true" />
+              <ul className="sidebar__list">
+                <li>
+                  <button
+                    className="sidebar__link"
+                    type="button"
+                    onClick={onReportIncident}
+                  >
+                    <SidebarIcon>
+                      <path
+                        d="M12 8.5v4.2M12 16.2h.01M5.4 19h13.2a1.8 1.8 0 0 0 1.6-2.65L13.6 4.9a1.85 1.85 0 0 0-3.2 0L3.8 16.35A1.8 1.8 0 0 0 5.4 19Z"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </SidebarIcon>
+                    <span className="sidebar__link-text">{t('nav.reportIncident')}</span>
+                  </button>
+                </li>
               </ul>
             </>
           ) : null}
