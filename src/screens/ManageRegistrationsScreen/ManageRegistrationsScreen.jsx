@@ -159,7 +159,6 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
     setIsSubmitting(true);
     setErrorMessage('');
     setSuccessMessage('');
-    setPendingAction(null);
 
     try {
       if (action.type === 'accept') {
@@ -190,6 +189,7 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
     } finally {
       isActionInFlightRef.current = false;
       setIsSubmitting(false);
+      setPendingAction(null);
     }
   }
 
@@ -275,6 +275,7 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
                     className="manage-registrations__button manage-registrations__button--accept"
                     type="button"
                     onClick={() => setPendingAction({ type: 'accept', registration })}
+                    disabled={isSubmitting}
                   >
                     {t('registrations.accept')}
                   </button>
@@ -282,6 +283,7 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
                     className="manage-registrations__button manage-registrations__button--reject"
                     type="button"
                     onClick={() => setPendingAction({ type: 'reject', registration })}
+                    disabled={isSubmitting}
                   >
                     {t('registrations.cancel')}
                   </button>
@@ -311,6 +313,7 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
                     className="manage-registrations__button manage-registrations__button--accept"
                     type="button"
                     onClick={() => setSelectedRestaurantRegistration(registration)}
+                    disabled={isSubmitting}
                   >
                     {t('registrations.viewRequest')}
                   </button>
@@ -328,6 +331,7 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="manage-registrations-confirmation-title"
+            aria-busy={isSubmitting}
           >
             <h2 id="manage-registrations-confirmation-title">
               {pendingAction.type === 'accept'
@@ -339,6 +343,12 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
                 ? t('registrations.confirmAcceptText', { name: pendingAction.registration.Name })
                 : t('registrations.confirmRejectText', { name: pendingAction.registration.Name })}
             </p>
+            {isSubmitting ? (
+              <div className="manage-registrations__processing" role="status" aria-live="polite">
+                <span className="manage-registrations__spinner" aria-hidden="true" />
+                <span>{t('registrations.processingAction')}</span>
+              </div>
+            ) : null}
             <div className="manage-registrations__dialog-actions">
               <button
                 className="manage-registrations__button manage-registrations__button--ghost"
