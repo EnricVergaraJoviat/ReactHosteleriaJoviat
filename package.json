@@ -1,6 +1,6 @@
 {
   "name": "react_hosteleria_joviat",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "private": true,
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
