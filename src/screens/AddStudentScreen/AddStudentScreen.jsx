@@ -1083,6 +1083,7 @@ function AddStudentScreen({
                   ))}
                 </select>
               </label>
+
             </div>
           </section>
         </div>

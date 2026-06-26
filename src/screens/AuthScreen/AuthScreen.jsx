@@ -19,6 +19,7 @@ function AuthScreen({
   const [password, setPassword] = useState('');
   const [requestEmail, setRequestEmail] = useState('');
   const [requestName, setRequestName] = useState('');
+  const [hasAcceptedLegalTerms, setHasAcceptedLegalTerms] = useState(false);
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [requestErrorMessage, setRequestErrorMessage] = useState('');
   const [requestSuccessMessage, setRequestSuccessMessage] = useState('');
@@ -48,6 +49,7 @@ function AuthScreen({
     setIsRequestDialogOpen(false);
     setRequestErrorMessage('');
     setRequestSuccessMessage('');
+    setHasAcceptedLegalTerms(false);
   }
 
   function openResetDialog() {
@@ -77,10 +79,12 @@ function AuthScreen({
       await onRequestAccess({
         email: requestEmail,
         name: requestName,
+        hasAcceptedLegalTerms,
       });
       setRequestSuccessMessage(t('auth.requestSent'));
       setRequestEmail('');
       setRequestName('');
+      setHasAcceptedLegalTerms(false);
     } catch (error) {
       if (error?.code === 'alumni/email-already-exists') {
         setRequestErrorMessage(t('auth.emailExists'));
@@ -287,18 +291,41 @@ function AuthScreen({
                     required
                   />
                 </label>
-              <div className="auth-screen__dialog-actions">
-                <button
-                  className="auth-screen__secondary-button"
-                  type="button"
-                  onClick={closeRequestDialog}
-                >
-                  {t('common.close')}
-                </button>
-                <button className="auth-screen__primary-action" type="submit">
-                  {t('auth.requestTitle')}
-                </button>
-              </div>
+                <div className="auth-screen__legal-terms">
+                  <p className="auth-screen__legal-terms-title">
+                    {t('auth.legalTermsTitle')}
+                  </p>
+                  <p>{t('auth.legalTermsIntro')}</p>
+                  <p>{t('auth.legalTermsBody')}</p>
+                  <a href="https://www.joviat.com/politica-de-privacitat/" target="_blank" rel="noreferrer">
+                    https://www.joviat.com/politica-de-privacitat/
+                  </a>
+                </div>
+                <label className="auth-screen__terms-check">
+                  <input
+                    checked={hasAcceptedLegalTerms}
+                    type="checkbox"
+                    onChange={(event) => setHasAcceptedLegalTerms(event.target.checked)}
+                    required
+                  />
+                  <span>{t('auth.acceptLegalTerms')}</span>
+                </label>
+                <div className="auth-screen__dialog-actions">
+                  <button
+                    className="auth-screen__secondary-button"
+                    type="button"
+                    onClick={closeRequestDialog}
+                  >
+                    {t('common.close')}
+                  </button>
+                  <button
+                    className="auth-screen__primary-action"
+                    type="submit"
+                    disabled={!hasAcceptedLegalTerms}
+                  >
+                    {t('auth.requestTitle')}
+                  </button>
+                </div>
               </form>
             )}
           </div>

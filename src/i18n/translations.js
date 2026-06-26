@@ -84,6 +84,10 @@ const ca = {
   'auth.ok': 'D\'acord',
   'auth.requestTitle': 'Sol·licitar accés',
   'auth.fullName': 'Nom i cognoms',
+  'auth.legalTermsTitle': 'Condicions legals',
+  'auth.legalTermsIntro': 'Autoritzo el tractament de les dades personals amb finalitat de compartir informació, les teves dades podran ser visualitzades per altres alumnes (art. 13 RGPD)',
+  'auth.legalTermsBody': 'En compliment del REGLAMENT (UE) 2016/679 DEL PARLAMENT EUROPEU I DEL CONSELL, de 27 d’abril de 2016, relatiu a la protecció de les persones físiques pel que fa al tractament de dades personals i a la lliure circulació d\'aquestes dades i pel qual es deroga la Directiva 95/46/CE (RGPD) i la Llei Orgànica 3/2018, de 5 de desembre, de Protecció de Dades Personals i garantia dels drets digitals LOPDGDD, us informem que Fundació Joviat, amb CIF G60374022, és el responsable del tractament d\'aquestes dades i en farà ús mentre no es revoqui el consentiment. Podeu exercir els vostres drets d\'accés, rectificació, oposició, cancel·lació, portabilitat i oblit per web, a través del correu electrònic rgpd@joviat.cat o per escrit a l’adreça carrer Folch i Torres, 5-13 de Manresa. Si considereu que les vostres dades personals no han estat tractades apropiadament d’acord amb la llei, podeu contactar amb el nostre Delegat de Protecció de Dades (DPD) en dpd@joviat.cat i amb l’Agència Espanyola de Protecció de Dades (AEPD). Podeu consultar la nostra política de privacitat a:',
+  'auth.acceptLegalTerms': 'He llegit i accepto les condicions legals',
   'auth.requestSent': 'S\'ha enviat la sol·licitud d\'accés.',
   'auth.emailExists': 'Aquest email ja existeix com a Alumni. Pots iniciar sessió amb aquest compte.',
   'auth.emailPending': 'Aquest email ja té una sol·licitud pendent de revisió.',
@@ -377,6 +381,7 @@ const ca = {
   'registrations.no': 'No',
   'registrations.yes': 'Sí',
   'registrations.processing': 'Processant...',
+  'registrations.processingAction': 'Processant aquesta acció...',
   'registrations.cancelRequest': 'Cancel·lar petició',
 };
 
@@ -456,6 +461,10 @@ const es = {
   'auth.ok': 'Aceptar',
   'auth.requestTitle': 'Solicitar acceso',
   'auth.fullName': 'Nombre y apellidos',
+  'auth.legalTermsTitle': 'Condiciones legales',
+  'auth.legalTermsIntro': 'Autorizo el tratamiento de los datos personales con la finalidad de compartir información; tus datos podrán ser visualizados por otros alumnos (art. 13 RGPD)',
+  'auth.legalTermsBody': 'En cumplimiento del REGLAMENTO (UE) 2016/679 DEL PARLAMENTO EUROPEO Y DEL CONSEJO, de 27 de abril de 2016, relativo a la protección de las personas físicas en lo que respecta al tratamiento de datos personales y a la libre circulación de estos datos y por el que se deroga la Directiva 95/46/CE (RGPD), y de la Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales LOPDGDD, informamos que Fundació Joviat, con CIF G60374022, es la responsable del tratamiento de estos datos y los utilizará mientras no se revoque el consentimiento. Puedes ejercer tus derechos de acceso, rectificación, oposición, cancelación, portabilidad y olvido por web, a través del correo electrónico rgpd@joviat.cat o por escrito en la dirección calle Folch i Torres, 5-13 de Manresa. Si consideras que tus datos personales no han sido tratados apropiadamente de acuerdo con la ley, puedes contactar con nuestro Delegado de Protección de Datos (DPD) en dpd@joviat.cat y con la Agencia Española de Protección de Datos (AEPD). Puedes consultar nuestra política de privacidad en:',
+  'auth.acceptLegalTerms': 'He leído y acepto las condiciones legales',
   'auth.requestSent': 'Se ha enviado la solicitud de acceso.',
   'auth.emailExists': 'Este email ya existe como Alumni. Puedes iniciar sesión con esta cuenta.',
   'auth.emailPending': 'Este email ya tiene una solicitud pendiente de revisión.',
@@ -679,6 +688,7 @@ const es = {
   'registrations.no': 'No',
   'registrations.yes': 'Sí',
   'registrations.processing': 'Procesando...',
+  'registrations.processingAction': 'Procesando esta acción...',
   'registrations.cancelRequest': 'Cancelar petición',
 };
 
@@ -756,6 +766,10 @@ const en = {
   'auth.loggedDescription': 'You have successfully logged in.',
   'auth.requestTitle': 'Request access',
   'auth.fullName': 'Full name',
+  'auth.legalTermsTitle': 'Legal terms',
+  'auth.legalTermsIntro': 'I authorise the processing of personal data for the purpose of sharing information; your data may be viewed by other students (art. 13 GDPR)',
+  'auth.legalTermsBody': 'In compliance with REGULATION (EU) 2016/679 OF THE EUROPEAN PARLIAMENT AND OF THE COUNCIL of 27 April 2016 on the protection of natural persons with regard to the processing of personal data and on the free movement of such data, and repealing Directive 95/46/EC (GDPR), and Organic Law 3/2018 of 5 December on Personal Data Protection and guarantee of digital rights, we inform you that Fundació Joviat, CIF G60374022, is responsible for processing these data and will use them until consent is revoked. You may exercise your rights of access, rectification, objection, cancellation, portability and erasure through the website, by emailing rgpd@joviat.cat or in writing to carrer Folch i Torres, 5-13, Manresa. If you consider that your personal data has not been processed appropriately according to the law, you may contact our Data Protection Officer (DPO) at dpd@joviat.cat and the Spanish Data Protection Agency (AEPD). You can view our privacy policy at:',
+  'auth.acceptLegalTerms': 'I have read and accept the legal terms',
   'auth.passwordResetTitle': 'Reset password',
   'auth.passwordResetDescription': 'Enter your account email and we will send you a link to create a new password.',
   'auth.passwordResetSubmit': 'Send reset email',
@@ -937,6 +951,7 @@ const en = {
   'registrations.no': 'No',
   'registrations.yes': 'Yes',
   'registrations.processing': 'Processing...',
+  'registrations.processingAction': 'Processing this action...',
   'registrations.cancelRequest': 'Cancel request',
 };
 

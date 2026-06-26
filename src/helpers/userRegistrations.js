@@ -3,8 +3,9 @@ import { httpsCallable } from 'firebase/functions';
 import { db, functions } from './firebase';
 
 const USER_REGISTRATIONS_COLLECTION = 'UserRegistrations';
-const DEFAULT_STUDENT_PASSWORD = 'joviat123';
 const createStudentAccount = httpsCallable(functions, 'createStudentAccount');
+const TEMPORARY_PASSWORD_LENGTH = 12;
+const TEMPORARY_PASSWORD_CHARACTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
 
 function normalizeEmail(value) {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -20,11 +21,44 @@ function createRegistrationError(code, message) {
   return error;
 }
 
-async function createUserRegistration({ email, name }) {
+function generateTemporaryPassword() {
+  const randomValues = new Uint32Array(TEMPORARY_PASSWORD_LENGTH);
+  const cryptoApi = typeof window !== 'undefined' ? window.crypto : null;
+
+  if (cryptoApi?.getRandomValues) {
+    cryptoApi.getRandomValues(randomValues);
+  } else {
+    randomValues.forEach((_, index) => {
+      randomValues[index] = Math.floor(Math.random() * TEMPORARY_PASSWORD_CHARACTERS.length);
+    });
+  }
+
+  return Array.from(randomValues, (value) =>
+    TEMPORARY_PASSWORD_CHARACTERS[value % TEMPORARY_PASSWORD_CHARACTERS.length]
+  ).join('');
+}
+
+function getTimestampMillis(value) {
+  if (typeof value?.toMillis === 'function') {
+    return value.toMillis();
+  }
+
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  return null;
+}
+
+async function createUserRegistration({ email, name, hasAcceptedLegalTerms }) {
   const normalizedEmail = normalizeEmail(email);
   const normalizedName = normalizeName(name);
 
-  if (!normalizedEmail || !normalizedName) {
+  if (!normalizedEmail || !normalizedName || !hasAcceptedLegalTerms) {
     throw new Error('missing-registration-data');
   }
 
@@ -57,6 +91,8 @@ async function createUserRegistration({ email, name }) {
   return addDoc(collection(db, USER_REGISTRATIONS_COLLECTION), {
     Email: normalizedEmail,
     Name: normalizedName,
+    LegalTermsAccepted: true,
+    LegalTermsAcceptedAt: serverTimestamp(),
     createdAt: serverTimestamp(),
   });
 }
@@ -89,8 +125,9 @@ async function acceptUserRegistration(registration) {
     studentData: {
       Name: normalizedName,
       Email: normalizedEmail,
+      LegalTermsAcceptedAtMillis: getTimestampMillis(registration.LegalTermsAcceptedAt),
     },
-    password: DEFAULT_STUDENT_PASSWORD,
+    password: generateTemporaryPassword(),
     deleteRegistrationId: registration.id,
   });
 }
@@ -105,7 +142,6 @@ async function rejectUserRegistration(registrationId) {
 
 export {
   USER_REGISTRATIONS_COLLECTION,
-  DEFAULT_STUDENT_PASSWORD,
   acceptUserRegistration,
   createUserRegistration,
   rejectUserRegistration,

@@ -687,12 +687,15 @@ test('allows a visitor to request access from the login dialog', async () => {
   await act(async () => {
     await userEvent.type(emailInputs[emailInputs.length - 1], 'pepito@joviat.cat');
     await userEvent.type(screen.getByLabelText(/nom i cognoms/i), 'Pepito Perez');
+    await userEvent.click(screen.getByLabelText(/accepto les condicions legals/i));
     await userEvent.click(screen.getByRole('button', { name: /sol·licitar accés/i }));
   });
 
   expect(addDoc).toHaveBeenCalledWith('UserRegistrations', {
     Email: 'pepito@joviat.cat',
     Name: 'Pepito Perez',
+    LegalTermsAccepted: true,
+    LegalTermsAcceptedAt: 'SERVER_TIMESTAMP',
     createdAt: 'SERVER_TIMESTAMP',
   });
   expect(
@@ -773,6 +776,7 @@ test('warns when requesting access with an existing Alumni email', async () => {
   await act(async () => {
     await userEvent.type(emailInputs[emailInputs.length - 1], 'aina@joviat.cat');
     await userEvent.type(screen.getByLabelText(/nom i cognoms/i), 'Aina Serra');
+    await userEvent.click(screen.getByLabelText(/accepto les condicions legals/i));
     await userEvent.click(screen.getByRole('button', { name: /sol·licitar accés/i }));
   });
 
@@ -821,6 +825,7 @@ test('warns when requesting access with a pending registration email', async () 
   await act(async () => {
     await userEvent.type(emailInputs[emailInputs.length - 1], 'pendent@joviat.cat');
     await userEvent.type(screen.getByLabelText(/nom i cognoms/i), 'Usuari Pendent');
+    await userEvent.click(screen.getByLabelText(/accepto les condicions legals/i));
     await userEvent.click(screen.getByRole('button', { name: /sol·licitar accés/i }));
   });
 
@@ -864,6 +869,9 @@ test('allows an administrator to accept a pending registration', async () => {
             data: () => ({
               Email: 'pepito@joviat.cat',
               Name: 'Pepito Perez',
+              LegalTermsAcceptedAt: {
+                toMillis: () => 1719828000000,
+              },
             }),
           },
         ],
@@ -909,18 +917,33 @@ test('allows an administrator to accept a pending registration', async () => {
     await screen.findByText(/estàs segur que vols donar d'alta a pepito perez/i)
   ).toBeInTheDocument();
 
+  let resolveCreateStudentAccount;
+  createStudentAccount.mockImplementationOnce(() =>
+    new Promise((resolve) => {
+      resolveCreateStudentAccount = resolve;
+    })
+  );
+
   await act(async () => {
     await userEvent.click(screen.getByRole('button', { name: /^sí$/i }));
   });
+
+  expect(screen.getByText(/processant aquesta acció/i)).toBeInTheDocument();
 
   expect(createStudentAccount).toHaveBeenCalledWith({
     studentData: {
       Name: 'Pepito Perez',
       Email: 'pepito@joviat.cat',
+      LegalTermsAcceptedAtMillis: 1719828000000,
     },
-    password: 'joviat123',
+    password: expect.stringMatching(/^[A-Za-z2-9]{12}$/),
     deleteRegistrationId: 'registration-1',
   });
+
+  await act(async () => {
+    resolveCreateStudentAccount({ data: { studentId: 'student-new', emailSent: true } });
+  });
+
   expect(await screen.findByText(/s'ha donat d'alta pepito perez/i)).toBeInTheDocument();
 });
 

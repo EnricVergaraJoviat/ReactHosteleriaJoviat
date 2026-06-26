@@ -463,8 +463,8 @@ function App() {
     }
   }
 
-  async function handleRequestAccess({ email, name }) {
-    await createUserRegistration({ email, name });
+  async function handleRequestAccess({ email, name, hasAcceptedLegalTerms }) {
+    await createUserRegistration({ email, name, hasAcceptedLegalTerms });
   }
 
   async function handlePasswordReset({ email }) {

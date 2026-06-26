@@ -143,6 +143,8 @@
 
 .auth-screen__request-dialog {
   width: min(100%, 520px);
+  max-height: min(90vh, 760px);
+  overflow: auto;
 }
 
 .auth-screen__dialog-actions {
@@ -165,6 +167,52 @@
   margin: 0.85rem 0 0;
   color: #4b4b4b;
   line-height: 1.55;
+}
+
+.auth-screen__legal-terms {
+  display: grid;
+  gap: 0.65rem;
+  max-height: 14rem;
+  overflow: auto;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 0.9rem;
+  color: #3a3a3a;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.auth-screen__legal-terms p {
+  margin: 0;
+}
+
+.auth-screen__legal-terms a {
+  color: #111111;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.auth-screen__legal-terms-title {
+  color: #111111;
+  font-weight: 800;
+}
+
+.auth-screen__terms-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  color: #242424;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.auth-screen__terms-check input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.12rem;
+  accent-color: #111111;
+  flex: 0 0 auto;
 }
 
 .auth-screen__request-feedback--error {

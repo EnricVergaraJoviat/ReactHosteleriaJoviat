@@ -1,6 +1,6 @@
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore');
 const { getStorage } = require('firebase-admin/storage');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret, defineString } = require('firebase-functions/params');
@@ -35,6 +35,20 @@ function normalizePromotionYear(value) {
   }
 
   return null;
+}
+
+function normalizeTimestampMillis(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? Timestamp.fromMillis(value)
+    : null;
+}
+
+function normalizeTimestamp(value) {
+  if (value instanceof Timestamp) {
+    return value;
+  }
+
+  return normalizeTimestampMillis(value);
 }
 
 const JOVIAT_STUDY_VALUES = new Set([
@@ -573,6 +587,17 @@ exports.createStudentAccount = onCall(
       throw new HttpsError('already-exists', 'An Alumni user already exists with this email.');
     }
 
+    let registrationLegalTermsAcceptedAt = null;
+
+    if (deleteRegistrationId) {
+      const registrationSnapshot = await db
+        .collection('UserRegistrations')
+        .doc(deleteRegistrationId)
+        .get();
+
+      registrationLegalTermsAcceptedAt = registrationSnapshot.data()?.LegalTermsAcceptedAt ?? null;
+    }
+
     let authUserRecord;
     let studentReference;
 
@@ -591,6 +616,8 @@ exports.createStudentAccount = onCall(
         LinkedIn: normalizeOptionalString(rawStudentData.LinkedIn),
         Instagram: normalizeOptionalString(rawStudentData.Instagram),
         VisibleContactToAlumniNetwork: rawStudentData.VisibleContactToAlumniNetwork !== false,
+        LegalTermsAcceptedAt: normalizeTimestampMillis(rawStudentData.LegalTermsAcceptedAtMillis)
+          ?? normalizeTimestamp(registrationLegalTermsAcceptedAt),
         PromotionYear: normalizePromotionYear(rawStudentData.PromotionYear),
         JoviatStudies: normalizeJoviatStudies(rawStudentData.JoviatStudies ?? rawStudentData.Studies),
         Password: password,
