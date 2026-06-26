@@ -422,6 +422,40 @@ function extractPathQuery(urlValue) {
   return '';
 }
 
+function extractGoogleMapsLocationBias(urlValue) {
+  if (!urlValue) {
+    return null;
+  }
+
+  try {
+    const parsedUrl = new URL(urlValue);
+    const coordinateMatch = parsedUrl.pathname.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+
+    if (!coordinateMatch) {
+      return null;
+    }
+
+    const latitude = Number(coordinateMatch[1]);
+    const longitude = Number(coordinateMatch[2]);
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return null;
+    }
+
+    return {
+      circle: {
+        center: {
+          latitude,
+          longitude,
+        },
+        radius: 500,
+      },
+    };
+  } catch (error) {}
+
+  return null;
+}
+
 function extractJsonLdQuery(html) {
   const scripts = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi) ?? [];
 
@@ -532,7 +566,7 @@ function extractPlaceIdFromText(text) {
   return '';
 }
 
-async function searchPlaceIdByText(textQuery, apiKey) {
+async function searchPlaceIdByText(textQuery, apiKey, locationBias = null) {
   if (!textQuery) {
     return '';
   }
@@ -549,6 +583,7 @@ async function searchPlaceIdByText(textQuery, apiKey) {
       body: JSON.stringify({
         textQuery,
         maxResultCount: 1,
+        ...(locationBias ? { locationBias } : {}),
       }),
     });
   } catch (error) {
@@ -1209,6 +1244,7 @@ exports.resolveGoogleMapsShareLink = onCall(
       .find(Boolean) || '';
 
     if (!placeId) {
+      const locationBias = extractGoogleMapsLocationBias(canonicalUrl || finalUrl);
       const candidateQueries = collectCandidateQueries({
         html,
         finalUrl: canonicalUrl || finalUrl,
@@ -1216,7 +1252,7 @@ exports.resolveGoogleMapsShareLink = onCall(
       });
 
       for (const candidateQuery of candidateQueries) {
-        placeId = await searchPlaceIdByText(candidateQuery, apiKey);
+        placeId = await searchPlaceIdByText(candidateQuery, apiKey, locationBias);
 
         if (placeId) {
           break;
