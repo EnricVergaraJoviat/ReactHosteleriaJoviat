@@ -92,6 +92,22 @@ async function assertAdministrator(request, db) {
   }
 }
 
+async function isAdministratorRequest(request, db) {
+  const email = normalizeEmail(request.auth?.token?.email);
+
+  if (!request.auth?.uid || !email) {
+    return false;
+  }
+
+  const administratorSnapshot = await db
+    .collection('Administrator')
+    .where('Email', '==', email)
+    .limit(1)
+    .get();
+
+  return !administratorSnapshot.empty;
+}
+
 function getStorageObjectPath(photoUrl, bucketName) {
   const normalizedPhotoUrl = normalizeOptionalString(photoUrl);
 
@@ -683,8 +699,6 @@ exports.deleteStudentAccount = onCall(
       throw new HttpsError('invalid-argument', 'A student id is required.');
     }
 
-    await assertAdministrator(request, db);
-
     const studentReference = db.collection('Alumni').doc(studentId);
     const studentSnapshot = await studentReference.get();
 
@@ -694,6 +708,19 @@ exports.deleteStudentAccount = onCall(
 
     const studentData = studentSnapshot.data() ?? {};
     const email = normalizeEmail(studentData.Email);
+    const requesterEmail = normalizeEmail(request.auth?.token?.email);
+
+    if (!request.auth?.uid || !requesterEmail) {
+      throw new HttpsError('unauthenticated', 'Authentication is required.');
+    }
+
+    const canDeleteStudent = await isAdministratorRequest(request, db)
+      || requesterEmail === email;
+
+    if (!canDeleteStudent) {
+      throw new HttpsError('permission-denied', 'Administrator or owner permissions are required.');
+    }
+
     const photoObjectPath = getStorageObjectPath(studentData.PhotoURL, bucket.name);
 
     try {

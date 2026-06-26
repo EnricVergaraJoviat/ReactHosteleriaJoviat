@@ -2733,6 +2733,53 @@ test('does not change the student password when both password fields do not matc
   expect(passwordInput).toHaveAttribute('type', 'text');
 });
 
+test('allows a logged student to delete their own profile from editar perfil', async () => {
+  let authListener;
+  onAuthStateChanged.mockImplementation((authValue, callback) => {
+    authListener = callback;
+    callback(null);
+    return jest.fn();
+  });
+  signInWithEmailAndPassword.mockImplementation(async () => {
+    const user = { email: 'aina@joviat.cat', uid: 'auth-student-1' };
+    auth.currentUser = user;
+    authListener(user);
+  });
+
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^login$/i }));
+  });
+
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(/email/i), 'aina@joviat.cat');
+    await userEvent.type(screen.getByLabelText(/contrasenya/i), '123456');
+    await userEvent.click(screen.getByRole('button', { name: /fer login/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click((await screen.findAllByRole('button', { name: /editar perfil/i }))[0]);
+  });
+
+  await act(async () => {
+    await userEvent.click(await screen.findByRole('button', { name: /donar-me de baixa/i }));
+  });
+
+  expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+  expect(screen.getByText(/s'eliminarà la foto de l'Alumni/i)).toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /confirmar eliminació/i }));
+  });
+
+  expect(deleteStudentAccount).toHaveBeenCalledWith({ studentId: 'student-1' });
+  expect(signOut).toHaveBeenCalledWith(auth);
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: /^login$/i })).toBeInTheDocument();
+  expect(screen.getByText(/cicle formatiu hoteleria/i)).toBeInTheDocument();
+});
+
 test('allows an administrator to delete a student from detail view without leaving the admin session', async () => {
   let authListener;
   onAuthStateChanged.mockImplementation((auth, callback) => {

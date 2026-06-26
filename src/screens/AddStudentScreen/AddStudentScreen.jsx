@@ -16,6 +16,7 @@ import {
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { auth, db, functions, storage } from '../../helpers/firebase';
 import { getFallbackImage } from '../../helpers/imageFallbacks';
+import { deleteStudentAccount } from '../../helpers/studentDeletion';
 import {
   CURRENTLY_STUDYING_PROMOTION_VALUE,
   createPromotionYears,
@@ -185,8 +186,10 @@ function AddStudentScreen({
   mode = 'create',
   student = null,
   onSaved,
+  onDeleted,
   isAdministrator = false,
   canChangePassword = false,
+  canDeleteOwnProfile = false,
 }) {
   const { t } = useI18n();
   const isEditMode = mode === 'edit' && Boolean(student?.id);
@@ -239,6 +242,8 @@ function AddStudentScreen({
   const [isRestaurantRequestDialogOpen, setIsRestaurantRequestDialogOpen] = useState(false);
   const [isRestaurantRequestConfirmationOpen, setIsRestaurantRequestConfirmationOpen] = useState(false);
   const [isSubmittingRestaurantRequest, setIsSubmittingRestaurantRequest] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [newRestaurant, setNewRestaurant] = useState({
     restaurantId: '',
     roles: [],
@@ -808,6 +813,44 @@ function AddStudentScreen({
     }
   }
 
+  function handleStartDelete() {
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsDeleteDialogOpen(true);
+  }
+
+  function handleCancelDelete() {
+    if (isDeleting) {
+      return;
+    }
+
+    setIsDeleteDialogOpen(false);
+  }
+
+  async function handleConfirmDelete() {
+    if (!student?.id) {
+      return;
+    }
+
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsDeleting(true);
+
+    try {
+      await deleteStudentAccount(student);
+      setIsDeleteDialogOpen(false);
+      onDeleted?.(student.id);
+    } catch (deleteError) {
+      if (deleteError?.message === 'missing-student-auth-data') {
+        setErrorMessage(t('detail.studentDeleteAuthError'));
+      } else {
+        setErrorMessage(t('detail.studentDeleteError'));
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   const pageTitle = isEditMode ? t('forms.editStudent') : t('forms.addStudent');
   const pageDescription = isEditMode
     ? t('forms.studentEditDescription')
@@ -1289,22 +1332,84 @@ function AddStudentScreen({
         ) : null}
 
         <div className="add-student-form__actions">
-          {isEditMode && isAdministrator ? (
-            <button
-              className="add-student-form__secondary-action"
-              type="button"
-              onClick={handlePasswordReset}
-              disabled={isResettingPassword || isSubmitting}
-            >
-              {isResettingPassword ? t('forms.sendingEmail') : t('forms.resetPassword')}
+          <div>
+            {isEditMode && canDeleteOwnProfile ? (
+              <button
+                className="add-student-form__danger-action"
+                type="button"
+                onClick={handleStartDelete}
+                disabled={isDeleting || isSubmitting}
+              >
+                {t('forms.deleteOwnProfile')}
+              </button>
+            ) : null}
+          </div>
+          <div className="add-student-form__actions-group">
+            {isEditMode && isAdministrator ? (
+              <button
+                className="add-student-form__secondary-action"
+                type="button"
+                onClick={handlePasswordReset}
+                disabled={isResettingPassword || isSubmitting}
+              >
+                {isResettingPassword ? t('forms.sendingEmail') : t('forms.resetPassword')}
+              </button>
+            ) : null}
+            <button className="add-student-form__submit" type="submit" disabled={isSubmitting}>
+              <SaveIcon />
+              {isSubmitting ? t('common.saving') : submitLabel}
             </button>
-          ) : null}
-          <button className="add-student-form__submit" type="submit" disabled={isSubmitting}>
-            <SaveIcon />
-            {isSubmitting ? t('common.saving') : submitLabel}
-          </button>
+          </div>
         </div>
       </form>
+
+      {isDeleteDialogOpen ? (
+        <div
+          className="add-student-form__dialog-layer"
+          role="presentation"
+          onClick={handleCancelDelete}
+        >
+          <div
+            className="add-student-form__dialog add-student-form__dialog--danger"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="student-delete-title"
+            aria-describedby="student-delete-description"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="student-delete-title">{t('detail.deleteStudentTitle')}</h2>
+            <p
+              className="add-student-form__dialog-description"
+              id="student-delete-description"
+            >
+              {t('detail.deleteStudentDescription')}
+            </p>
+            {errorMessage ? (
+              <p className="add-student-form__feedback add-student-form__feedback--error" role="alert">
+                {errorMessage}
+              </p>
+            ) : null}
+            <div className="add-student-form__dialog-actions">
+              <button
+                className="add-student-form__secondary-action"
+                type="button"
+                onClick={handleCancelDelete}
+                disabled={isDeleting}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                className="add-student-form__danger-action"
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? t('detail.deleting') : t('detail.confirmDelete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {isRestaurantRequestDialogOpen ? (
         <div className="add-student-form__dialog-layer">

@@ -463,6 +463,19 @@ function App() {
     }
   }
 
+  async function handleOwnStudentDeleted() {
+    setCurrentUser(null);
+    setCurrentStudentProfile(null);
+    setSelectedStudentId(null);
+
+    try {
+      await signOut(auth);
+    } catch (error) {}
+
+    setAuthViewMode('login');
+    setActiveView('home');
+  }
+
   async function handleRequestAccess({ email, name, hasAcceptedLegalTerms }) {
     await createUserRegistration({ email, name, hasAcceptedLegalTerms });
   }
@@ -581,8 +594,10 @@ function App() {
       <AddStudentScreen
         mode="edit"
         canChangePassword={!isAdministrator}
+        canDeleteOwnProfile={isEditingOwnStudentProfile}
         isAdministrator={isAdministrator}
         student={studentFormInitialData}
+        onDeleted={isEditingOwnStudentProfile ? handleOwnStudentDeleted : undefined}
         onSaved={(studentId) => handleOpenStudentDetails(studentId, 'students')}
       />
     );
