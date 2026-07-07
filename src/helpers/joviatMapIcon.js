@@ -1,9 +1,8 @@
 import L from 'leaflet';
+import joviatPinSrc from '../assets/images/joviat_pin.png';
 
-const JOVIAT_MARKER_HTML = '<span class="joviat-map-marker__letter">J</span>';
-
-export const joviatMapIcon = L.divIcon({
-  html: JOVIAT_MARKER_HTML,
+export const joviatMapIcon = L.icon({
+  iconUrl: joviatPinSrc,
   className: 'joviat-map-marker',
   iconSize: L.point(34, 44, true),
   iconAnchor: L.point(17, 42, true),
