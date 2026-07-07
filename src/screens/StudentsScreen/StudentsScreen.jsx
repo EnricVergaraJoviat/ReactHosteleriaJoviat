@@ -26,7 +26,7 @@ const STUDENTS_PER_PAGE = 8;
 const joviatStudyOptions = getJoviatStudyOptions();
 const allJoviatStudyValues = joviatStudyOptions.map((studyOption) => studyOption.value);
 
-function StudentsScreen({ onOpenStudentDetails }) {
+function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
   const { t } = useI18n();
   const [students, setStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,7 +48,9 @@ function StudentsScreen({ onOpenStudentDetails }) {
 
     async function loadStudents() {
       try {
-        const { students: firestoreStudents } = await loadStudentRestaurantGraph();
+        const { students: firestoreStudents } = await loadStudentRestaurantGraph({
+          includePrivateStudentFields: isAuthenticated,
+        });
 
         if (isMounted) {
           setStudents(firestoreStudents);
@@ -70,7 +72,7 @@ function StudentsScreen({ onOpenStudentDetails }) {
     return () => {
       isMounted = false;
     };
-  }, [t]);
+  }, [isAuthenticated, t]);
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
   const filteredStudents = students.filter((student) => {

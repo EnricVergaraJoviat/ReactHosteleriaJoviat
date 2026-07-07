@@ -10,12 +10,36 @@ const nodemailer = require('nodemailer');
 initializeApp();
 
 const GOOGLE_MAPS_API_KEY = defineString('GOOGLE_MAPS_API_KEY');
-const GMAIL_EMAIL = defineString('GMAIL_EMAIL');
+const SMTP_HOST = defineString('SMTP_HOST', {
+  default: 'smtp.office365.com',
+});
+const SMTP_PORT = defineString('SMTP_PORT', {
+  default: '587',
+});
+const SMTP_USER = defineString('SMTP_USER', {
+  default: 'culinary@joviat.cat',
+});
+const SMTP_FROM = defineString('SMTP_FROM', {
+  default: 'culinary@joviat.cat',
+});
+const INCIDENT_REPORT_EMAIL = defineString('INCIDENT_REPORT_EMAIL', {
+  default: 'culinary@joviat.cat',
+});
 const APP_LOGIN_URL = defineString('APP_LOGIN_URL', {
   default: 'https://reacthosteleriajoviat.web.app/login',
 });
-const GMAIL_APP_PASSWORD = defineSecret('GMAIL_APP_PASSWORD');
-const INCIDENT_REPORT_EMAIL = 'joviat.web.hoteleria@gmail.com';
+const SMTP_PASSWORD = defineSecret('SMTP_PASSWORD');
+const PRIVATE_ALUMNI_FIELDS = new Set([
+  'Email',
+  'Instagram',
+  'LinkedIn',
+  'Phone',
+  'VisibleContactToAlumniNetwork',
+  'createdAt',
+  'updatedAt',
+  'LegalTermsAcceptedAt',
+  'Password',
+]);
 
 function normalizeEmail(value) {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -23,6 +47,59 @@ function normalizeEmail(value) {
 
 function normalizeOptionalString(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function mapDocumentSnapshot(snapshot) {
+  return {
+    id: snapshot.id,
+    ...(snapshot.data() ?? {}),
+  };
+}
+
+function sanitizePublicAlumniData(snapshot) {
+  const data = snapshot.data() ?? {};
+  const publicData = {};
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (!PRIVATE_ALUMNI_FIELDS.has(key)) {
+      publicData[key] = value;
+    }
+  });
+
+  return {
+    id: snapshot.id,
+    ...publicData,
+  };
+}
+
+function serializeReferenceValue(value) {
+  if (!value) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value.path === 'string') {
+    return {
+      id: value.id ?? '',
+      path: value.path,
+    };
+  }
+
+  return value;
+}
+
+function serializeRelationData(snapshot) {
+  const data = snapshot.data() ?? {};
+
+  return {
+    id: snapshot.id,
+    ...data,
+    id_alumni: serializeReferenceValue(data.id_alumni),
+    id_restaurant: serializeReferenceValue(data.id_restaurant),
+  };
 }
 
 function escapeHtml(value) {
@@ -151,30 +228,47 @@ function getStorageObjectPath(photoUrl, bucketName) {
   return '';
 }
 
-async function sendStudentWelcomeEmail({ email, name, password }) {
-  const gmailEmail = GMAIL_EMAIL.value();
-  const gmailAppPassword = GMAIL_APP_PASSWORD.value();
-  const loginUrl = APP_LOGIN_URL.value();
+function getSmtpPort() {
+  const smtpPort = Number.parseInt(SMTP_PORT.value(), 10);
+  return Number.isFinite(smtpPort) ? smtpPort : 587;
+}
 
-  if (!gmailEmail || !gmailAppPassword) {
+function getEmailTransporter() {
+  const smtpHost = normalizeOptionalString(SMTP_HOST.value());
+  const smtpUser = normalizeEmail(SMTP_USER.value());
+  const smtpPassword = SMTP_PASSWORD.value();
+
+  if (!smtpHost || !smtpUser || !smtpPassword) {
     throw new HttpsError(
       'failed-precondition',
-      'Email delivery is not configured. Missing Gmail credentials.'
+      'Email delivery is not configured. Missing SMTP credentials.'
     );
   }
 
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
+  return nodemailer.createTransport({
+    host: smtpHost,
+    port: getSmtpPort(),
+    secure: false,
+    requireTLS: true,
     auth: {
-      user: gmailEmail,
-      pass: gmailAppPassword,
+      user: smtpUser,
+      pass: smtpPassword,
     },
   });
+}
 
+function getEmailFromAddress() {
+  return normalizeEmail(SMTP_FROM.value()) || normalizeEmail(SMTP_USER.value());
+}
+
+async function sendStudentWelcomeEmail({ email, name, password }) {
+  const transporter = getEmailTransporter();
+  const fromAddress = getEmailFromAddress();
+  const loginUrl = APP_LOGIN_URL.value();
   const safeName = name || 'Alumni';
 
   await transporter.sendMail({
-    from: gmailEmail,
+    from: fromAddress,
     to: email,
     subject: 'Benvingut/da a Alumni Joviat',
     text: [
@@ -208,29 +302,13 @@ async function sendRestaurantRegistrationApprovedEmail({
   alumniName,
   restaurantName,
 }) {
-  const gmailEmail = GMAIL_EMAIL.value();
-  const gmailAppPassword = GMAIL_APP_PASSWORD.value();
-
-  if (!gmailEmail || !gmailAppPassword) {
-    throw new HttpsError(
-      'failed-precondition',
-      'Email delivery is not configured. Missing Gmail credentials.'
-    );
-  }
-
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: gmailEmail,
-      pass: gmailAppPassword,
-    },
-  });
-
+  const transporter = getEmailTransporter();
+  const fromAddress = getEmailFromAddress();
   const safeName = alumniName || 'Alumni';
   const safeRestaurantName = restaurantName || 'el teu establiment';
 
   await transporter.sendMail({
-    from: gmailEmail,
+    from: fromAddress,
     to: email,
     subject: 'El teu establiment ja està disponible a Alumni Joviat',
     text: [
@@ -252,26 +330,11 @@ async function sendRestaurantRegistrationApprovedEmail({
 }
 
 async function sendPasswordResetEmailMessage({ email, resetLink }) {
-  const gmailEmail = GMAIL_EMAIL.value();
-  const gmailAppPassword = GMAIL_APP_PASSWORD.value();
-
-  if (!gmailEmail || !gmailAppPassword) {
-    throw new HttpsError(
-      'failed-precondition',
-      'Email delivery is not configured. Missing Gmail credentials.'
-    );
-  }
-
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: gmailEmail,
-      pass: gmailAppPassword,
-    },
-  });
+  const transporter = getEmailTransporter();
+  const fromAddress = getEmailFromAddress();
 
   await transporter.sendMail({
-    from: gmailEmail,
+    from: fromAddress,
     to: email,
     subject: 'Recupera la contrasenya d\'Alumni Joviat',
     text: [
@@ -296,30 +359,22 @@ async function sendPasswordResetEmailMessage({ email, resetLink }) {
 }
 
 async function sendIncidentReportEmailMessage({ alumniName, alumniEmail, incident }) {
-  const gmailEmail = GMAIL_EMAIL.value();
-  const gmailAppPassword = GMAIL_APP_PASSWORD.value();
-
-  if (!gmailEmail || !gmailAppPassword) {
-    throw new HttpsError(
-      'failed-precondition',
-      'Email delivery is not configured. Missing Gmail credentials.'
-    );
-  }
-
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: gmailEmail,
-      pass: gmailAppPassword,
-    },
-  });
-
+  const transporter = getEmailTransporter();
+  const fromAddress = getEmailFromAddress();
+  const incidentReportEmail = normalizeEmail(INCIDENT_REPORT_EMAIL.value());
   const safeAlumniName = alumniName || 'Alumni sense nom';
   const safeIncident = incident || 'Incidència no informada';
 
+  if (!incidentReportEmail) {
+    throw new HttpsError(
+      'failed-precondition',
+      'Incident report email is not configured.'
+    );
+  }
+
   await transporter.sendMail({
-    from: gmailEmail,
-    to: INCIDENT_REPORT_EMAIL,
+    from: fromAddress,
+    to: incidentReportEmail,
     replyTo: alumniEmail,
     subject: 'Incidència reportada',
     text: [
@@ -661,6 +716,93 @@ async function searchPlaceIdByText(textQuery, apiKey, locationBias = null) {
   return data.places?.[0]?.id || '';
 }
 
+exports.getPublicStudentRestaurantGraph = onCall(
+  {
+    region: 'europe-west1',
+    timeoutSeconds: 60,
+    memory: '256MiB',
+    cors: true,
+    invoker: 'public',
+  },
+  async () => {
+    const db = getFirestore();
+
+    try {
+      const [studentsSnapshot, restaurantsSnapshot, relationsSnapshot] = await Promise.all([
+        db.collection('Alumni').get(),
+        db.collection('Restaurant').get(),
+        db.collection('Rest-Alum').get(),
+      ]);
+
+      return {
+        students: studentsSnapshot.docs.map(sanitizePublicAlumniData),
+        restaurants: restaurantsSnapshot.docs.map(mapDocumentSnapshot),
+        relations: relationsSnapshot.docs.map(serializeRelationData),
+      };
+    } catch (error) {
+      logger.error('Unable to load public student restaurant graph', { error });
+      throw new HttpsError('internal', 'Unable to load public Alumni data.');
+    }
+  }
+);
+
+exports.createUserRegistration = onCall(
+  {
+    region: 'europe-west1',
+    timeoutSeconds: 60,
+    memory: '256MiB',
+    cors: true,
+    invoker: 'public',
+  },
+  async (request) => {
+    const db = getFirestore();
+    const email = normalizeEmail(request.data?.email);
+    const name = normalizeOptionalString(request.data?.name);
+    const hasAcceptedLegalTerms = request.data?.hasAcceptedLegalTerms === true;
+
+    if (!email || !name || !hasAcceptedLegalTerms) {
+      throw new HttpsError('invalid-argument', 'Missing registration data.');
+    }
+
+    try {
+      const [alumniSnapshot, registrationsSnapshot] = await Promise.all([
+        db.collection('Alumni').where('Email', '==', email).limit(1).get(),
+        db.collection('UserRegistrations').where('Email', '==', email).limit(1).get(),
+      ]);
+
+      if (!alumniSnapshot.empty) {
+        throw new HttpsError('already-exists', 'An Alumni user already exists with this email.');
+      }
+
+      if (!registrationsSnapshot.empty) {
+        throw new HttpsError('failed-precondition', 'A pending access request already exists with this email.');
+      }
+
+      const registrationReference = await db.collection('UserRegistrations').add({
+        Email: email,
+        Name: name,
+        LegalTermsAccepted: true,
+        LegalTermsAcceptedAt: FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+      });
+
+      return {
+        registrationId: registrationReference.id,
+      };
+    } catch (error) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+
+      logger.error('Unable to create user registration', {
+        email,
+        error,
+      });
+      throw new HttpsError('internal', 'Unable to create user registration.');
+    }
+  }
+);
+
 exports.createStudentAccount = onCall(
   {
     region: 'europe-west1',
@@ -668,7 +810,7 @@ exports.createStudentAccount = onCall(
     memory: '256MiB',
     cors: true,
     invoker: 'public',
-    secrets: [GMAIL_APP_PASSWORD],
+    secrets: [SMTP_PASSWORD],
   },
   async (request) => {
     const auth = getAuth();
@@ -727,7 +869,6 @@ exports.createStudentAccount = onCall(
           ?? normalizeTimestamp(registrationLegalTermsAcceptedAt),
         PromotionYear: normalizePromotionYear(rawStudentData.PromotionYear),
         JoviatStudies: normalizeJoviatStudies(rawStudentData.JoviatStudies ?? rawStudentData.Studies),
-        Password: password,
         createdAt: FieldValue.serverTimestamp(),
       });
 
@@ -880,7 +1021,7 @@ exports.sendRestaurantRegistrationApprovedEmail = onCall(
     memory: '256MiB',
     cors: true,
     invoker: 'public',
-    secrets: [GMAIL_APP_PASSWORD],
+    secrets: [SMTP_PASSWORD],
   },
   async (request) => {
     const email = normalizeEmail(request.data?.email);
@@ -928,7 +1069,7 @@ exports.sendPasswordResetEmail = onCall(
     memory: '256MiB',
     cors: true,
     invoker: 'public',
-    secrets: [GMAIL_APP_PASSWORD],
+    secrets: [SMTP_PASSWORD],
   },
   async (request) => {
     const auth = getAuth();
@@ -986,7 +1127,7 @@ exports.sendIncidentReportEmail = onCall(
     memory: '256MiB',
     cors: true,
     invoker: 'public',
-    secrets: [GMAIL_APP_PASSWORD],
+    secrets: [SMTP_PASSWORD],
   },
   async (request) => {
     const db = getFirestore();

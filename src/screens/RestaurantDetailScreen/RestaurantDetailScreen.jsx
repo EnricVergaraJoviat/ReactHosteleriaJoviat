@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import { joviatMapIcon } from '../../helpers/joviatMapIcon';
+import { NEUTRAL_MAP_TILE_ATTRIBUTION, NEUTRAL_MAP_TILE_URL } from '../../helpers/mapTiles';
 import { getRestaurantPrimaryType, getTranslatedPlaceType } from '../../helpers/placeTypes';
 import { formatPromotionYear } from '../../helpers/promotionYears';
 import { translateRestaurantRoles } from '../../helpers/restaurantRoles';
@@ -194,6 +195,7 @@ function BackIcon() {
 
 function RestaurantDetailScreen({
   restaurantId,
+  isAuthenticated = false,
   isAdministrator,
   onBack,
   onDeleted,
@@ -214,7 +216,9 @@ function RestaurantDetailScreen({
 
     async function loadRestaurant() {
       try {
-        const { restaurants } = await loadStudentRestaurantGraph();
+        const { restaurants } = await loadStudentRestaurantGraph({
+          includePrivateStudentFields: isAuthenticated,
+        });
         const selectedRestaurant = restaurants.find((entry) => entry.id === restaurantId) ?? null;
 
         if (isMounted) {
@@ -237,7 +241,7 @@ function RestaurantDetailScreen({
     return () => {
       isMounted = false;
     };
-  }, [restaurantId, t]);
+  }, [isAuthenticated, restaurantId, t]);
 
   function handleStartDelete() {
     setActionMessage('');
@@ -466,8 +470,8 @@ function RestaurantDetailScreen({
                 zoom={15}
               >
                 <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution={NEUTRAL_MAP_TILE_ATTRIBUTION}
+                  url={NEUTRAL_MAP_TILE_URL}
                 />
                 <Marker icon={joviatMapIcon} position={coordinates}>
                   <Popup>{restaurant.Name ?? t('common.noName')}</Popup>

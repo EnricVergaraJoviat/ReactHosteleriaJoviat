@@ -43,7 +43,7 @@ function LinkedStudentsPreview({ students = [], count = 0, className = '' }) {
       <p className="linked-students-preview__text">
         {t('linkedStudents.count', {
           count,
-          noun: count === 1 ? 'Alumni' : 'Alumnis',
+          noun: 'Alumni',
           plural: count === 1 ? '' : 's',
         })}
       </p>

@@ -4,6 +4,7 @@ import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-markercluster';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import { joviatMapIcon } from '../../helpers/joviatMapIcon';
+import { NEUTRAL_MAP_TILE_ATTRIBUTION, NEUTRAL_MAP_TILE_URL } from '../../helpers/mapTiles';
 import { getRestaurantPrimaryType, getTranslatedPlaceType } from '../../helpers/placeTypes';
 import SmartImage from '../../components/SmartImage/SmartImage';
 import LinkedStudentsPreview from '../../components/LinkedStudentsPreview/LinkedStudentsPreview';
@@ -208,7 +209,7 @@ function RestaurantCard({ restaurant, onOpenRestaurantDetails, isCompact = false
   );
 }
 
-function RestaurantsScreen({ onOpenRestaurantDetails }) {
+function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails }) {
   const { language, t } = useI18n();
   const [restaurants, setRestaurants] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -228,7 +229,9 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
 
     async function loadRestaurants() {
       try {
-        const { restaurants: firestoreRestaurants } = await loadStudentRestaurantGraph();
+        const { restaurants: firestoreRestaurants } = await loadStudentRestaurantGraph({
+          includePrivateStudentFields: isAuthenticated,
+        });
 
         if (isMounted) {
           setRestaurants(firestoreRestaurants);
@@ -250,7 +253,7 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
     return () => {
       isMounted = false;
     };
-  }, [t]);
+  }, [isAuthenticated, t]);
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
   const cityOptions = useMemo(() => {
@@ -582,8 +585,8 @@ function RestaurantsScreen({ onOpenRestaurantDetails }) {
               zoom={13}
             >
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution={NEUTRAL_MAP_TILE_ATTRIBUTION}
+                url={NEUTRAL_MAP_TILE_URL}
               />
               <MapBounds
                 locations={restaurantsWithCoordinates.map((restaurant) => restaurant.coordinates)}

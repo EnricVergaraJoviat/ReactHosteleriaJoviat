@@ -1,6 +1,9 @@
 import { collection, getDocs } from 'firebase/firestore';
-import { db } from './firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from './firebase';
 import { normalizeRestaurantRoles } from './restaurantRoles';
+
+const getPublicStudentRestaurantGraph = httpsCallable(functions, 'getPublicStudentRestaurantGraph');
 
 function mapSnapshot(snapshot) {
   return snapshot.docs.map((entry) => ({
@@ -89,8 +92,21 @@ async function loadFirestoreCollections() {
   };
 }
 
-async function loadStudentRestaurantGraph() {
-  const { students, restaurants, relations } = await loadFirestoreCollections();
+async function loadPublicFirestoreCollections() {
+  const response = await getPublicStudentRestaurantGraph();
+  const data = response.data ?? {};
+
+  return {
+    students: Array.isArray(data.students) ? data.students : [],
+    restaurants: Array.isArray(data.restaurants) ? data.restaurants : [],
+    relations: Array.isArray(data.relations) ? data.relations : [],
+  };
+}
+
+async function loadStudentRestaurantGraph({ includePrivateStudentFields = true } = {}) {
+  const { students, restaurants, relations } = includePrivateStudentFields
+    ? await loadFirestoreCollections()
+    : await loadPublicFirestoreCollections();
   const studentsById = createLookupById(students);
   const restaurantsById = createLookupById(restaurants);
   const restaurantLinksByStudentId = new Map();

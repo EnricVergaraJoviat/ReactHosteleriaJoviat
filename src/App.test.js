@@ -24,7 +24,9 @@ import App from './App';
 import {
   copyPlacePhotoToStorage,
   createStudentAccount,
+  createUserRegistration,
   deleteStudentAccount,
+  getPublicStudentRestaurantGraph,
   httpsCallable,
   resolveGoogleMapsShareLink,
   sendIncidentReportEmail,
@@ -66,7 +68,9 @@ jest.mock('firebase/firestore', () => ({
 jest.mock('firebase/functions', () => {
   const copyPlacePhotoToStorageMock = jest.fn();
   const createStudentAccountMock = jest.fn();
+  const createUserRegistrationMock = jest.fn();
   const deleteStudentAccountMock = jest.fn();
+  const getPublicStudentRestaurantGraphMock = jest.fn();
   const resolveGoogleMapsShareLinkMock = jest.fn();
   const sendIncidentReportEmailMock = jest.fn();
   const sendLoginPasswordResetEmailMock = jest.fn();
@@ -74,7 +78,9 @@ jest.mock('firebase/functions', () => {
   return {
     copyPlacePhotoToStorage: copyPlacePhotoToStorageMock,
     createStudentAccount: createStudentAccountMock,
+    createUserRegistration: createUserRegistrationMock,
     deleteStudentAccount: deleteStudentAccountMock,
+    getPublicStudentRestaurantGraph: getPublicStudentRestaurantGraphMock,
     resolveGoogleMapsShareLink: resolveGoogleMapsShareLinkMock,
     sendIncidentReportEmail: sendIncidentReportEmailMock,
     sendLoginPasswordResetEmail: sendLoginPasswordResetEmailMock,
@@ -87,8 +93,16 @@ jest.mock('firebase/functions', () => {
         return createStudentAccountMock;
       }
 
+      if (callableName === 'createUserRegistration') {
+        return createUserRegistrationMock;
+      }
+
       if (callableName === 'deleteStudentAccount') {
         return deleteStudentAccountMock;
+      }
+
+      if (callableName === 'getPublicStudentRestaurantGraph') {
+        return getPublicStudentRestaurantGraphMock;
       }
 
       if (callableName === 'sendPasswordResetEmail') {
@@ -242,8 +256,52 @@ beforeEach(() => {
   createUserWithEmailAndPassword.mockResolvedValue({ user: { uid: 'student-new' } });
   createStudentAccount.mockReset();
   createStudentAccount.mockResolvedValue({ data: { studentId: 'student-new', emailSent: true } });
+  createUserRegistration.mockReset();
+  createUserRegistration.mockResolvedValue({ data: { registrationId: 'registration-new' } });
   deleteStudentAccount.mockReset();
   deleteStudentAccount.mockResolvedValue({ data: { deleted: true } });
+  getPublicStudentRestaurantGraph.mockReset();
+  getPublicStudentRestaurantGraph.mockImplementation(async () => {
+    const [studentsSnapshot, restaurantsSnapshot, relationsSnapshot] = await Promise.all([
+      getDocs('Alumni'),
+      getDocs('Restaurant'),
+      getDocs('Rest-Alum'),
+    ]);
+
+    return {
+      data: {
+        students: studentsSnapshot.docs.map((entry) => {
+          const privateFields = new Set([
+            'Email',
+            'Instagram',
+            'LinkedIn',
+            'Phone',
+            'VisibleContactToAlumniNetwork',
+            'createdAt',
+            'updatedAt',
+            'LegalTermsAcceptedAt',
+            'Password',
+          ]);
+          const publicData = Object.fromEntries(
+            Object.entries(entry.data()).filter(([key]) => !privateFields.has(key))
+          );
+
+          return {
+            id: entry.id,
+            ...publicData,
+          };
+        }),
+        restaurants: restaurantsSnapshot.docs.map((entry) => ({
+          id: entry.id,
+          ...entry.data(),
+        })),
+        relations: relationsSnapshot.docs.map((entry) => ({
+          id: entry.id,
+          ...entry.data(),
+        })),
+      },
+    };
+  });
   sendIncidentReportEmail.mockReset();
   sendIncidentReportEmail.mockResolvedValue({ data: { emailSent: true } });
   sendLoginPasswordResetEmail.mockReset();
@@ -258,8 +316,16 @@ beforeEach(() => {
       return createStudentAccount;
     }
 
+    if (callableName === 'createUserRegistration') {
+      return createUserRegistration;
+    }
+
     if (callableName === 'deleteStudentAccount') {
       return deleteStudentAccount;
+    }
+
+    if (callableName === 'getPublicStudentRestaurantGraph') {
+      return getPublicStudentRestaurantGraph;
     }
 
     if (callableName === 'sendPasswordResetEmail') {
@@ -453,7 +519,7 @@ test('renders the Joviat home screen', () => {
   expect(screen.getByAltText(/logo joviat/i)).toBeInTheDocument();
   expect(screen.getByText(/cicle formatiu hoteleria/i)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /explorar establiments/i })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /explorar Alumnis/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /explorar Alumni/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /registra't/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /^login$/i })).toBeInTheDocument();
   expect(
@@ -704,12 +770,10 @@ test('allows a visitor to request access from the login dialog', async () => {
     await userEvent.click(screen.getByRole('button', { name: /sol·licitar accés/i }));
   });
 
-  expect(addDoc).toHaveBeenCalledWith('UserRegistrations', {
-    Email: 'pepito@joviat.cat',
-    Name: 'Pepito Perez',
-    LegalTermsAccepted: true,
-    LegalTermsAcceptedAt: 'SERVER_TIMESTAMP',
-    createdAt: 'SERVER_TIMESTAMP',
+  expect(createUserRegistration).toHaveBeenCalledWith({
+    email: 'pepito@joviat.cat',
+    name: 'Pepito Perez',
+    hasAcceptedLegalTerms: true,
   });
   expect(
     await screen.findByText(/s'ha enviat la sol·licitud d'accés/i)
@@ -775,6 +839,8 @@ test('warns when password reset email does not exist', async () => {
 });
 
 test('warns when requesting access with an existing Alumni email', async () => {
+  createUserRegistration.mockRejectedValueOnce({ code: 'functions/already-exists' });
+
   render(<App />);
 
   await act(async () => {
@@ -802,27 +868,7 @@ test('warns when requesting access with an existing Alumni email', async () => {
 });
 
 test('warns when requesting access with a pending registration email', async () => {
-  getDocs.mockImplementation(async (collectionName) => {
-    if (collectionName === 'UserRegistrations') {
-      return {
-        docs: [
-          {
-            id: 'registration-1',
-            data: () => ({
-              Email: 'pendent@joviat.cat',
-              Name: 'Usuari Pendent',
-            }),
-          },
-        ],
-      };
-    }
-
-    if (collectionName === 'Alumni') {
-      return { docs: [] };
-    }
-
-    return { docs: [] };
-  });
+  createUserRegistration.mockRejectedValueOnce({ code: 'functions/failed-precondition' });
 
   render(<App />);
 
@@ -1606,26 +1652,23 @@ test('navigates to the students screen', async () => {
   render(<App />);
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /^Alumnis$/i })
+      screen.getByRole('button', { name: /^Alumni$/i })
     );
   });
 
   expect(
-    await screen.findByRole('heading', { name: /llistat d'Alumnis/i })
+    await screen.findByRole('heading', { name: /llistat d'Alumni/i })
   ).toBeInTheDocument();
   expect(await screen.findByText(/aina serra/i)).toBeInTheDocument();
   expect((await screen.findAllByText(/1 establiment associat/i)).length).toBe(2);
-  expect(collection).toHaveBeenCalledWith({}, 'Alumni');
-  expect(collection).toHaveBeenCalledWith({}, 'Rest-Alum');
-  expect(getDocs).toHaveBeenCalledWith('Alumni');
-  expect(getDocs).toHaveBeenCalledWith('Rest-Alum');
+  expect(getPublicStudentRestaurantGraph).toHaveBeenCalledWith();
 });
 
 test('filters students by name and clears the search', async () => {
   render(<App />);
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /^Alumnis$/i })
+      screen.getByRole('button', { name: /^Alumni$/i })
     );
   });
 
@@ -1640,7 +1683,7 @@ test('filters students by name and clears the search', async () => {
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /esborrar cerca d'Alumnis/i })
+      screen.getByRole('button', { name: /esborrar cerca d'Alumni/i })
     );
   });
 
@@ -1700,7 +1743,7 @@ test('filters students by professional profile and lets you select or clear all 
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /^Alumnis$/i })
+      screen.getByRole('button', { name: /^Alumni$/i })
     );
   });
 
@@ -1757,15 +1800,15 @@ test('paginates the students list in groups of 8 below the search field', async 
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /^Alumnis$/i })
+      screen.getByRole('button', { name: /^Alumni$/i })
     );
   });
 
   const searchInput = await screen.findByLabelText(/cercar Alumni/i);
-  const pagination = screen.getByRole('navigation', { name: /paginació d'Alumnis/i });
+  const pagination = screen.getByRole('navigation', { name: /paginació d'Alumni/i });
 
   expect(searchInput.compareDocumentPosition(pagination) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(screen.getByText(/1 a 8 de 10 Alumnis/i)).toBeInTheDocument();
+  expect(screen.getByText(/1 a 8 de 10 Alumni/i)).toBeInTheDocument();
   expect(screen.getByText(/^Alumni 1$/i)).toBeInTheDocument();
   expect(screen.getByText(/^Alumni 8$/i)).toBeInTheDocument();
   expect(screen.queryByText(/^Alumni 9$/i)).not.toBeInTheDocument();
@@ -1775,7 +1818,7 @@ test('paginates the students list in groups of 8 below the search field', async 
     await userEvent.click(screen.getByRole('button', { name: /pàgina següent/i }));
   });
 
-  expect(await screen.findByText(/9 a 10 de 10 Alumnis/i)).toBeInTheDocument();
+  expect(await screen.findByText(/9 a 10 de 10 Alumni/i)).toBeInTheDocument();
   expect(screen.getByText(/^Alumni 9$/i)).toBeInTheDocument();
   expect(screen.getByText(/^Alumni 10$/i)).toBeInTheDocument();
   expect(screen.queryByText(/^Alumni 1$/i)).not.toBeInTheDocument();
@@ -1787,7 +1830,7 @@ test('opens the student detail card from the students list', async () => {
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /^Alumnis$/i })
+      screen.getByRole('button', { name: /^Alumni$/i })
     );
   });
 
@@ -1814,7 +1857,7 @@ test('returns to the students list when using browser back from a student detail
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /^Alumnis$/i })
+      screen.getByRole('button', { name: /^Alumni$/i })
     );
   });
 
@@ -1831,7 +1874,7 @@ test('returns to the students list when using browser back from a student detail
   });
 
   expect(
-    await screen.findByRole('heading', { name: /llistat d'Alumnis/i })
+    await screen.findByRole('heading', { name: /llistat d'Alumni/i })
   ).toBeInTheDocument();
 });
 
@@ -1955,7 +1998,7 @@ test('shows the contact section in the student detail when the user is logged in
   expect(await screen.findByRole('button', { name: /^logout$/i })).toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^Alumnis$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alumni$/i }));
   });
 
   await act(async () => {
@@ -2094,7 +2137,7 @@ test('does not show edit or delete actions on another student detail for non adm
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^Alumnis$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alumni$/i }));
   });
 
   await act(async () => {
@@ -2199,7 +2242,7 @@ test('shows edit and delete actions on the student detail for administrators', a
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^Alumnis$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alumni$/i }));
   });
 
   await act(async () => {
@@ -2305,7 +2348,7 @@ test('reuses the add student form in edit mode for administrators', async () => 
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^Alumnis$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alumni$/i }));
   });
 
   await act(async () => {
@@ -2454,7 +2497,7 @@ test('shows the password recovery button only for administrators in edit mode', 
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^Alumnis$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alumni$/i }));
   });
 
   await act(async () => {
@@ -2551,7 +2594,7 @@ test('does not show the password recovery button for a non administrator editing
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^Alumnis$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alumni$/i }));
   });
 
   await act(async () => {
@@ -2651,7 +2694,7 @@ test('opens the logged student edit form from the header avatar', async () => {
 
   expect(await screen.findByRole('heading', { name: /editar Alumni/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /editar perfil/i })).toHaveClass('sidebar__link--active');
-  expect(screen.getByRole('button', { name: /^Alumnis$/i })).not.toHaveClass('sidebar__link--active');
+  expect(screen.getByRole('button', { name: /^Alumni$/i })).not.toHaveClass('sidebar__link--active');
   expect(screen.getByRole('button', { name: /^establiments$/i })).not.toHaveClass('sidebar__link--active');
   expect(screen.getByLabelText(/nom complet/i)).toHaveValue('Aina Serra');
   expect(screen.getByLabelText(/correu electrònic/i)).toHaveValue('aina@joviat.cat');
@@ -2740,7 +2783,6 @@ test('allows a logged student to change their password from editar perfil', asyn
   expect(updateDoc).toHaveBeenCalledWith(
     { id: 'student-1', path: 'Alumni/student-1' },
     {
-      Password: 'noupass123',
       updatedAt: 'SERVER_TIMESTAMP',
     }
   );
@@ -2948,7 +2990,7 @@ test('allows an administrator to delete a student from detail view without leavi
   expect(await screen.findByRole('button', { name: /^logout$/i })).toBeInTheDocument();
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /^Alumnis$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Alumni$/i }));
   });
 
   await act(async () => {
@@ -2970,7 +3012,7 @@ test('allows an administrator to delete a student from detail view without leavi
 
   expect(deleteStudentAccount).toHaveBeenCalledWith({ studentId: 'student-1' });
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
-  expect(await screen.findByRole('heading', { name: /llistat d'Alumnis/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /llistat d'Alumni/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /^logout$/i })).toBeInTheDocument();
 });
 
@@ -3397,7 +3439,7 @@ test('opens the restaurant detail card from the student detail', async () => {
 
   await act(async () => {
     await userEvent.click(
-      screen.getByRole('button', { name: /^Alumnis$/i })
+      screen.getByRole('button', { name: /^Alumni$/i })
     );
   });
 
@@ -3474,10 +3516,7 @@ test('navigates to the restaurants screen and returns home from the logo', async
   expect(
     screen.queryByRole('navigation', { name: /paginació d'establiments/i })
   ).not.toBeInTheDocument();
-  expect(collection).toHaveBeenCalledWith({}, 'Restaurant');
-  expect(collection).toHaveBeenCalledWith({}, 'Rest-Alum');
-  expect(getDocs).toHaveBeenCalledWith('Restaurant');
-  expect(getDocs).toHaveBeenCalledWith('Rest-Alum');
+  expect(getPublicStudentRestaurantGraph).toHaveBeenCalledWith();
 
   await act(async () => {
     await userEvent.click(

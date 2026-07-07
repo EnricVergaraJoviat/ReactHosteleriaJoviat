@@ -36,6 +36,7 @@ import { useI18n } from '../../i18n/I18nContext';
 import './AddStudentScreen.css';
 
 const RESTAURANT_REGISTRATIONS_COLLECTION = 'RestaruantsRegistrations';
+const LEGAL_PRIVACY_POLICY_URL = 'https://joviat.com/politica-de-privacitat/';
 const joviatStudyOptions = getJoviatStudyOptions();
 
 function normalizeFileName(fileName) {
@@ -242,6 +243,7 @@ function AddStudentScreen({
   const [isRestaurantRequestDialogOpen, setIsRestaurantRequestDialogOpen] = useState(false);
   const [isRestaurantRequestConfirmationOpen, setIsRestaurantRequestConfirmationOpen] = useState(false);
   const [isSubmittingRestaurantRequest, setIsSubmittingRestaurantRequest] = useState(false);
+  const [isLegalTermsDialogOpen, setIsLegalTermsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [newRestaurant, setNewRestaurant] = useState({
@@ -786,7 +788,6 @@ function AddStudentScreen({
 
       if (student?.id) {
         await updateDoc(doc(db, 'Alumni', student.id), {
-          Password: trimmedPassword,
           updatedAt: serverTimestamp(),
         });
       }
@@ -947,9 +948,13 @@ function AddStudentScreen({
               onChange={handlePhotoChange}
             />
 
-            <p className="add-student-form__contact-visibility-note">
-              {t('forms.visibleContactToAlumniNetwork')}
-            </p>
+            <button
+              className="add-student-form__legal-link"
+              type="button"
+              onClick={() => setIsLegalTermsDialogOpen(true)}
+            >
+              {t('forms.legalConditionsOpen')}
+            </button>
 
             <fieldset className="add-student-form__field add-student-form__field--studies">
               <legend className="add-student-form__label">
@@ -1362,6 +1367,58 @@ function AddStudentScreen({
           </div>
         </div>
       </form>
+
+      {isLegalTermsDialogOpen ? (
+        <div
+          className="add-student-form__dialog-layer"
+          role="presentation"
+          onClick={() => setIsLegalTermsDialogOpen(false)}
+        >
+          <div
+            className="add-student-form__dialog add-student-form__dialog--legal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="student-legal-terms-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="student-legal-terms-title">{t('forms.legalConditionsTitle')}</h2>
+            <div className="add-student-form__legal-content">
+              <p>{t('forms.legalConditionsAuthorization')}</p>
+              <p>{t('forms.legalConditionsPurpose')}</p>
+              <p>{t('forms.legalConditionsPublicIntro')}</p>
+              <ul>
+                <li>{t('forms.legalConditionsPublicName')}</li>
+                <li>{t('forms.legalConditionsPublicStudies')}</li>
+                <li>{t('forms.legalConditionsPublicWork')}</li>
+              </ul>
+              <p>{t('forms.legalConditionsRegisteredIntro')}</p>
+              <ul>
+                <li>{t('forms.legalConditionsRegisteredEmail')}</li>
+                <li>{t('forms.legalConditionsRegisteredOtherContact')}</li>
+              </ul>
+              <p>{t('forms.legalConditionsRevocation')}</p>
+              <p>{t('forms.legalConditionsRgpd')}</p>
+              <p>{t('forms.legalConditionsRights')}</p>
+              <p>{t('forms.legalConditionsDpd')}</p>
+              <p>
+                {t('forms.legalConditionsPrivacyPrefix')}{' '}
+                <a href={LEGAL_PRIVACY_POLICY_URL} target="_blank" rel="noreferrer">
+                  {t('forms.legalConditionsPrivacyLink')}
+                </a>
+              </p>
+            </div>
+            <div className="add-student-form__dialog-actions">
+              <button
+                className="add-student-form__submit"
+                type="button"
+                onClick={() => setIsLegalTermsDialogOpen(false)}
+              >
+                {t('common.close')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {isDeleteDialogOpen ? (
         <div

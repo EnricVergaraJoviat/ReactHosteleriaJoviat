@@ -224,7 +224,9 @@ function StudentDetailScreen({
 
     async function loadStudent() {
       try {
-        const { students } = await loadStudentRestaurantGraph();
+        const { students } = await loadStudentRestaurantGraph({
+          includePrivateStudentFields: isAuthenticated,
+        });
         const selectedStudent = students.find((entry) => entry.id === studentId) ?? null;
 
         if (isMounted) {
@@ -247,7 +249,7 @@ function StudentDetailScreen({
     return () => {
       isMounted = false;
     };
-  }, [studentId, t]);
+  }, [isAuthenticated, studentId, t]);
 
   function handleStartDelete() {
     setActionMessage('');

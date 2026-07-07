@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import Header from '../Header/Header';
 import Sidebar from '../Sidebar/Sidebar';
 import useIsDesktop from '../../hooks/useIsDesktop';
-import joviatLogo from '../../assets/images/logo_joviat.webp';
 import './AppShell.css';
+
+const joviatLogo = `${process.env.PUBLIC_URL}/logo_joviat_culinary.png`;
 
 function AppShell({
   activeView,

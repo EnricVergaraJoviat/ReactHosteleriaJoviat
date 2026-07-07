@@ -5,6 +5,7 @@ import { httpsCallable } from 'firebase/functions';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, functions, storage } from '../../helpers/firebase';
 import { joviatMapIcon } from '../../helpers/joviatMapIcon';
+import { NEUTRAL_MAP_TILE_ATTRIBUTION, NEUTRAL_MAP_TILE_URL } from '../../helpers/mapTiles';
 import {
   fetchPlaceDetails,
   loadGooglePlacesApi,
@@ -950,8 +951,8 @@ function AddRestaurantScreen({
                     zoom={15}
                   >
                     <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution={NEUTRAL_MAP_TILE_ATTRIBUTION}
+                      url={NEUTRAL_MAP_TILE_URL}
                     />
                     <Marker icon={joviatMapIcon} position={previewCoordinates}>
                       <Popup>{formData.name || t('common.restaurant')}</Popup>

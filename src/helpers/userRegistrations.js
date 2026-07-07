@@ -1,9 +1,10 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from './firebase';
 
 const USER_REGISTRATIONS_COLLECTION = 'UserRegistrations';
 const createStudentAccount = httpsCallable(functions, 'createStudentAccount');
+const createUserRegistrationRequest = httpsCallable(functions, 'createUserRegistration');
 const TEMPORARY_PASSWORD_LENGTH = 12;
 const TEMPORARY_PASSWORD_CHARACTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
 
@@ -18,6 +19,24 @@ function normalizeName(value) {
 function createRegistrationError(code, message) {
   const error = new Error(message);
   error.code = code;
+  return error;
+}
+
+function mapCreateRegistrationError(error) {
+  if (error?.code === 'functions/already-exists' || error?.code === 'already-exists') {
+    return createRegistrationError(
+      'alumni/email-already-exists',
+      'An Alumni user already exists with this email.'
+    );
+  }
+
+  if (error?.code === 'functions/failed-precondition' || error?.code === 'failed-precondition') {
+    return createRegistrationError(
+      'user-registration/email-already-pending',
+      'A pending access request already exists with this email.'
+    );
+  }
+
   return error;
 }
 
@@ -62,39 +81,15 @@ async function createUserRegistration({ email, name, hasAcceptedLegalTerms }) {
     throw new Error('missing-registration-data');
   }
 
-  const [alumniSnapshot, registrationsSnapshot] = await Promise.all([
-    getDocs(collection(db, 'Alumni')),
-    getDocs(collection(db, USER_REGISTRATIONS_COLLECTION)),
-  ]);
-  const alumniExists = alumniSnapshot.docs.some((entry) =>
-    normalizeEmail(entry.data()?.Email) === normalizedEmail
-  );
-
-  if (alumniExists) {
-    throw createRegistrationError(
-      'alumni/email-already-exists',
-      'An Alumni user already exists with this email.'
-    );
+  try {
+    return await createUserRegistrationRequest({
+      email: normalizedEmail,
+      name: normalizedName,
+      hasAcceptedLegalTerms: true,
+    });
+  } catch (error) {
+    throw mapCreateRegistrationError(error);
   }
-
-  const pendingRegistrationExists = registrationsSnapshot.docs.some((entry) =>
-    normalizeEmail(entry.data()?.Email) === normalizedEmail
-  );
-
-  if (pendingRegistrationExists) {
-    throw createRegistrationError(
-      'user-registration/email-already-pending',
-      'A pending access request already exists with this email.'
-    );
-  }
-
-  return addDoc(collection(db, USER_REGISTRATIONS_COLLECTION), {
-    Email: normalizedEmail,
-    Name: normalizedName,
-    LegalTermsAccepted: true,
-    LegalTermsAcceptedAt: serverTimestamp(),
-    createdAt: serverTimestamp(),
-  });
 }
 
 async function acceptUserRegistration(registration) {

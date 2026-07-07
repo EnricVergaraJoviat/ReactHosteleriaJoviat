@@ -396,6 +396,26 @@
   line-height: 1.45;
 }
 
+.add-student-form__legal-link {
+  align-self: flex-start;
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: transparent;
+  color: #6b5c43;
+  padding: 0 0 0.12rem;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.add-student-form__legal-link:hover {
+  color: #111111;
+}
+
 .add-student-form__panel-heading p {
   margin: 0.35rem 0 0;
   color: #6f655a;
@@ -696,11 +716,41 @@
   border: 1px solid rgba(180, 35, 24, 0.18);
 }
 
+.add-student-form__dialog--legal {
+  width: min(100%, 760px);
+  max-height: min(86vh, 820px);
+  overflow: auto;
+}
+
 .add-student-form__dialog-description {
   margin: 0;
   color: #4f4335;
   font-size: 1rem;
   line-height: 1.65;
+}
+
+.add-student-form__legal-content {
+  color: #4f4335;
+  font-size: 0.98rem;
+  line-height: 1.62;
+}
+
+.add-student-form__legal-content p {
+  margin: 0 0 0.95rem;
+}
+
+.add-student-form__legal-content ul {
+  margin: -0.35rem 0 1rem 1.15rem;
+  padding: 0;
+}
+
+.add-student-form__legal-content li {
+  margin: 0.28rem 0;
+}
+
+.add-student-form__legal-content a {
+  color: #8d5f1c;
+  font-weight: 800;
 }
 
 .add-student-form__request-example {

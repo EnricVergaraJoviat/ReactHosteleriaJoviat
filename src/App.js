@@ -554,11 +554,21 @@ function App() {
   );
 
   if (activeView === 'restaurants') {
-    screen = <RestaurantsScreen onOpenRestaurantDetails={handleOpenRestaurantDetails} />;
+    screen = (
+      <RestaurantsScreen
+        isAuthenticated={Boolean(currentUser)}
+        onOpenRestaurantDetails={handleOpenRestaurantDetails}
+      />
+    );
   }
 
   if (activeView === 'students') {
-    screen = <StudentsScreen onOpenStudentDetails={handleOpenStudentDetails} />;
+    screen = (
+      <StudentsScreen
+        isAuthenticated={Boolean(currentUser)}
+        onOpenStudentDetails={handleOpenStudentDetails}
+      />
+    );
   }
 
   if (activeView === 'student-detail' && selectedStudentId) {
@@ -579,6 +589,7 @@ function App() {
   if (activeView === 'restaurant-detail' && selectedRestaurantId) {
     screen = (
       <RestaurantDetailScreen
+        isAuthenticated={Boolean(currentUser)}
         isAdministrator={isAdministrator}
         restaurantId={selectedRestaurantId}
         onBack={() => handleDetailBack(restaurantDetailOrigin)}
