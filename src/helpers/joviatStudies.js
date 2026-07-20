@@ -12,6 +12,10 @@ const JOVIAT_STUDY_OPTIONS = [
     label: 'CFGS Direcció de cuina',
   },
   {
+    value: 'cfgs-direccio-serveis-restauracio',
+    label: 'CFGS Direcció de serveis en restauració',
+  },
+  {
     value: 'programa-intensiu-cuina-catalana',
     label: 'Programa Intensiu de Cuina Catalana',
   },

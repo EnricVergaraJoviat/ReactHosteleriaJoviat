@@ -69,7 +69,46 @@ function isValidGoogleMapsUrl(value) {
   }
 }
 
+function normalizeRestaurantIdentity(value) {
+  return String(value ?? '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+function findExistingRestaurant(restaurants, placeDetails) {
+  const normalizedGooglePlaceId = String(placeDetails?.googlePlaceId ?? '').trim();
+  const normalizedName = normalizeRestaurantIdentity(placeDetails?.name);
+  const normalizedAddress = normalizeRestaurantIdentity(placeDetails?.address);
+
+  if (!normalizedGooglePlaceId && !normalizedName) {
+    return null;
+  }
+
+  return restaurants.find((restaurant) => {
+    const existingGooglePlaceId = String(restaurant.GooglePlaceId ?? '').trim();
+
+    if (normalizedGooglePlaceId && existingGooglePlaceId === normalizedGooglePlaceId) {
+      return true;
+    }
+
+    const existingName = normalizeRestaurantIdentity(restaurant.Name);
+    const existingAddress = normalizeRestaurantIdentity(restaurant.Address);
+
+    if (!normalizedName || existingName !== normalizedName) {
+      return false;
+    }
+
+    return normalizedAddress && existingAddress
+      ? existingAddress === normalizedAddress
+      : true;
+  }) ?? null;
+}
+
 const createStudentAccount = httpsCallable(functions, 'createStudentAccount');
+const resolveGoogleMapsShareLink = httpsCallable(functions, 'resolveGoogleMapsShareLink');
 
 function getFirebaseErrorCode(error) {
   return typeof error?.code === 'string' ? error.code : '';
@@ -233,6 +272,7 @@ function AddStudentScreen({
     passwordConfirmation: '',
   });
   const [visiblePasswordFields, setVisiblePasswordFields] = useState({
+    studentPassword: false,
     password: false,
     passwordConfirmation: false,
   });
@@ -299,6 +339,7 @@ function AddStudentScreen({
       passwordConfirmation: '',
     });
     setVisiblePasswordFields({
+      studentPassword: false,
       password: false,
       passwordConfirmation: false,
     });
@@ -528,6 +569,19 @@ function AddStudentScreen({
     setIsSubmittingRestaurantRequest(true);
 
     try {
+      const resolvedRestaurant = await resolveGoogleMapsShareLink({ url: trimmedMapsUrl });
+      const existingRestaurant = findExistingRestaurant(
+        restaurants,
+        resolvedRestaurant.data ?? null
+      );
+
+      if (existingRestaurant) {
+        setRestaurantRequestError(t('forms.restaurantAlreadyExists', {
+          name: existingRestaurant.Name ?? resolvedRestaurant.data?.name ?? t('common.restaurant'),
+        }));
+        return;
+      }
+
       await addDoc(collection(db, RESTAURANT_REGISTRATIONS_COLLECTION), {
         Name: trimmedName,
         Email: trimmedEmail,
@@ -1003,7 +1057,7 @@ function AddStudentScreen({
                   name="name"
                   type="text"
                   value={formData.name}
-                  placeholder="Ex. Marc Ribas i Soler"
+                  placeholder="Ex. Laia Font i Serra"
                   onChange={handleFormChange}
                 />
               </label>
@@ -1019,7 +1073,7 @@ function AddStudentScreen({
                   name="email"
                   type="email"
                   value={formData.email}
-                  placeholder="marc.ribas@exemple.cat"
+                  placeholder="laia.font@exemple.cat"
                   onChange={handleFormChange}
                 />
               </label>
@@ -1030,15 +1084,25 @@ function AddStudentScreen({
                     <FieldIcon name="lock" />
                     {t('auth.password')} <span className="add-student-form__required">*</span>
                   </span>
-                  <input
-                    id="student-password"
-                    autoComplete="new-password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    placeholder="********"
-                    onChange={handleFormChange}
-                  />
+                  <div className="add-student-form__password-input-wrap">
+                    <input
+                      id="student-password"
+                      autoComplete="new-password"
+                      name="password"
+                      type={visiblePasswordFields.studentPassword ? 'text' : 'password'}
+                      value={formData.password}
+                      placeholder="********"
+                      onChange={handleFormChange}
+                    />
+                    <button
+                      className="add-student-form__password-toggle"
+                      type="button"
+                      aria-label={visiblePasswordFields.studentPassword ? t('forms.hidePassword') : t('forms.showPassword')}
+                      onClick={() => togglePasswordVisibility('studentPassword')}
+                    >
+                      <PasswordVisibilityIcon isVisible={visiblePasswordFields.studentPassword} />
+                    </button>
+                  </div>
                 </label>
               ) : null}
 

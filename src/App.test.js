@@ -2717,6 +2717,9 @@ test('opens the logged student edit form from the header avatar', async () => {
     await userEvent.click(screen.getByRole('button', { name: /enviar petici/i }));
   });
 
+  expect(resolveGoogleMapsShareLink).toHaveBeenCalledWith({
+    url: 'https://maps.app.goo.gl/la-fonda',
+  });
   expect(addDoc).toHaveBeenCalledWith('RestaruantsRegistrations', {
     Name: 'Aina Serra',
     Email: 'aina@joviat.cat',
@@ -2736,6 +2739,100 @@ test('opens the logged student edit form from the header avatar', async () => {
     await userEvent.click(screen.getByRole('button', { name: /acceptar/i }));
   });
 
+  expect(
+    screen.queryByRole('dialog', { name: /petició enviada/i })
+  ).not.toBeInTheDocument();
+});
+
+test('warns a logged student when requested restaurant already exists', async () => {
+  let authListener;
+  onAuthStateChanged.mockImplementation((auth, callback) => {
+    authListener = callback;
+    callback(null);
+    return jest.fn();
+  });
+  signInWithEmailAndPassword.mockImplementation(async () => {
+    authListener({ email: 'aina@joviat.cat' });
+  });
+  getDocs.mockImplementation(async (collectionName) => {
+    if (collectionName === 'Administrator') {
+      return { docs: [] };
+    }
+
+    if (collectionName === 'Rest-Alum') {
+      return { docs: [] };
+    }
+
+    if (collectionName === 'Restaurant') {
+      return {
+        docs: [
+          {
+            id: 'restaurant-1',
+            data: () => ({
+              Name: 'Can Jubany',
+              Address: 'Ctra. de Sant Hilari, s/n, 08506 Calldetenes, Barcelona',
+              GooglePlaceId: 'place-can-jubany',
+            }),
+          },
+        ],
+      };
+    }
+
+    return {
+      docs: [
+        {
+          id: 'student-1',
+          data: () => ({
+            Name: 'Aina Serra',
+            PhotoURL: 'https://i.pravatar.cc/320?img=12',
+            Email: 'aina@joviat.cat',
+            Phone: '600123123',
+            LinkedIn: 'linkedin.com/in/aina-serra',
+            JoviatStudies: ['cfgm-cuina-gastronomia-serveis-restauracio'],
+          }),
+        },
+      ],
+    };
+  });
+
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^login$/i }));
+  });
+
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(/email/i), 'aina@joviat.cat');
+    await userEvent.type(screen.getByLabelText(/contrasenya/i), '123456');
+    await userEvent.click(screen.getByRole('button', { name: /fer login/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click(await screen.findByRole('button', { name: /obrir la meva fitxa/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /donar d'alta establiment/i }));
+  });
+
+  await act(async () => {
+    await userEvent.type(
+      screen.getByLabelText(/enllaç de google maps/i),
+      'https://maps.app.goo.gl/can-jubany'
+    );
+    await userEvent.click(screen.getByRole('button', { name: /enviar petici/i }));
+  });
+
+  expect(resolveGoogleMapsShareLink).toHaveBeenCalledWith({
+    url: 'https://maps.app.goo.gl/can-jubany',
+  });
+  expect(addDoc).not.toHaveBeenCalledWith(
+    'RestaruantsRegistrations',
+    expect.any(Object)
+  );
+  expect(
+    await screen.findByText(/aquest establiment ja existeix a la base de dades com a can jubany/i)
+  ).toBeInTheDocument();
   expect(
     screen.queryByRole('dialog', { name: /petició enviada/i })
   ).not.toBeInTheDocument();

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
-import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, functions, storage } from '../../helpers/firebase';
@@ -182,6 +182,51 @@ function buildFormDataFromRestaurant(restaurant) {
   };
 }
 
+function normalizeRestaurantIdentity(value) {
+  return String(value ?? '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+async function findExistingRestaurant({ googlePlaceId, name, address, currentRestaurantId }) {
+  const normalizedGooglePlaceId = String(googlePlaceId ?? '').trim();
+  const normalizedName = normalizeRestaurantIdentity(name);
+  const normalizedAddress = normalizeRestaurantIdentity(address);
+
+  if (!normalizedGooglePlaceId && !normalizedName) {
+    return null;
+  }
+
+  const restaurantsSnapshot = await getDocs(collection(db, 'Restaurant'));
+
+  return restaurantsSnapshot.docs.find((restaurantDocument) => {
+    if (restaurantDocument.id === currentRestaurantId) {
+      return false;
+    }
+
+    const restaurantData = restaurantDocument.data();
+    const existingGooglePlaceId = String(restaurantData.GooglePlaceId ?? '').trim();
+
+    if (normalizedGooglePlaceId && existingGooglePlaceId === normalizedGooglePlaceId) {
+      return true;
+    }
+
+    const existingName = normalizeRestaurantIdentity(restaurantData.Name);
+    const existingAddress = normalizeRestaurantIdentity(restaurantData.Address);
+
+    if (!normalizedName || existingName !== normalizedName) {
+      return false;
+    }
+
+    return normalizedAddress && existingAddress
+      ? existingAddress === normalizedAddress
+      : true;
+  })?.data() ?? null;
+}
+
 const copyPlacePhotoToStorage = httpsCallable(functions, 'copyPlacePhotoToStorage');
 
 function isGooglePermissionError(error) {
@@ -335,6 +380,7 @@ function AddRestaurantScreen({
   onOpenCreatedRestaurant,
 }) {
   const { language, t } = useI18n();
+  const screenRef = useRef(null);
   const [googleStatus, setGoogleStatus] = useState(
     GOOGLE_MAPS_API_KEY ? 'loading' : 'missing-key'
   );
@@ -430,6 +476,9 @@ function AddRestaurantScreen({
     setSuccessTone('success');
     setHasPhotoPreviewError(false);
     setCreatedRestaurantInfo(null);
+    window.requestAnimationFrame(() => {
+      screenRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
   function handleFormChange(event) {
@@ -546,6 +595,20 @@ function AddRestaurantScreen({
     setIsSubmitting(true);
 
     try {
+      const duplicateRestaurant = await findExistingRestaurant({
+        googlePlaceId: formData.googlePlaceId,
+        name: trimmedName,
+        address: formData.address,
+        currentRestaurantId: mode === 'edit' ? restaurant?.id : '',
+      });
+
+      if (duplicateRestaurant) {
+        setErrorMessage(t('forms.restaurantAlreadyExists', {
+          name: duplicateRestaurant.Name ?? trimmedName,
+        }));
+        return;
+      }
+
       const latitude = Number(formData.latitude);
       const longitude = Number(formData.longitude);
       const hasValidCoordinates = !Number.isNaN(latitude) && !Number.isNaN(longitude);
@@ -662,7 +725,7 @@ function AddRestaurantScreen({
   const submitLoadingLabel = isEditing ? t('common.saving') : t('common.saving');
 
   return (
-    <section className="add-restaurant-screen">
+    <section className="add-restaurant-screen" ref={screenRef}>
       <div className="add-restaurant-screen__intro">
         <p className="add-restaurant-screen__eyebrow">{t('common.administration')}</p>
         <h1>{screenTitle}</h1>
