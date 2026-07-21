@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import {
   getRestaurantRoleOptions,
@@ -40,6 +40,10 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
   const [currentWorkFilter, setCurrentWorkFilter] = useState('all');
   const [promotionYearFilter, setPromotionYearFilter] = useState('all');
   const [roleFilters, setRoleFilters] = useState([]);
+  const studentsGridRef = useRef(null);
+  const [gridColumnCount, setGridColumnCount] = useState(() => (
+    typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches ? 2 : 4
+  ));
   const promotionYears = useMemo(createPromotionYears, []);
   const restaurantRoleOptions = useMemo(() => getRestaurantRoleOptions(t), [t]);
 
@@ -104,6 +108,8 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
     ? 0
     : ((currentPage - 1) * STUDENTS_PER_PAGE) + 1;
   const rangeEnd = Math.min(currentPage * STUDENTS_PER_PAGE, filteredStudents.length);
+  const shouldShowPagination = !isLoading && !error && filteredStudents.length > STUDENTS_PER_PAGE;
+  const shouldShowBottomPagination = shouldShowPagination && visibleStudents.length > gridColumnCount;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -114,6 +120,33 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
       setCurrentPage(totalPages);
     }
   }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    const gridElement = studentsGridRef.current;
+
+    if (!gridElement || typeof window === 'undefined' || typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+
+    const updateGridColumnCount = () => {
+      const gridTemplateColumns = window.getComputedStyle(gridElement).gridTemplateColumns;
+      const columnCount = gridTemplateColumns
+        .split(' ')
+        .filter((column) => column && column !== 'none').length;
+
+      if (columnCount > 0) {
+        setGridColumnCount(columnCount);
+      }
+    };
+    const resizeObserver = new ResizeObserver(updateGridColumnCount);
+
+    updateGridColumnCount();
+    resizeObserver.observe(gridElement);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [visibleStudents.length]);
 
   function handleStudyFilterToggle(studyValue) {
     setStudyFilters((current) => {
@@ -133,6 +166,61 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
         ? current.filter((entry) => entry !== roleValue)
         : [...current, roleValue]
     ));
+  }
+
+  function renderPagination(position) {
+    return (
+      <nav
+        className={`students-pagination students-pagination--${position}`}
+        aria-label={`${t('students.pagination')} ${t(position === 'bottom' ? 'list.bottomPagination' : 'list.topPagination')}`}
+      >
+        <p className="students-pagination__summary">
+          {t('list.rangeStudents', { start: rangeStart, end: rangeEnd, total: filteredStudents.length })}
+        </p>
+        <div className="students-pagination__controls">
+          <button
+            className="students-pagination__arrow"
+            type="button"
+            aria-label={`${t('list.previousPage')} ${t(position === 'bottom' ? 'list.bottomPagination' : 'list.topPagination')}`}
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+          >
+            ‹
+          </button>
+          <div className="students-pagination__pages">
+            {Array.from({ length: totalPages }, (_, index) => {
+              const pageNumber = index + 1;
+
+              return (
+                <button
+                  key={pageNumber}
+                  className={`students-pagination__page${
+                    pageNumber === currentPage ? ' students-pagination__page--active' : ''
+                  }`}
+                  type="button"
+                  aria-label={`${t('list.goToPage', { page: pageNumber })} ${t(
+                    position === 'bottom' ? 'list.bottomPagination' : 'list.topPagination'
+                  )}`}
+                  aria-current={pageNumber === currentPage ? 'page' : undefined}
+                  onClick={() => setCurrentPage(pageNumber)}
+                >
+                  {pageNumber}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            className="students-pagination__arrow"
+            type="button"
+            aria-label={`${t('list.nextPage')} ${t(position === 'bottom' ? 'list.bottomPagination' : 'list.topPagination')}`}
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+          >
+            ›
+          </button>
+        </div>
+      </nav>
+    );
   }
 
   return (
@@ -300,53 +388,7 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
         ) : null}
       </div>
 
-      {!isLoading && !error && filteredStudents.length > STUDENTS_PER_PAGE ? (
-        <nav className="students-pagination" aria-label={t('students.pagination')}>
-          <p className="students-pagination__summary">
-            {t('list.rangeStudents', { start: rangeStart, end: rangeEnd, total: filteredStudents.length })}
-          </p>
-          <div className="students-pagination__controls">
-            <button
-              className="students-pagination__arrow"
-              type="button"
-              aria-label={t('list.previousPage')}
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            >
-              ‹
-            </button>
-            <div className="students-pagination__pages">
-              {Array.from({ length: totalPages }, (_, index) => {
-                const pageNumber = index + 1;
-
-                return (
-                  <button
-                    key={pageNumber}
-                    className={`students-pagination__page${
-                      pageNumber === currentPage ? ' students-pagination__page--active' : ''
-                    }`}
-                    type="button"
-                    aria-label={t('list.goToPage', { page: pageNumber })}
-                    aria-current={pageNumber === currentPage ? 'page' : undefined}
-                    onClick={() => setCurrentPage(pageNumber)}
-                  >
-                    {pageNumber}
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              className="students-pagination__arrow"
-              type="button"
-              aria-label={t('list.nextPage')}
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-            >
-              ›
-            </button>
-          </div>
-        </nav>
-      ) : null}
+      {shouldShowPagination ? renderPagination('top') : null}
 
       {isLoading ? (
         <div className="students-screen__status students-screen__status--loading" role="status">
@@ -371,7 +413,7 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
         </p>
       ) : null}
 
-      <div className="students-grid">
+      <div className="students-grid" ref={studentsGridRef}>
         {visibleStudents.map((student) => {
           const joviatStudyLabels = getJoviatStudyLabels(student.JoviatStudies ?? student.Studies);
 
@@ -430,6 +472,8 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
           );
         })}
       </div>
+
+      {shouldShowBottomPagination ? renderPagination('bottom') : null}
     </section>
   );
 }

@@ -107,6 +107,50 @@ function findExistingRestaurant(restaurants, placeDetails) {
   }) ?? null;
 }
 
+function normalizeDirtyString(value) {
+  return String(value ?? '').trim();
+}
+
+function normalizeStudentFormSnapshot(formDataValue, linksValue) {
+  return {
+    name: normalizeDirtyString(formDataValue.name),
+    joviatStudies: normalizeJoviatStudies(formDataValue.joviatStudies).sort(),
+    email: normalizeDirtyString(formDataValue.email).toLowerCase(),
+    bio: normalizeDirtyString(formDataValue.bio),
+    phone: normalizeDirtyString(formDataValue.phone),
+    linkedIn: normalizeDirtyString(formDataValue.linkedIn),
+    instagram: normalizeDirtyString(formDataValue.instagram),
+    promotionYear: normalizePromotionYearValue(formDataValue.promotionYear),
+    restaurantLinks: linksValue
+      .filter((entry) => entry.restaurantId)
+      .map((entry) => ({
+        restaurantId: entry.restaurantId,
+        roles: normalizeRestaurantRoles(entry.roles ?? entry.role).sort(),
+        currentJob: Boolean(entry.currentJob),
+      }))
+      .sort((firstEntry, secondEntry) =>
+        firstEntry.restaurantId.localeCompare(secondEntry.restaurantId)
+      ),
+  };
+}
+
+function buildStudentSnapshot(student) {
+  return normalizeStudentFormSnapshot({
+    name: student?.Name ?? '',
+    joviatStudies: student?.JoviatStudies ?? student?.Studies,
+    email: student?.Email ?? student?.email ?? '',
+    bio: student?.Bio ?? student?.bio ?? '',
+    phone: student?.Phone ?? student?.phone ?? '',
+    linkedIn: student?.LinkedIn ?? student?.linkedIn ?? '',
+    instagram: student?.Instagram ?? student?.instagram ?? '',
+    promotionYear: student?.PromotionYear ? String(student.PromotionYear) : '',
+  }, (student?.linkedRestaurants ?? []).map((entry) => ({
+    restaurantId: entry.id,
+    roles: entry.roles ?? entry.role,
+    currentJob: Boolean(entry.currentJob),
+  })));
+}
+
 const createStudentAccount = httpsCallable(functions, 'createStudentAccount');
 const resolveGoogleMapsShareLink = httpsCallable(functions, 'resolveGoogleMapsShareLink');
 
@@ -227,24 +271,25 @@ function AddStudentScreen({
   student = null,
   onSaved,
   onDeleted,
+  onDirtyChange,
   isAdministrator = false,
   canChangePassword = false,
   canDeleteOwnProfile = false,
 }) {
   const { t } = useI18n();
   const isEditMode = mode === 'edit' && Boolean(student?.id);
-  const [formData, setFormData] = useState({
-    name: '',
-    joviatStudies: [],
-    email: '',
-    bio: '',
-    phone: '',
-    linkedIn: '',
-    instagram: '',
+  const [formData, setFormData] = useState(() => ({
+    name: student?.Name ?? '',
+    joviatStudies: normalizeJoviatStudies(student?.JoviatStudies ?? student?.Studies),
+    email: student?.Email ?? student?.email ?? '',
+    bio: student?.Bio ?? student?.bio ?? '',
+    phone: student?.Phone ?? student?.phone ?? '',
+    linkedIn: student?.LinkedIn ?? student?.linkedIn ?? '',
+    instagram: student?.Instagram ?? student?.instagram ?? '',
     visibleContactToAlumniNetwork: true,
-    promotionYear: '',
+    promotionYear: student?.PromotionYear ? String(student.PromotionYear) : '',
     password: '',
-  });
+  }));
   const [photoFile, setPhotoFile] = useState(null);
   const [photoName, setPhotoName] = useState('');
   const fallbackPreview = useMemo(
@@ -258,7 +303,14 @@ function AddStudentScreen({
   const hasObjectUrl = typeof URL?.createObjectURL === 'function';
   const [restaurants, setRestaurants] = useState([]);
   const [restaurantSearch, setRestaurantSearch] = useState('');
-  const [restaurantLinks, setRestaurantLinks] = useState([]);
+  const [restaurantLinks, setRestaurantLinks] = useState(() =>
+    (student?.linkedRestaurants ?? []).map((entry) => ({
+      restaurantId: entry.id,
+      roles: normalizeRestaurantRoles(entry.roles ?? entry.role),
+      currentJob: Boolean(entry.currentJob),
+      relationId: entry.relationId ?? '',
+    }))
+  );
   const [isLoadingRestaurants, setIsLoadingRestaurants] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -286,6 +338,9 @@ function AddStudentScreen({
   const [isLegalTermsDialogOpen, setIsLegalTermsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [restaurantDialogMode, setRestaurantDialogMode] = useState(null);
+  const [restaurantDialogStep, setRestaurantDialogStep] = useState(1);
+  const [restaurantToDeleteId, setRestaurantToDeleteId] = useState('');
   const [newRestaurant, setNewRestaurant] = useState({
     restaurantId: '',
     roles: [],
@@ -293,6 +348,41 @@ function AddStudentScreen({
   });
   const promotionYears = useMemo(createPromotionYears, []);
   const restaurantRoleOptions = useMemo(() => getRestaurantRoleOptions(t), [t]);
+  const initialStudentSnapshot = useMemo(() => buildStudentSnapshot(student), [student]);
+  const currentStudentSnapshot = useMemo(
+    () => normalizeStudentFormSnapshot(formData, restaurantLinks),
+    [formData, restaurantLinks]
+  );
+  const hasUnsavedChanges = isEditMode
+    && (
+      photoFile != null
+      || JSON.stringify(currentStudentSnapshot) !== JSON.stringify(initialStudentSnapshot)
+    );
+
+  useEffect(() => {
+    onDirtyChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onDirtyChange]);
+
+  useEffect(() => () => {
+    onDirtyChange?.(false);
+  }, [onDirtyChange]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) {
+      return undefined;
+    }
+
+    function handleBeforeUnload(event) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges]);
 
   useEffect(() => {
     if (!isEditMode || !student) {
@@ -330,6 +420,9 @@ function AddStudentScreen({
     setRestaurantRequestError('');
     setIsRestaurantRequestDialogOpen(false);
     setIsRestaurantRequestConfirmationOpen(false);
+    setRestaurantDialogMode(null);
+    setRestaurantDialogStep(1);
+    setRestaurantToDeleteId('');
     setErrorMessage('');
     setSuccessMessage('');
     setPasswordMessage('');
@@ -500,7 +593,42 @@ function AddStudentScreen({
     });
   }
 
-  function handleAddRestaurant() {
+  function resetRestaurantDialogState() {
+    setRestaurantDialogMode(null);
+    setRestaurantDialogStep(1);
+    setRestaurantError('');
+    setRestaurantSearch('');
+    setNewRestaurant({
+      restaurantId: '',
+      roles: [],
+      currentJob: true,
+    });
+  }
+
+  function handleOpenAddRestaurantDialog() {
+    setRestaurantError('');
+    setRestaurantSearch('');
+    setRestaurantDialogStep(1);
+    setNewRestaurant({
+      restaurantId: '',
+      roles: [],
+      currentJob: true,
+    });
+    setRestaurantDialogMode('add');
+  }
+
+  function handleOpenEditRestaurantDialog(entry) {
+    setRestaurantError('');
+    setRestaurantDialogStep(2);
+    setNewRestaurant({
+      restaurantId: entry.restaurantId,
+      roles: normalizeRestaurantRoles(entry.roles ?? entry.role),
+      currentJob: Boolean(entry.currentJob),
+    });
+    setRestaurantDialogMode('edit');
+  }
+
+  function handleRestaurantDialogNext() {
     setRestaurantError('');
 
     if (!newRestaurant.restaurantId.trim()) {
@@ -510,6 +638,17 @@ function AddStudentScreen({
 
     if (restaurantLinks.some((entry) => entry.restaurantId === newRestaurant.restaurantId)) {
       setRestaurantError(t('forms.restaurantAlreadyAdded'));
+      return;
+    }
+
+    setRestaurantDialogStep(2);
+  }
+
+  function handleAddRestaurant() {
+    setRestaurantError('');
+
+    if (!newRestaurant.restaurantId.trim()) {
+      setRestaurantError(t('forms.selectRestaurantError'));
       return;
     }
 
@@ -529,17 +668,47 @@ function AddStudentScreen({
       },
     ]);
 
-    setNewRestaurant({
-      restaurantId: '',
-      roles: [],
-      currentJob: true,
-    });
+    resetRestaurantDialogState();
   }
 
-  function handleRemoveRestaurant(restaurantId) {
+  function handleUpdateRestaurantLink() {
+    setRestaurantError('');
+
+    const normalizedRoles = normalizeRestaurantRoles(newRestaurant.roles);
+
+    if (normalizedRoles.length === 0) {
+      setRestaurantError(t('forms.selectRole'));
+      return;
+    }
+
     setRestaurantLinks((current) =>
-      current.filter((entry) => entry.restaurantId !== restaurantId)
+      current.map((entry) =>
+        entry.restaurantId === newRestaurant.restaurantId
+          ? {
+              ...entry,
+              roles: normalizedRoles,
+              currentJob: newRestaurant.currentJob,
+            }
+          : entry
+      )
     );
+
+    resetRestaurantDialogState();
+  }
+
+  function handleRequestRemoveRestaurant(restaurantId) {
+    setRestaurantToDeleteId(restaurantId);
+  }
+
+  function handleCancelRemoveRestaurant() {
+    setRestaurantToDeleteId('');
+  }
+
+  function handleConfirmRemoveRestaurant() {
+    setRestaurantLinks((current) =>
+      current.filter((entry) => entry.restaurantId !== restaurantToDeleteId)
+    );
+    setRestaurantToDeleteId('');
   }
 
   function handleOpenRestaurantRequestDialog() {
@@ -703,6 +872,7 @@ function AddStudentScreen({
         );
 
         setSuccessMessage(t('forms.studentUpdated'));
+        onDirtyChange?.(false);
         onSaved?.(student.id);
       } else {
         const studentAccountResult = await createStudentAccount({
@@ -851,6 +1021,7 @@ function AddStudentScreen({
         passwordConfirmation: '',
       });
       setVisiblePasswordFields({
+        studentPassword: false,
         password: false,
         passwordConfirmation: false,
       });
@@ -929,15 +1100,22 @@ function AddStudentScreen({
           >
             <div className="add-student-form__restaurant-entry-heading">
               <h3>{restaurantName}</h3>
-              {!isEditMode ? (
+              <div className="add-student-form__restaurant-entry-actions">
                 <button
-                  className="add-student-form__remove-button"
+                  className="add-student-form__secondary-action add-student-form__entry-action"
                   type="button"
-                  onClick={() => handleRemoveRestaurant(entry.restaurantId)}
+                  onClick={() => handleOpenEditRestaurantDialog(entry)}
+                >
+                  {t('common.edit')}
+                </button>
+                <button
+                  className="add-student-form__remove-button add-student-form__entry-action"
+                  type="button"
+                  onClick={() => handleRequestRemoveRestaurant(entry.restaurantId)}
                 >
                   {t('common.delete')}
                 </button>
-              ) : null}
+              </div>
             </div>
             <p className="add-student-form__restaurant-entry-role">
               {roleLabels.length ? roleLabels.join(', ') : t('common.roleUnavailable')}
@@ -1295,83 +1473,14 @@ function AddStudentScreen({
           ) : restaurantListContent}
 
           <div className="add-student-form__restaurant-add">
-            <div className="add-student-form__restaurant-add-row">
-              <div className="add-student-form__field add-student-form__field--restaurant-picker">
-                <span>{t('common.restaurant')}</span>
-                <input
-                  id="restaurant-filter"
-                  type="text"
-                  value={restaurantSearch}
-                  aria-label={t('forms.filterRestaurants')}
-                  placeholder={t('forms.restaurantFilterPlaceholder')}
-                  onChange={(event) => setRestaurantSearch(event.target.value)}
-                />
-                <select
-                  id="restaurant-select"
-                  aria-label={t('common.restaurant')}
-                  value={newRestaurant.restaurantId}
-                  onChange={(event) =>
-                    handleNewRestaurantChange('restaurantId', event.target.value)
-                  }
-                >
-                  <option value="">{t('forms.selectRestaurant')}</option>
-                  {filteredRestaurants.map((restaurant) => (
-                    <option key={restaurant.id} value={restaurant.id}>
-                      {restaurant.Name ?? t('common.noName')}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="add-student-form__restaurant-add-row add-student-form__restaurant-add-row--actions">
-              <div className="add-student-form__restaurant-add-column">
-                <fieldset className="add-student-form__field add-student-form__field--roles">
-                  <legend>{t('forms.role')}</legend>
-                  <div className="add-student-form__role-options">
-                    {restaurantRoleOptions.map((roleOption) => (
-                      <label className="add-student-form__role-option" key={roleOption.value}>
-                        <input
-                          type="checkbox"
-                          checked={normalizeRestaurantRoles(newRestaurant.roles).includes(roleOption.value)}
-                          onChange={() => handleNewRestaurantRoleToggle(roleOption.value)}
-                        />
-                        <span>{roleOption.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-                <label className="add-student-form__checkbox add-student-form__checkbox--inline">
-                  <input
-                    checked={newRestaurant.currentJob}
-                    type="checkbox"
-                    onChange={(event) =>
-                      handleNewRestaurantChange('currentJob', event.target.checked)
-                    }
-                  />
-                  {t('forms.currentJobCheckbox')}
-                </label>
-              </div>
-              <button
-                className="add-student-form__add-button"
-                type="button"
-                onClick={handleAddRestaurant}
-              >
-                {t('forms.addRestaurantButton')}
-              </button>
-            </div>
-
-            {restaurantError ? (
-              <p
-                className="add-student-form__feedback add-student-form__feedback--error"
-                role="alert"
-              >
-                {restaurantError}
-              </p>
-            ) : null}
-          </div>
-
-          {isEditMode ? (
+            <button
+              className="add-student-form__add-button add-student-form__add-button--center"
+              type="button"
+              onClick={handleOpenAddRestaurantDialog}
+              disabled={isLoadingRestaurants}
+            >
+              {t('forms.addRestaurantButton')}
+            </button>
             <div className="add-student-form__restaurant-request">
               <p>{t('forms.restaurantRequestPrompt')}</p>
               <button
@@ -1382,7 +1491,7 @@ function AddStudentScreen({
                 {t('forms.restaurantRequestButton')}
               </button>
             </div>
-          ) : null}
+          </div>
         </section>
 
         {errorMessage ? (
@@ -1412,8 +1521,6 @@ function AddStudentScreen({
                 {t('forms.deleteOwnProfile')}
               </button>
             ) : null}
-          </div>
-          <div className="add-student-form__actions-group">
             {isEditMode && isAdministrator ? (
               <button
                 className="add-student-form__secondary-action"
@@ -1424,12 +1531,30 @@ function AddStudentScreen({
                 {isResettingPassword ? t('forms.sendingEmail') : t('forms.resetPassword')}
               </button>
             ) : null}
-            <button className="add-student-form__submit" type="submit" disabled={isSubmitting}>
-              <SaveIcon />
-              {isSubmitting ? t('common.saving') : submitLabel}
-            </button>
+          </div>
+          <div className="add-student-form__actions-group">
+            {!isEditMode ? (
+              <button className="add-student-form__submit" type="submit" disabled={isSubmitting}>
+                <SaveIcon />
+                {isSubmitting ? t('common.saving') : submitLabel}
+              </button>
+            ) : null}
           </div>
         </div>
+
+        {hasUnsavedChanges ? (
+          <div className="add-student-form__unsaved-bar" role="status">
+            <span>{t('forms.unsavedChanges')}</span>
+            <button
+              className="add-student-form__unsaved-save"
+              type="submit"
+              disabled={isSubmitting || isDeleting}
+            >
+              <SaveIcon />
+              {isSubmitting ? t('common.saving') : t('common.saveChanges')}
+            </button>
+          </div>
+        ) : null}
       </form>
 
       {isLegalTermsDialogOpen ? (
@@ -1526,6 +1651,187 @@ function AddStudentScreen({
                 disabled={isDeleting}
               >
                 {isDeleting ? t('detail.deleting') : t('detail.confirmDelete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {restaurantDialogMode ? (
+        <div
+          className="add-student-form__dialog-layer"
+          role="presentation"
+          onClick={resetRestaurantDialogState}
+        >
+          <div
+            className="add-student-form__dialog add-student-form__dialog--restaurant"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="restaurant-link-dialog-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="restaurant-link-dialog-title">
+              {restaurantDialogMode === 'edit'
+                ? t('forms.editRestaurantLinkTitle')
+                : t('forms.addRestaurantDialogTitle')}
+            </h2>
+            <div className="add-student-form__steps" aria-label={t('forms.restaurantDialogSteps')}>
+              <span className={`add-student-form__step${restaurantDialogStep === 1 ? ' add-student-form__step--active' : ''}`}>
+                {t('forms.restaurantDialogStepRestaurant')}
+              </span>
+              <span className={`add-student-form__step${restaurantDialogStep === 2 ? ' add-student-form__step--active' : ''}`}>
+                {t('forms.restaurantDialogStepRoles')}
+              </span>
+            </div>
+
+            {restaurantDialogStep === 1 ? (
+              <div className="add-student-form__restaurant-dialog-content">
+                <label className="add-student-form__field" htmlFor="restaurant-dialog-filter">
+                  <span>{t('forms.filterRestaurants')}</span>
+                  <input
+                    id="restaurant-dialog-filter"
+                    type="text"
+                    value={restaurantSearch}
+                    placeholder={t('forms.restaurantFilterPlaceholder')}
+                    onChange={(event) => setRestaurantSearch(event.target.value)}
+                  />
+                </label>
+                <label className="add-student-form__field" htmlFor="restaurant-dialog-select">
+                  <span>{t('forms.selectRestaurant')}</span>
+                  <select
+                    id="restaurant-dialog-select"
+                    value={newRestaurant.restaurantId}
+                    onChange={(event) =>
+                      handleNewRestaurantChange('restaurantId', event.target.value)
+                    }
+                  >
+                    <option value="">{t('forms.selectRestaurant')}</option>
+                    {filteredRestaurants.map((restaurant) => (
+                      <option key={restaurant.id} value={restaurant.id}>
+                        {restaurant.Name ?? t('common.noName')}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : (
+              <div className="add-student-form__restaurant-dialog-content">
+                <fieldset className="add-student-form__field add-student-form__field--roles">
+                  <legend>{t('forms.role')}</legend>
+                  <div className="add-student-form__role-options">
+                    {restaurantRoleOptions.map((roleOption) => (
+                      <label className="add-student-form__role-option" key={roleOption.value}>
+                        <input
+                          type="checkbox"
+                          checked={normalizeRestaurantRoles(newRestaurant.roles).includes(roleOption.value)}
+                          onChange={() => handleNewRestaurantRoleToggle(roleOption.value)}
+                        />
+                        <span>{roleOption.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <label className="add-student-form__checkbox add-student-form__checkbox--inline">
+                  <input
+                    checked={newRestaurant.currentJob}
+                    type="checkbox"
+                    onChange={(event) =>
+                      handleNewRestaurantChange('currentJob', event.target.checked)
+                    }
+                  />
+                  {t('forms.currentJobCheckbox')}
+                </label>
+              </div>
+            )}
+
+            {restaurantError ? (
+              <p
+                className="add-student-form__feedback add-student-form__feedback--error"
+                role="alert"
+              >
+                {restaurantError}
+              </p>
+            ) : null}
+
+            <div className="add-student-form__dialog-actions">
+              <button
+                className="add-student-form__secondary-action"
+                type="button"
+                onClick={resetRestaurantDialogState}
+              >
+                {t('common.cancel')}
+              </button>
+              {restaurantDialogStep === 2 && restaurantDialogMode === 'add' ? (
+                <button
+                  className="add-student-form__secondary-action"
+                  type="button"
+                  onClick={() => {
+                    setRestaurantError('');
+                    setRestaurantDialogStep(1);
+                  }}
+                >
+                  {t('common.back')}
+                </button>
+              ) : null}
+              {restaurantDialogStep === 1 ? (
+                <button
+                  className="add-student-form__submit"
+                  type="button"
+                  onClick={handleRestaurantDialogNext}
+                >
+                  {t('forms.restaurantDialogNext')}
+                </button>
+              ) : (
+                <button
+                  className="add-student-form__submit"
+                  type="button"
+                  onClick={restaurantDialogMode === 'edit' ? handleUpdateRestaurantLink : handleAddRestaurant}
+                >
+                  {restaurantDialogMode === 'edit'
+                    ? t('common.saveChanges')
+                    : t('forms.addRestaurantButton')}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {restaurantToDeleteId ? (
+        <div
+          className="add-student-form__dialog-layer"
+          role="presentation"
+          onClick={handleCancelRemoveRestaurant}
+        >
+          <div
+            className="add-student-form__dialog add-student-form__dialog--danger"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="restaurant-link-delete-title"
+            aria-describedby="restaurant-link-delete-description"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="restaurant-link-delete-title">{t('forms.deleteRestaurantLinkTitle')}</h2>
+            <p
+              className="add-student-form__dialog-description"
+              id="restaurant-link-delete-description"
+            >
+              {t('forms.deleteRestaurantLinkDescription')}
+            </p>
+            <div className="add-student-form__dialog-actions">
+              <button
+                className="add-student-form__secondary-action"
+                type="button"
+                onClick={handleCancelRemoveRestaurant}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                className="add-student-form__danger-action"
+                type="button"
+                onClick={handleConfirmRemoveRestaurant}
+              >
+                {t('common.delete')}
               </button>
             </div>
           </div>

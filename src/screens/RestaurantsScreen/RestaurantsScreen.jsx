@@ -223,6 +223,10 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
   const [openFilterDropdown, setOpenFilterDropdown] = useState('');
   const cityDropdownRef = useRef(null);
   const categoryDropdownRef = useRef(null);
+  const restaurantsGridRef = useRef(null);
+  const [gridColumnCount, setGridColumnCount] = useState(() => (
+    typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches ? 2 : 4
+  ));
 
   useEffect(() => {
     let isMounted = true;
@@ -295,6 +299,11 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
     ? 0
     : ((currentPage - 1) * RESTAURANTS_PER_PAGE) + 1;
   const rangeEnd = Math.min(currentPage * RESTAURANTS_PER_PAGE, filteredRestaurants.length);
+  const shouldShowPagination = !isLoading
+    && !error
+    && viewMode === 'list'
+    && filteredRestaurants.length > RESTAURANTS_PER_PAGE;
+  const shouldShowBottomPagination = shouldShowPagination && visibleRestaurants.length > gridColumnCount;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -326,6 +335,33 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
       document.removeEventListener('mousedown', handleDocumentClick);
     };
   }, []);
+
+  useEffect(() => {
+    const gridElement = restaurantsGridRef.current;
+
+    if (!gridElement || typeof window === 'undefined' || typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+
+    const updateGridColumnCount = () => {
+      const gridTemplateColumns = window.getComputedStyle(gridElement).gridTemplateColumns;
+      const columnCount = gridTemplateColumns
+        .split(' ')
+        .filter((column) => column && column !== 'none').length;
+
+      if (columnCount > 0) {
+        setGridColumnCount(columnCount);
+      }
+    };
+    const resizeObserver = new ResizeObserver(updateGridColumnCount);
+
+    updateGridColumnCount();
+    resizeObserver.observe(gridElement);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [visibleRestaurants.length, viewMode]);
 
   function toggleSelection(currentValues, nextValue) {
     if (nextValue === 'all') {
@@ -360,6 +396,61 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
       .map((option) => option.label);
 
     return selectedLabels.join(', ');
+  }
+
+  function renderPagination(position) {
+    return (
+      <nav
+        className={`restaurants-pagination restaurants-pagination--${position}`}
+        aria-label={`${t('restaurants.pagination')} ${t(position === 'bottom' ? 'list.bottomPagination' : 'list.topPagination')}`}
+      >
+        <p className="restaurants-pagination__summary">
+          {t('list.rangeRestaurants', { start: rangeStart, end: rangeEnd, total: filteredRestaurants.length })}
+        </p>
+        <div className="restaurants-pagination__controls">
+          <button
+            className="restaurants-pagination__arrow"
+            type="button"
+            aria-label={`${t('list.previousPage')} ${t(position === 'bottom' ? 'list.bottomPagination' : 'list.topPagination')}`}
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+          >
+            ‹
+          </button>
+          <div className="restaurants-pagination__pages">
+            {Array.from({ length: totalPages }, (_, index) => {
+              const pageNumber = index + 1;
+
+              return (
+                <button
+                  key={pageNumber}
+                  className={`restaurants-pagination__page${
+                    pageNumber === currentPage ? ' restaurants-pagination__page--active' : ''
+                  }`}
+                  type="button"
+                  aria-label={`${t('list.goToPage', { page: pageNumber })} ${t(
+                    position === 'bottom' ? 'list.bottomPagination' : 'list.topPagination'
+                  )}`}
+                  aria-current={pageNumber === currentPage ? 'page' : undefined}
+                  onClick={() => setCurrentPage(pageNumber)}
+                >
+                  {pageNumber}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            className="restaurants-pagination__arrow"
+            type="button"
+            aria-label={`${t('list.nextPage')} ${t(position === 'bottom' ? 'list.bottomPagination' : 'list.topPagination')}`}
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+          >
+            ›
+          </button>
+        </div>
+      </nav>
+    );
   }
 
   const restaurantsWithCoordinates = filteredRestaurants
@@ -628,55 +719,9 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
 
       {!isLoading && !error && viewMode === 'list' ? (
         <>
-          {filteredRestaurants.length > RESTAURANTS_PER_PAGE ? (
-            <nav className="restaurants-pagination" aria-label={t('restaurants.pagination')}>
-              <p className="restaurants-pagination__summary">
-                {t('list.rangeRestaurants', { start: rangeStart, end: rangeEnd, total: filteredRestaurants.length })}
-              </p>
-              <div className="restaurants-pagination__controls">
-                <button
-                  className="restaurants-pagination__arrow"
-                  type="button"
-                  aria-label={t('list.previousPage')}
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                >
-                  ‹
-                </button>
-                <div className="restaurants-pagination__pages">
-                  {Array.from({ length: totalPages }, (_, index) => {
-                    const pageNumber = index + 1;
+          {shouldShowPagination ? renderPagination('top') : null}
 
-                    return (
-                      <button
-                        key={pageNumber}
-                        className={`restaurants-pagination__page${
-                          pageNumber === currentPage ? ' restaurants-pagination__page--active' : ''
-                        }`}
-                        type="button"
-                        aria-label={t('list.goToPage', { page: pageNumber })}
-                        aria-current={pageNumber === currentPage ? 'page' : undefined}
-                        onClick={() => setCurrentPage(pageNumber)}
-                      >
-                        {pageNumber}
-                      </button>
-                    );
-                  })}
-                </div>
-                <button
-                  className="restaurants-pagination__arrow"
-                  type="button"
-                  aria-label={t('list.nextPage')}
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                >
-                  ›
-                </button>
-              </div>
-            </nav>
-          ) : null}
-
-          <div className="restaurants-grid">
+          <div className="restaurants-grid" ref={restaurantsGridRef}>
             {visibleRestaurants.map((restaurant) => (
               <RestaurantCard
                 key={restaurant.id ?? restaurant.Name}
@@ -685,6 +730,8 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
               />
             ))}
           </div>
+
+          {shouldShowBottomPagination ? renderPagination('bottom') : null}
         </>
       ) : null}
     </section>

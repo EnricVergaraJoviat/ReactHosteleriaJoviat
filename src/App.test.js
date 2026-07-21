@@ -1,5 +1,5 @@
 import { act } from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   createUserWithEmailAndPassword,
@@ -1521,7 +1521,14 @@ test('allows an administrator to add a student with photo and restaurant links',
     await userEvent.type(screen.getByLabelText(/telèfon de contacte/i), '600777888');
     await userEvent.type(screen.getByLabelText(/perfil linkedin/i), 'https://linkedin.com/in/clara-font');
     await userEvent.selectOptions(screen.getByLabelText(/any de promoció/i), 'currently-studying');
+  });
+
+  await act(async () => {
+    const addRestaurantButtons = screen.getAllByRole('button', { name: /afegir establiment/i });
+    await userEvent.click(addRestaurantButtons[addRestaurantButtons.length - 1]);
     await userEvent.type(screen.getByLabelText(/filtrar establiments pel nom/i), 'Disfru');
+    await userEvent.selectOptions(screen.getByLabelText(/^selecciona un establiment$/i), 'restaurant-2');
+    await userEvent.click(screen.getByRole('button', { name: /continuar/i }));
   });
 
   const photoInput = screen.getByLabelText(/^foto$/i);
@@ -1542,11 +1549,10 @@ test('allows an administrator to add a student with photo and restaurant links',
   expect(URL.revokeObjectURL).not.toHaveBeenCalledWith('blob:clara.png');
 
   await act(async () => {
-    await userEvent.selectOptions(screen.getByLabelText(/^establiment$/i), 'restaurant-2');
     await userEvent.click(screen.getByLabelText(/^professional de sala$/i));
     await userEvent.click(screen.getByLabelText(/està treballant actualment/i));
-    const addRestaurantButtons = screen.getAllByRole('button', { name: /afegir establiment/i });
-    await userEvent.click(addRestaurantButtons[addRestaurantButtons.length - 1]);
+    const confirmAddRestaurantButtons = screen.getAllByRole('button', { name: /afegir establiment/i });
+    await userEvent.click(confirmAddRestaurantButtons[confirmAddRestaurantButtons.length - 1]);
     await userEvent.click(screen.getByRole('button', { name: /desar Alumni/i }));
   });
 
@@ -1805,24 +1811,30 @@ test('paginates the students list in groups of 8 below the search field', async 
   });
 
   const searchInput = await screen.findByLabelText(/cercar Alumni/i);
-  const pagination = screen.getByRole('navigation', { name: /paginació d'Alumni/i });
+  const pagination = screen.getByRole('navigation', {
+    name: /paginació d'Alumni (superior|list\.topPagination)/i,
+  });
+  const bottomPagination = screen.getByRole('navigation', {
+    name: /paginació d'Alumni (inferior|list\.bottomPagination)/i,
+  });
 
   expect(searchInput.compareDocumentPosition(pagination) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(screen.getByText(/1 a 8 de 10 Alumni/i)).toBeInTheDocument();
+  expect(within(pagination).getByText(/1 a 8 de 10 Alumni/i)).toBeInTheDocument();
+  expect(within(bottomPagination).getByText(/1 a 8 de 10 Alumni/i)).toBeInTheDocument();
   expect(screen.getByText(/^Alumni 1$/i)).toBeInTheDocument();
   expect(screen.getByText(/^Alumni 8$/i)).toBeInTheDocument();
   expect(screen.queryByText(/^Alumni 9$/i)).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /anar a la pàgina 1/i })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByRole('button', { name: /anar a la pàgina 1 superior/i })).toHaveAttribute('aria-current', 'page');
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /pàgina següent/i }));
+    await userEvent.click(screen.getByRole('button', { name: /pàgina següent superior/i }));
   });
 
   expect(await screen.findByText(/9 a 10 de 10 Alumni/i)).toBeInTheDocument();
   expect(screen.getByText(/^Alumni 9$/i)).toBeInTheDocument();
   expect(screen.getByText(/^Alumni 10$/i)).toBeInTheDocument();
   expect(screen.queryByText(/^Alumni 1$/i)).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /anar a la pàgina 2/i })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByRole('button', { name: /anar a la pàgina 2 superior/i })).toHaveAttribute('aria-current', 'page');
 });
 
 test('opens the student detail card from the students list', async () => {
@@ -2369,7 +2381,8 @@ test('reuses the add student form in edit mode for administrators', async () => 
   expect(screen.getByLabelText(/perfil linkedin/i)).toHaveValue('linkedin.com/in/aina-serra');
   expect(screen.queryByLabelText(/contrasenya/i)).not.toBeInTheDocument();
   expect(screen.getByAltText(/aina serra/i)).toHaveAttribute('src', 'https://i.pravatar.cc/320?img=12');
-  expect(screen.queryByRole('button', { name: /^eliminar$/i })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^editar$/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^eliminar$/i })).toBeInTheDocument();
 
   await act(async () => {
     await userEvent.clear(screen.getByLabelText(/nom complet/i));
@@ -2378,12 +2391,18 @@ test('reuses the add student form in edit mode for administrators', async () => 
     await userEvent.type(screen.getByLabelText(/^bio$/i), 'Cap de cuina amb experiència internacional.');
     await userEvent.clear(screen.getByLabelText(/telèfon de contacte/i));
     await userEvent.type(screen.getByLabelText(/telèfon de contacte/i), '699111222');
-    await userEvent.clear(screen.getByLabelText(/filtrar establiments pel nom/i));
-    await userEvent.type(screen.getByLabelText(/filtrar establiments pel nom/i), 'Disfr');
-    await userEvent.selectOptions(screen.getByLabelText(/^establiment$/i), 'restaurant-2');
-    await userEvent.click(screen.getByLabelText(/^professional de sala$/i));
+  });
+
+  await act(async () => {
     const addRestaurantButtons = screen.getAllByRole('button', { name: /afegir establiment/i });
     await userEvent.click(addRestaurantButtons[addRestaurantButtons.length - 1]);
+    await userEvent.clear(screen.getByLabelText(/filtrar establiments pel nom/i));
+    await userEvent.type(screen.getByLabelText(/filtrar establiments pel nom/i), 'Disfr');
+    await userEvent.selectOptions(screen.getByLabelText(/^selecciona un establiment$/i), 'restaurant-2');
+    await userEvent.click(screen.getByRole('button', { name: /continuar/i }));
+    await userEvent.click(screen.getByLabelText(/^professional de sala$/i));
+    const confirmAddRestaurantButtons = screen.getAllByRole('button', { name: /afegir establiment/i });
+    await userEvent.click(confirmAddRestaurantButtons[confirmAddRestaurantButtons.length - 1]);
     await userEvent.click(screen.getByRole('button', { name: /desar canvis/i }));
   });
 
@@ -3781,22 +3800,28 @@ test('paginates the restaurants list in groups of 8 below the search field', asy
   });
 
   const searchInput = await screen.findByLabelText(/cercar establiment/i);
-  const pagination = screen.getByRole('navigation', { name: /paginació d'establiments/i });
+  const pagination = screen.getByRole('navigation', {
+    name: /paginació d'establiments (superior|list\.topPagination)/i,
+  });
+  const bottomPagination = screen.getByRole('navigation', {
+    name: /paginació d'establiments (inferior|list\.bottomPagination)/i,
+  });
 
   expect(searchInput.compareDocumentPosition(pagination) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(screen.getByText(/1 a 8 de 10 establiments/i)).toBeInTheDocument();
+  expect(within(pagination).getByText(/1 a 8 de 10 establiments/i)).toBeInTheDocument();
+  expect(within(bottomPagination).getByText(/1 a 8 de 10 establiments/i)).toBeInTheDocument();
   expect(screen.getByText(/^restaurant 1$/i)).toBeInTheDocument();
   expect(screen.getByText(/^restaurant 8$/i)).toBeInTheDocument();
   expect(screen.queryByText(/^restaurant 9$/i)).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /anar a la pàgina 1/i })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByRole('button', { name: /anar a la pàgina 1 superior/i })).toHaveAttribute('aria-current', 'page');
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /pàgina següent/i }));
+    await userEvent.click(screen.getByRole('button', { name: /pàgina següent superior/i }));
   });
 
   expect(await screen.findByText(/9 a 10 de 10 establiments/i)).toBeInTheDocument();
   expect(screen.getByText(/^restaurant 9$/i)).toBeInTheDocument();
   expect(screen.getByText(/^restaurant 10$/i)).toBeInTheDocument();
   expect(screen.queryByText(/^restaurant 1$/i)).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /anar a la pàgina 2/i })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByRole('button', { name: /anar a la pàgina 2 superior/i })).toHaveAttribute('aria-current', 'page');
 });

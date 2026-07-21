@@ -100,6 +100,7 @@ function App() {
   const [incidentMessage, setIncidentMessage] = useState('');
   const [incidentErrorMessage, setIncidentErrorMessage] = useState('');
   const [isIncidentSubmitting, setIsIncidentSubmitting] = useState(false);
+  const hasUnsavedStudentChangesRef = useRef(false);
   const navigationStateRef = useRef({
     activeView,
     selectedStudentId,
@@ -215,6 +216,18 @@ function App() {
     clearViewStateFor(view);
   }, [clearViewStateFor]);
 
+  const handleStudentDirtyChange = useCallback((hasChanges) => {
+    hasUnsavedStudentChangesRef.current = hasChanges;
+  }, []);
+
+  const confirmLeaveStudentForm = useCallback(() => {
+    if (!hasUnsavedStudentChangesRef.current) {
+      return true;
+    }
+
+    return window.confirm(t('forms.unsavedChangesConfirm'));
+  }, [t]);
+
   function pushAppHistoryState(historyState) {
     if (typeof window === 'undefined') {
       return;
@@ -245,6 +258,20 @@ function App() {
 
   useEffect(() => {
     function handlePopState(event) {
+      const currentNavigation = navigationStateRef.current;
+
+      if (
+        currentNavigation.activeView === 'edit-student'
+        && !confirmLeaveStudentForm()
+      ) {
+        pushAppHistoryState({
+          view: 'edit-student',
+          studentId: currentNavigation.selectedStudentId,
+          origin: currentNavigation.studentDetailOrigin ?? 'students',
+        });
+        return;
+      }
+
       if (isAppHistoryState(event.state)) {
         if (event.state.view === 'student-detail' && event.state.studentId) {
           setSelectedStudentId(event.state.studentId);
@@ -261,8 +288,6 @@ function App() {
         }
       }
 
-      const currentNavigation = navigationStateRef.current;
-
       if (currentNavigation.activeView === 'student-detail') {
         navigateToView(currentNavigation.studentDetailOrigin || 'students');
         return;
@@ -278,9 +303,13 @@ function App() {
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [navigateToView]);
+  }, [confirmLeaveStudentForm, navigateToView]);
 
   async function handleNavigate(view) {
+    if (!confirmLeaveStudentForm()) {
+      return;
+    }
+
     if (view === 'edit-profile') {
       if (currentStudentProfile) {
         let selectedProfile = currentStudentProfile;
@@ -307,6 +336,10 @@ function App() {
   }
 
   function handleOpenStudentDetails(studentId, origin = 'students') {
+    if (!confirmLeaveStudentForm()) {
+      return;
+    }
+
     pushAppHistoryState({
       view: 'student-detail',
       studentId,
@@ -318,6 +351,10 @@ function App() {
   }
 
   async function handleEditStudent(studentId) {
+    if (!confirmLeaveStudentForm()) {
+      return;
+    }
+
     try {
       const { students } = await loadStudentRestaurantGraph();
       const selectedStudent = students.find((entry) => entry.id === studentId) ?? null;
@@ -347,6 +384,10 @@ function App() {
   }
 
   function handleOpenRestaurantDetails(restaurantId, origin = 'restaurants') {
+    if (!confirmLeaveStudentForm()) {
+      return;
+    }
+
     pushAppHistoryState({
       view: 'restaurant-detail',
       restaurantId,
@@ -358,6 +399,10 @@ function App() {
   }
 
   async function handleEditRestaurant(restaurantId) {
+    if (!confirmLeaveStudentForm()) {
+      return;
+    }
+
     if (!isAdministrator) {
       setActiveView('restaurant-detail');
       return;
@@ -381,6 +426,10 @@ function App() {
   }
 
   function handleManageRestaurantRegistration(registration, placeDetails) {
+    if (!confirmLeaveStudentForm()) {
+      return;
+    }
+
     setRestaurantFormMode('create');
     setPendingRestaurantRegistration(registration);
     setRestaurantFormInitialData({
@@ -428,12 +477,20 @@ function App() {
   }
 
   function handleAuthAction() {
+    if (!confirmLeaveStudentForm()) {
+      return;
+    }
+
     setAuthErrorMessage('');
     setAuthViewMode(currentUser ? 'logout' : 'login');
     setActiveView('auth');
   }
 
   function handleOpenRegister() {
+    if (!confirmLeaveStudentForm()) {
+      return;
+    }
+
     setAuthErrorMessage('');
     setAuthViewMode(currentUser ? 'status' : 'request');
     setActiveView('auth');
@@ -661,6 +718,7 @@ function App() {
         isAdministrator={isAdministrator}
         student={studentFormInitialData}
         onDeleted={isEditingOwnStudentProfile ? handleOwnStudentDeleted : undefined}
+        onDirtyChange={handleStudentDirtyChange}
         onSaved={(studentId) => handleOpenStudentDetails(studentId, 'students')}
       />
     );
