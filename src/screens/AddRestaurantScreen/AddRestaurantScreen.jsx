@@ -533,6 +533,12 @@ function AddRestaurantScreen({
     }
   }
 
+  function handleSearchKeyDown(event) {
+    if (event.key === 'Enter' && !event.nativeEvent?.isComposing) {
+      handleSearch(event);
+    }
+  }
+
   async function handleImportSelectedPlace() {
     if (!selectedPlaceId) {
       setErrorMessage(t('forms.selectRestaurantError'));
@@ -752,6 +758,7 @@ function AddRestaurantScreen({
                 value={searchTerm}
                 placeholder="Ex. Disfrutar Barcelona"
                 onChange={(event) => setSearchTerm(event.target.value)}
+                onKeyDown={handleSearchKeyDown}
               />
             </label>
             <button

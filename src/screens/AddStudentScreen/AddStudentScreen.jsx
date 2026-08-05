@@ -278,6 +278,7 @@ function AddStudentScreen({
 }) {
   const { t } = useI18n();
   const isEditMode = mode === 'edit' && Boolean(student?.id);
+  const formRef = useRef(null);
   const [formData, setFormData] = useState(() => ({
     name: student?.Name ?? '',
     joviatStudies: normalizeJoviatStudies(student?.JoviatStudies ?? student?.Studies),
@@ -341,6 +342,7 @@ function AddStudentScreen({
   const [restaurantDialogMode, setRestaurantDialogMode] = useState(null);
   const [restaurantDialogStep, setRestaurantDialogStep] = useState(1);
   const [restaurantToDeleteId, setRestaurantToDeleteId] = useState('');
+  const [unsavedConfirmation, setUnsavedConfirmation] = useState(null);
   const [newRestaurant, setNewRestaurant] = useState({
     restaurantId: '',
     roles: [],
@@ -552,6 +554,55 @@ function AddStudentScreen({
     setPhotoFile(file);
     setPhotoName(file?.name ?? '');
     updatePreview(file);
+  }
+
+  function handleDiscardChanges() {
+    if (!student) {
+      return;
+    }
+
+    setFormData({
+      name: student.Name ?? '',
+      joviatStudies: normalizeJoviatStudies(student.JoviatStudies ?? student.Studies),
+      email: student.Email ?? student.email ?? '',
+      bio: student.Bio ?? student.bio ?? '',
+      phone: student.Phone ?? student.phone ?? '',
+      linkedIn: student.LinkedIn ?? student.linkedIn ?? '',
+      instagram: student.Instagram ?? student.instagram ?? '',
+      visibleContactToAlumniNetwork: true,
+      promotionYear: student.PromotionYear ? String(student.PromotionYear) : '',
+      password: '',
+    });
+    setRestaurantLinks(
+      (student.linkedRestaurants ?? []).map((entry) => ({
+        restaurantId: entry.id,
+        roles: normalizeRestaurantRoles(entry.roles ?? entry.role),
+        currentJob: Boolean(entry.currentJob),
+        relationId: entry.relationId ?? '',
+      }))
+    );
+    setPhotoFile(null);
+    setPhotoName('');
+    updatePreview(null, student.PhotoURL || getFallbackImage('student', student.Name));
+    resetRestaurantDialogState();
+    setRestaurantSearch('');
+    setRestaurantError('');
+    setErrorMessage('');
+    setSuccessMessage('');
+  }
+
+  function handleConfirmUnsavedAction() {
+    const confirmedAction = unsavedConfirmation;
+    setUnsavedConfirmation(null);
+
+    if (confirmedAction === 'discard') {
+      handleDiscardChanges();
+      return;
+    }
+
+    if (confirmedAction === 'save') {
+      formRef.current?.requestSubmit();
+    }
   }
 
   useEffect(() => {
@@ -1148,7 +1199,7 @@ function AddStudentScreen({
         </p>
       </div>
 
-      <form className="add-student-form" onSubmit={handleSubmit}>
+      <form ref={formRef} className="add-student-form" onSubmit={handleSubmit}>
         <div className="add-student-form__top">
           <section className="add-student-form__card add-student-form__card--aside">
             <label className="add-student-form__upload" htmlFor="student-photo">
@@ -1545,17 +1596,70 @@ function AddStudentScreen({
         {hasUnsavedChanges ? (
           <div className="add-student-form__unsaved-bar" role="status">
             <span>{t('forms.unsavedChanges')}</span>
-            <button
-              className="add-student-form__unsaved-save"
-              type="submit"
-              disabled={isSubmitting || isDeleting}
-            >
-              <SaveIcon />
-              {isSubmitting ? t('common.saving') : t('common.saveChanges')}
-            </button>
+            <div className="add-student-form__unsaved-actions">
+              <button
+                className="add-student-form__unsaved-discard"
+                type="button"
+                onClick={() => setUnsavedConfirmation('discard')}
+                disabled={isSubmitting || isDeleting}
+              >
+                {t('forms.discardChanges')}
+              </button>
+              <button
+                className="add-student-form__unsaved-save"
+                type="button"
+                onClick={() => setUnsavedConfirmation('save')}
+                disabled={isSubmitting || isDeleting}
+              >
+                <SaveIcon />
+                {isSubmitting ? t('common.saving') : t('common.saveChanges')}
+              </button>
+            </div>
           </div>
         ) : null}
       </form>
+
+      {unsavedConfirmation ? (
+        <div
+          className="add-student-form__dialog-layer"
+          role="presentation"
+          onClick={() => setUnsavedConfirmation(null)}
+        >
+          <div
+            className={`add-student-form__dialog${unsavedConfirmation === 'discard' ? ' add-student-form__dialog--danger' : ''}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="unsaved-confirmation-title"
+            aria-describedby="unsaved-confirmation-description"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="unsaved-confirmation-title">
+              {t(`forms.${unsavedConfirmation}ChangesTitle`)}
+            </h2>
+            <p id="unsaved-confirmation-description" className="add-student-form__dialog-description">
+              {t(`forms.${unsavedConfirmation}ChangesDescription`)}
+            </p>
+            <div className="add-student-form__dialog-actions">
+              <button
+                className="add-student-form__secondary-action"
+                type="button"
+                onClick={() => setUnsavedConfirmation(null)}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                className={unsavedConfirmation === 'discard'
+                  ? 'add-student-form__danger-action'
+                  : 'add-student-form__submit'}
+                type="button"
+                onClick={handleConfirmUnsavedAction}
+              >
+                {t(`forms.confirm${unsavedConfirmation === 'discard' ? 'Discard' : 'Save'}Changes`)}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {isLegalTermsDialogOpen ? (
         <div
@@ -1731,7 +1835,7 @@ function AddStudentScreen({
                     ))}
                   </div>
                 </fieldset>
-                <label className="add-student-form__checkbox add-student-form__checkbox--inline">
+                <label className="add-student-form__current-job">
                   <input
                     checked={newRestaurant.currentJob}
                     type="checkbox"
@@ -1739,7 +1843,11 @@ function AddStudentScreen({
                       handleNewRestaurantChange('currentJob', event.target.checked)
                     }
                   />
-                  {t('forms.currentJobCheckbox')}
+                  <span className="add-student-form__current-job-control" aria-hidden="true" />
+                  <span className="add-student-form__current-job-copy">
+                    <strong>{t('forms.currentJobCheckbox')}</strong>
+                    <small>{t('forms.currentJobHelp')}</small>
+                  </span>
                 </label>
               </div>
             )}

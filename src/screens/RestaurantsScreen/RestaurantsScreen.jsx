@@ -157,6 +157,7 @@ function MapBounds({ locations }) {
 
 function RestaurantCard({ restaurant, onOpenRestaurantDetails, isCompact = false }) {
   const { language, t } = useI18n();
+  const cardRef = useRef(null);
   const restaurantName = restaurant.Name ?? t('common.noName');
   const restaurantPrimaryType = getRestaurantPrimaryType(restaurant);
   const categoryLabel = restaurantPrimaryType
@@ -166,8 +167,33 @@ function RestaurantCard({ restaurant, onOpenRestaurantDetails, isCompact = false
     ? t('restaurants.openDetailsMap', { name: restaurant.Name ?? t('common.restaurant') })
     : t('restaurants.openDetails', { name: restaurant.Name ?? t('common.restaurant') });
 
+  useEffect(() => {
+    if (!isCompact || !cardRef.current) {
+      return;
+    }
+
+    L.DomEvent.disableClickPropagation(cardRef.current);
+    L.DomEvent.disableScrollPropagation(cardRef.current);
+  }, [isCompact]);
+
+  function stopMapInteraction(event) {
+    if (!isCompact) {
+      return;
+    }
+
+    event.stopPropagation();
+  }
+
   return (
-    <article className={`restaurant-card${isCompact ? ' restaurant-card--compact' : ''}`}>
+    <article
+      ref={cardRef}
+      className={`restaurant-card${isCompact ? ' restaurant-card--compact' : ''}`}
+      onClick={stopMapInteraction}
+      onDoubleClick={stopMapInteraction}
+      onMouseDown={stopMapInteraction}
+      onPointerDown={stopMapInteraction}
+      onTouchStart={stopMapInteraction}
+    >
       <div className="restaurant-card__image-wrap">
         <SmartImage
           className="restaurant-card__image"
@@ -695,6 +721,7 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
                   >
                     <Popup
                       autoPanPadding={[32, 32]}
+                      closeOnClick={false}
                       keepInView
                       maxWidth={260}
                       minWidth={220}

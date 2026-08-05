@@ -659,7 +659,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  max-width: min(92vw, 520px);
+  max-width: min(96vw, 560px);
   padding: 0.8rem 0.9rem 0.8rem 1.1rem;
   border: 1px solid rgba(141, 95, 28, 0.24);
   border-radius: 18px;
@@ -674,6 +674,37 @@
   font-weight: 800;
   letter-spacing: 0;
   text-transform: none;
+  white-space: nowrap;
+}
+
+.add-student-form__unsaved-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.add-student-form__unsaved-discard {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #b73636;
+  border-radius: 999px;
+  background: #fff7f7;
+  color: #a02929;
+  padding: 0.72rem 1rem;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.add-student-form__unsaved-discard:hover {
+  background: #b73636;
+  color: #ffffff;
+}
+
+.add-student-form__unsaved-discard:focus-visible {
+  outline: 3px solid rgba(183, 54, 54, 0.22);
+  outline-offset: 2px;
 }
 
 .add-student-form__unsaved-save {
@@ -691,11 +722,18 @@
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 10px 24px rgba(141, 95, 28, 0.24);
+  white-space: nowrap;
+  width: 100%;
 }
 
 .add-student-form__unsaved-save:disabled {
   cursor: wait;
   opacity: 0.72;
+}
+
+.add-student-form__unsaved-discard:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .add-student-form__restaurant-add-column {
@@ -894,8 +932,83 @@
   margin-top: 1.2rem;
 }
 
-.add-student-form__checkbox--inline {
-  margin-top: 0;
+.add-student-form__current-job {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.2rem 0.9rem;
+  margin-top: 0.2rem;
+  border: 1px solid rgba(141, 95, 28, 0.35);
+  border-radius: 0.75rem;
+  background: rgba(141, 95, 28, 0.07);
+  padding: 1rem;
+  color: #2f2a24;
+  cursor: pointer;
+}
+
+.add-student-form__current-job:hover {
+  border-color: rgba(141, 95, 28, 0.6);
+  background: rgba(141, 95, 28, 0.11);
+}
+
+.add-student-form__current-job input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.add-student-form__current-job-control {
+  position: relative;
+  width: 2.8rem;
+  height: 1.55rem;
+  border: 2px solid #8a7c6a;
+  border-radius: 999px;
+  background: #ffffff;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.add-student-form__current-job-control::after {
+  content: "";
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: #8a7c6a;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.add-student-form__current-job input:checked + .add-student-form__current-job-control {
+  border-color: #8d5f1c;
+  background: #8d5f1c;
+}
+
+.add-student-form__current-job input:checked + .add-student-form__current-job-control::after {
+  background: #ffffff;
+  transform: translateX(1.25rem);
+}
+
+.add-student-form__current-job input:focus-visible + .add-student-form__current-job-control {
+  outline: 3px solid rgba(141, 95, 28, 0.25);
+  outline-offset: 3px;
+}
+
+.add-student-form__current-job-copy {
+  display: grid;
+  gap: 0.25rem;
+  line-height: 1.35;
+}
+
+.add-student-form__current-job-copy strong {
+  font-size: 1rem;
+}
+
+.add-student-form__current-job-copy small {
+  color: #6f655a;
+  font-size: 0.86rem;
 }
 
 .add-student-form__feedback--error {
@@ -979,6 +1092,8 @@
     left: 1rem;
     max-width: none;
     justify-content: space-between;
+    align-items: center;
+    flex-direction: row;
   }
 
   .add-student-form__dialog {

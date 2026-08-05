@@ -2404,6 +2404,8 @@ test('reuses the add student form in edit mode for administrators', async () => 
     const confirmAddRestaurantButtons = screen.getAllByRole('button', { name: /afegir establiment/i });
     await userEvent.click(confirmAddRestaurantButtons[confirmAddRestaurantButtons.length - 1]);
     await userEvent.click(screen.getByRole('button', { name: /desar canvis/i }));
+    expect(screen.getByRole('heading', { name: /vols desar els canvis/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /sí, desar els canvis/i }));
   });
 
   expect(updateDoc).toHaveBeenCalledWith(
