@@ -2633,7 +2633,11 @@ test('does not show the password recovery button for a non administrator editing
   expect(screen.getByRole('button', { name: /modificar password/i })).toBeInTheDocument();
 });
 
-test('opens the logged student edit form from the header avatar', async () => {
+test.each([
+  'https://maps.app.goo.gl/la-fonda',
+  'https://share.google/BZUfy4KSbnJ98T5Ou',
+  'https://www.google.com/search?q=Restaurant+Atlantida',
+])('handles establishment requests with %s', async (sharedUrl) => {
   let authListener;
   onAuthStateChanged.mockImplementation((auth, callback) => {
     authListener = callback;
@@ -2730,22 +2734,29 @@ test('opens the logged student edit form from the header avatar', async () => {
     await userEvent.click(screen.getByRole('button', { name: /donar d'alta establiment/i }));
   });
 
+  const isUnverifiedGoogleSearch = !sharedUrl.includes('maps.app.goo.gl');
+
   await act(async () => {
     await userEvent.type(
       screen.getByLabelText(/enllaç de google maps/i),
-      'https://maps.app.goo.gl/la-fonda'
+      sharedUrl
     );
     await userEvent.click(screen.getByRole('button', { name: /enviar petici/i }));
   });
 
-  expect(resolveGoogleMapsShareLink).toHaveBeenCalledWith({
-    url: 'https://maps.app.goo.gl/la-fonda',
-  });
+  if (isUnverifiedGoogleSearch) {
+    expect(await screen.findByText(/aquest enllaç no és vàlid/i)).toBeInTheDocument();
+    expect(resolveGoogleMapsShareLink).not.toHaveBeenCalled();
+    expect(addDoc).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog', { name: /petició enviada/i })).not.toBeInTheDocument();
+    return;
+  }
+  expect(resolveGoogleMapsShareLink).toHaveBeenCalledWith({ url: sharedUrl });
   expect(addDoc).toHaveBeenCalledWith('RestaruantsRegistrations', {
     Name: 'Aina Serra',
     Email: 'aina@joviat.cat',
     Description: '',
-    GoogleMapsShareUrl: 'https://maps.app.goo.gl/la-fonda',
+    GoogleMapsShareUrl: sharedUrl,
     id_alumni: { id: 'student-1', path: 'Alumni/student-1' },
     createdAt: 'SERVER_TIMESTAMP',
   });
@@ -3672,6 +3683,34 @@ test('shows the restaurant card on restaurant map pins and opens the detail from
   ).toBeInTheDocument();
 });
 
+test('hides restaurants without alumni by default and includes them only while the filter is checked', async () => {
+  render(<App />);
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^establiments$/i }));
+  });
+
+  expect(await screen.findByText(/el celler de can roca/i)).toBeInTheDocument();
+  const checkbox = screen.getByRole('checkbox', { name: /mostrar establiments sense alumni associats/i });
+  expect(checkbox).not.toBeChecked();
+  expect(screen.queryByText(/can jubany/i)).not.toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(checkbox);
+  });
+  expect(screen.getByText(/can jubany/i)).toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /veure llistat/i }));
+  });
+  expect(screen.getByText(/can jubany/i)).toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(checkbox);
+  });
+  expect(screen.queryByText(/can jubany/i)).not.toBeInTheDocument();
+  expect(screen.getByText(/el celler de can roca/i)).toBeInTheDocument();
+});
+
 test('filters restaurants by name and clears the search', async () => {
   render(<App />);
   await act(async () => {
@@ -3745,6 +3784,7 @@ test('builds restaurant city filters from the city after the postal code', async
 
   await act(async () => {
     await userEvent.click(screen.getByRole('button', { name: /veure llistat/i }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /mostrar establiments sense alumni associats/i }));
   });
 
   const cityFilter = await screen.findByRole('button', { name: /ciutat/i });
@@ -3799,6 +3839,7 @@ test('paginates the restaurants list in groups of 8 below the search field', asy
 
   await act(async () => {
     await userEvent.click(screen.getByRole('button', { name: /veure llistat/i }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /mostrar establiments sense alumni associats/i }));
   });
 
   const searchInput = await screen.findByLabelText(/cercar establiment/i);
@@ -3827,3 +3868,56 @@ test('paginates the restaurants list in groups of 8 below the search field', asy
   expect(screen.queryByText(/^restaurant 1$/i)).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: /anar a la pàgina 2 superior/i })).toHaveAttribute('aria-current', 'page');
 });
+
+test.each(['edit', 'cancel', 'linked', 'load-error'])(
+  'handles the restaurant association prompt after login: %s',
+  async (scenario) => {
+    let authListener;
+    onAuthStateChanged.mockImplementation((authValue, callback) => {
+      authListener = callback;
+      callback(null);
+      return jest.fn();
+    });
+    signInWithEmailAndPassword.mockImplementation(async () => {
+      authListener({ email: 'aina@joviat.cat' });
+    });
+    const defaultGetDocs = getDocs.getMockImplementation();
+    getDocs.mockImplementation(async (collectionName) => {
+      if (collectionName === 'Rest-Alum' && scenario !== 'linked') {
+        if (scenario === 'load-error') throw new Error('Unavailable');
+        return { docs: [] };
+      }
+      return defaultGetDocs(collectionName);
+    });
+
+    render(<App />);
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: /^login$/i }));
+      await userEvent.type(screen.getByLabelText(/email/i), 'aina@joviat.cat');
+      await userEvent.type(screen.getByLabelText(/contrasenya/i), '123456');
+      await userEvent.click(screen.getByRole('button', { name: /fer login/i }));
+    });
+
+    const dialogName = /encara no t’has associat a cap establiment/i;
+    if (scenario === 'linked' || scenario === 'load-error') {
+      expect(screen.queryByRole('dialog', { name: dialogName })).not.toBeInTheDocument();
+      return;
+    }
+
+    const dialog = await screen.findByRole('dialog', { name: dialogName });
+    expect(within(dialog).getByText(/edita el teu perfil i fes que la xarxa d’alumni et pugui trobar!/i)).toBeInTheDocument();
+    await act(async () => {
+      await userEvent.click(within(dialog).getByRole('button', {
+        name: scenario === 'edit' ? /edita el teu perfil/i : /cancel/i,
+      }));
+    });
+    expect(screen.queryByRole('dialog', { name: dialogName })).not.toBeInTheDocument();
+    if (scenario === 'edit') {
+      expect(await screen.findByRole('heading', { name: /editar Alumni/i })).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Aina Serra')).toBeInTheDocument();
+    } else {
+      expect(screen.getByRole('heading', { name: /sessió iniciada/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^logout$/i })).toBeInTheDocument();
+    }
+  }
+);

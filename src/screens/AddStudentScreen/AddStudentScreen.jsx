@@ -49,6 +49,17 @@ function normalizeFileName(fileName) {
     .toLowerCase();
 }
 
+function isGoogleSearchShareUrl(value) {
+  try {
+    const { hostname, pathname } = new URL(value.trim());
+    return hostname === 'share.google'
+      || ((hostname === 'google.com' || hostname.endsWith('.google.com'))
+        && ['/share.google', '/search'].includes(pathname));
+  } catch {
+    return false;
+  }
+}
+
 function isValidGoogleMapsUrl(value) {
   try {
     const parsedUrl = new URL(value);
@@ -275,10 +286,12 @@ function AddStudentScreen({
   isAdministrator = false,
   canChangePassword = false,
   canDeleteOwnProfile = false,
+  initialSection = null,
 }) {
   const { t } = useI18n();
   const isEditMode = mode === 'edit' && Boolean(student?.id);
   const formRef = useRef(null);
+  const restaurantsSectionRef = useRef(null);
   const [formData, setFormData] = useState(() => ({
     name: student?.Name ?? '',
     joviatStudies: normalizeJoviatStudies(student?.JoviatStudies ?? student?.Studies),
@@ -313,6 +326,12 @@ function AddStudentScreen({
     }))
   );
   const [isLoadingRestaurants, setIsLoadingRestaurants] = useState(true);
+  useEffect(() => {
+    if (initialSection === 'restaurants' && !isLoadingRestaurants) {
+      restaurantsSectionRef.current?.focus({ preventScroll: true });
+      restaurantsSectionRef.current?.scrollIntoView?.({ block: 'start' });
+    }
+  }, [initialSection, isLoadingRestaurants]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -781,6 +800,11 @@ function AddStudentScreen({
       return;
     }
 
+    if (isGoogleSearchShareUrl(trimmedMapsUrl)) {
+      setRestaurantRequestError(t('forms.restaurantRequestGoogleSearchLink'));
+      return;
+    }
+
     if (!isValidGoogleMapsUrl(trimmedMapsUrl)) {
       setRestaurantRequestError(t('forms.restaurantRequestLinkInvalid'));
       return;
@@ -815,7 +839,11 @@ function AddStudentScreen({
       setIsRestaurantRequestDialogOpen(false);
       setIsRestaurantRequestConfirmationOpen(true);
     } catch (error) {
-      setRestaurantRequestError(t('forms.restaurantRequestError'));
+      setRestaurantRequestError(t(
+        error?.details?.reason === 'google-place-unverified'
+          ? 'forms.restaurantRequestPlaceUnverified'
+          : 'forms.restaurantRequestError'
+      ));
     } finally {
       setIsSubmittingRestaurantRequest(false);
     }
@@ -1509,7 +1537,13 @@ function AddStudentScreen({
           </section>
         ) : null}
 
-        <section className="add-student-form__panel add-student-form__card">
+        <section
+          ref={restaurantsSectionRef}
+          tabIndex={-1}
+          aria-label={t('common.restaurants')}
+          className="add-student-form__panel add-student-form__card"
+          style={{ scrollMarginTop: '2rem' }}
+        >
           <div className="add-student-form__panel-heading">
             <div>
               <p className="add-student-form__section-title">{t('forms.professionalPath')}</p>
@@ -1964,7 +1998,9 @@ function AddStudentScreen({
                 placeholder={t('forms.restaurantRequestPlaceholder')}
                 onChange={(event) => {
                   setRestaurantRequestMapsUrl(event.target.value);
-                  setRestaurantRequestError('');
+                  setRestaurantRequestError(isGoogleSearchShareUrl(event.target.value)
+                    ? t('forms.restaurantRequestGoogleSearchLink')
+                    : '');
                 }}
               />
               <small>{t('forms.restaurantRequestHelp')}</small>
@@ -1978,7 +2014,18 @@ function AddStudentScreen({
             </figure>
             {restaurantRequestError ? (
               <p className="add-student-form__feedback add-student-form__feedback--error" role="alert">
-                {restaurantRequestError}
+                {restaurantRequestError.split(/(maps\.google\.com)/).map((part, index) => (
+                  part === 'maps.google.com' ? (
+                    <a
+                      key={index}
+                      href="https://maps.google.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {part}
+                    </a>
+                  ) : part
+                ))}
               </p>
             ) : null}
             <div className="add-student-form__dialog-actions">

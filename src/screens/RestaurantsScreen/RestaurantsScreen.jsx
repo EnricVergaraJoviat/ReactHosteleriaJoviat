@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-markercluster';
@@ -242,8 +242,18 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const screenRef = useRef(null);
+  const shouldScrollToTopRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (shouldScrollToTopRef.current) {
+      screenRef.current?.scrollIntoView?.({ behavior: 'instant', block: 'start' });
+      shouldScrollToTopRef.current = false;
+    }
+  }, [currentPage]);
   const [viewMode, setViewMode] = useState('map');
   const [areFiltersOpen, setAreFiltersOpen] = useState(true);
+  const [showWithoutStudents, setShowWithoutStudents] = useState(false);
   const [selectedCities, setSelectedCities] = useState(['all']);
   const [selectedCategories, setSelectedCategories] = useState(['all']);
   const [openFilterDropdown, setOpenFilterDropdown] = useState('');
@@ -314,7 +324,9 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
     const matchesCategory = selectedCategories.includes('all')
       || (restaurantPrimaryType && selectedCategories.includes(restaurantPrimaryType));
 
-    return matchesSearch && matchesCity && matchesCategory;
+    const matchesStudents = showWithoutStudents || (restaurant.linkedStudentCount ?? 0) > 0;
+
+    return matchesSearch && matchesCity && matchesCategory && matchesStudents;
   });
   const totalPages = Math.ceil(filteredRestaurants.length / RESTAURANTS_PER_PAGE);
   const visibleRestaurants = filteredRestaurants.slice(
@@ -333,7 +345,7 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [normalizedSearchTerm, selectedCities, selectedCategories]);
+  }, [normalizedSearchTerm, selectedCities, selectedCategories, showWithoutStudents]);
 
   useEffect(() => {
     if (totalPages > 0 && currentPage > totalPages) {
@@ -424,6 +436,15 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
     return selectedLabels.join(', ');
   }
 
+  function handlePageChange(page) {
+    if (page === currentPage) {
+      return;
+    }
+
+    shouldScrollToTopRef.current = true;
+    setCurrentPage(page);
+  }
+
   function renderPagination(position) {
     return (
       <nav
@@ -439,7 +460,7 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
             type="button"
             aria-label={`${t('list.previousPage')} ${t(position === 'bottom' ? 'list.bottomPagination' : 'list.topPagination')}`}
             disabled={currentPage === 1}
-            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
           >
             ‹
           </button>
@@ -458,7 +479,7 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
                     position === 'bottom' ? 'list.bottomPagination' : 'list.topPagination'
                   )}`}
                   aria-current={pageNumber === currentPage ? 'page' : undefined}
-                  onClick={() => setCurrentPage(pageNumber)}
+                  onClick={() => handlePageChange(pageNumber)}
                 >
                   {pageNumber}
                 </button>
@@ -470,7 +491,7 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
             type="button"
             aria-label={`${t('list.nextPage')} ${t(position === 'bottom' ? 'list.bottomPagination' : 'list.topPagination')}`}
             disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
           >
             ›
           </button>
@@ -503,7 +524,7 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
   );
 
   return (
-    <section className="restaurants-screen">
+    <section className="restaurants-screen" ref={screenRef}>
       <div className="restaurants-screen__intro">
         <div className="restaurants-screen__title-row">
           <img
@@ -591,6 +612,14 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
       <div className="restaurants-filters">
         {areFiltersOpen ? (
           <div className="restaurants-filters__panel">
+            <label className="restaurants-filters__checkbox">
+              <input
+                type="checkbox"
+                checked={showWithoutStudents}
+                onChange={(event) => setShowWithoutStudents(event.target.checked)}
+              />
+              <span>{t('filters.showRestaurantsWithoutStudents')}</span>
+            </label>
             <div
               ref={cityDropdownRef}
               className="restaurants-filters__field restaurants-filters__field--dropdown"

@@ -260,6 +260,23 @@
   padding: 1rem;
 }
 
+.restaurants-filters__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  grid-column: 1 / -1;
+  color: #5c4a31;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.restaurants-filters__checkbox input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: #5c4a31;
+}
+
 .restaurants-filters__field {
   display: flex;
   flex-direction: column;

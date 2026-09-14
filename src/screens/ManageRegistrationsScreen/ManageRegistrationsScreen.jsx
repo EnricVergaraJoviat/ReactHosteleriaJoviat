@@ -109,14 +109,18 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
         setRestaurantPreview(result.data ?? null);
         setRestaurantPreviewStatus('ready');
       })
-      .catch(() => {
+      .catch((error) => {
         if (!isMounted) {
           return;
         }
 
         setRestaurantPreview(null);
         setRestaurantPreviewStatus('error');
-        setRestaurantPreviewError(t('registrations.restaurantPreviewError'));
+        setRestaurantPreviewError(t(
+          error?.details?.reason === 'google-place-unverified'
+            ? 'forms.restaurantRequestPlaceUnverified'
+            : 'registrations.restaurantPreviewError'
+        ));
       });
 
     return () => {

@@ -6,6 +6,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret, defineString } = require('firebase-functions/params');
 const logger = require('firebase-functions/logger');
 const nodemailer = require('nodemailer');
+const { fetchGoogleSharePage } = require('./googleShareRedirect');
 
 initializeApp();
 
@@ -489,6 +490,10 @@ function extractGoogleMapsParamQuery(urlValue) {
 
   try {
     const parsedUrl = new URL(urlValue);
+    // Short-link tokens identify a redirect, not a restaurant search query.
+    if (parsedUrl.pathname === '/share.google') {
+      return '';
+    }
     const paramNames = ['q', 'query', 'destination', 'daddr', 'near'];
 
     for (const paramName of paramNames) {
@@ -516,18 +521,7 @@ function extractPathQuery(urlValue) {
       return decodeURIComponent(placeName).replace(/\+/g, ' ').trim();
     }
 
-    const pathSegments = parsedUrl.pathname
-      .split('/')
-      .map((segment) => segment.trim())
-      .filter(Boolean);
-
-    const lastMeaningfulSegment = [...pathSegments]
-      .reverse()
-      .find((segment) => /[a-zA-Z]/.test(segment) && !/^maps?$/i.test(segment));
-
-    if (lastMeaningfulSegment) {
-      return decodeURIComponent(lastMeaningfulSegment).replace(/\+/g, ' ').trim();
-    }
+    // Other paths (short-link tokens, /search, etc.) are not place names.
   } catch (error) {}
 
   return '';
@@ -625,11 +619,13 @@ function isLikelyGenericGoogleQuery(value) {
   ].includes(normalizedValue);
 }
 
-function collectCandidateQueries({ html, finalUrl, sharedUrl }) {
+function collectCandidateQueries({ html, finalUrl, canonicalUrl, sharedUrl }) {
   const candidates = [
     extractGoogleMapsParamQuery(finalUrl),
+    extractGoogleMapsParamQuery(canonicalUrl),
     extractGoogleMapsParamQuery(sharedUrl),
     extractPathQuery(finalUrl),
+    extractPathQuery(canonicalUrl),
     extractPathQuery(sharedUrl),
     extractMetaContent(html, 'og:title'),
     extractMetaContent(html, 'twitter:title'),
@@ -1461,7 +1457,7 @@ exports.resolveGoogleMapsShareLink = onCall(
 
     let response;
     try {
-      response = await fetch(sharedUrl, {
+      response = await fetchGoogleSharePage(sharedUrl, {
         redirect: 'follow',
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; ReactHosteleriaJoviatBot/1.0)',
@@ -1483,9 +1479,25 @@ exports.resolveGoogleMapsShareLink = onCall(
       throw new HttpsError('unavailable', 'Google Maps shared URL request failed.');
     }
 
-  const finalUrl = response.url || sharedUrl;
+    const finalUrl = response.url || sharedUrl;
     const html = await response.text().catch(() => '');
     const canonicalUrl = extractCanonicalUrl(html);
+
+    // A Search query is not a place identity. In particular, kgmid identifies
+    // a Knowledge Graph entity and cannot be discarded in favour of the first
+    // Places text-search result: namesakes may be in entirely different cities.
+    const resolvedUrl = new URL(finalUrl);
+    if (
+      (resolvedUrl.hostname === 'google.com' || resolvedUrl.hostname.endsWith('.google.com'))
+      && resolvedUrl.pathname === '/search'
+    ) {
+      throw new HttpsError(
+        'failed-precondition',
+        'The shared Google Search result cannot be matched to an exact place. Share the place from Google Maps.',
+        { reason: 'google-place-unverified' }
+      );
+    }
+
     let placeId = [
       finalUrl,
       canonicalUrl,
@@ -1498,7 +1510,8 @@ exports.resolveGoogleMapsShareLink = onCall(
       const locationBias = extractGoogleMapsLocationBias(canonicalUrl || finalUrl);
       const candidateQueries = collectCandidateQueries({
         html,
-        finalUrl: canonicalUrl || finalUrl,
+        finalUrl,
+        canonicalUrl,
         sharedUrl,
       });
 

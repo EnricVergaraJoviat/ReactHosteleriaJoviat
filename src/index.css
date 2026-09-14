@@ -42,6 +42,16 @@ code {
   font-size: 1.65rem;
 }
 
+.incident-dialog--unlinked-profile {
+  width: min(100%, 720px);
+  padding: clamp(1.6rem, 4vw, 3rem);
+}
+
+.incident-dialog--unlinked-profile p {
+  font-size: 1.125rem;
+  line-height: 1.65;
+}
+
 .incident-dialog p {
   margin: 0.75rem 0 0;
   color: #5b4c38;

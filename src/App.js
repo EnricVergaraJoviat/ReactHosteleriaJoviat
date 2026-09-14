@@ -84,6 +84,7 @@ function App() {
   const [studentDetailOrigin, setStudentDetailOrigin] = useState('students');
   const [studentFormMode, setStudentFormMode] = useState('create');
   const [studentFormInitialData, setStudentFormInitialData] = useState(null);
+  const [studentFormInitialSection, setStudentFormInitialSection] = useState(null);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState('');
   const [restaurantDetailOrigin, setRestaurantDetailOrigin] = useState('restaurants');
   const [restaurantFormMode, setRestaurantFormMode] = useState('create');
@@ -95,6 +96,9 @@ function App() {
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
   const [isAdministrator, setIsAdministrator] = useState(false);
   const [currentStudentProfile, setCurrentStudentProfile] = useState(null);
+  const [isUnlinkedProfileDialogOpen, setIsUnlinkedProfileDialogOpen] = useState(false);
+  const pendingLoginEmailRef = useRef('');
+  const unlinkedProfileDialogRef = useRef(null);
   const [isIncidentDialogOpen, setIsIncidentDialogOpen] = useState(false);
   const [incidentText, setIncidentText] = useState('');
   const [incidentMessage, setIncidentMessage] = useState('');
@@ -128,6 +132,7 @@ function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
+      setIsUnlinkedProfileDialogOpen(false);
       setAuthViewMode(user ? 'status' : 'login');
     });
 
@@ -164,6 +169,11 @@ function App() {
         if (!isCancelled) {
           setIsAdministrator(administratorExists);
           setCurrentStudentProfile(studentProfile);
+          if (pendingLoginEmailRef.current === normalizedUserEmail) {
+            pendingLoginEmailRef.current = '';
+            setIsUnlinkedProfileDialogOpen(Boolean(studentProfile)
+              && studentProfile.linkedRestaurants.length === 0);
+          }
         }
       } catch (error) {
         if (!isCancelled) {
@@ -179,6 +189,33 @@ function App() {
       isCancelled = true;
     };
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!isUnlinkedProfileDialogOpen) return;
+
+    const previousFocus = document.activeElement;
+    const dialog = unlinkedProfileDialogRef.current;
+    const buttons = dialog.querySelectorAll('button');
+    buttons[0].focus();
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsUnlinkedProfileDialogOpen(false);
+      }
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        const index = Array.from(buttons).indexOf(document.activeElement);
+        buttons[(index + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length].focus();
+      }
+    }
+
+    dialog.addEventListener('keydown', handleKeyDown);
+    return () => {
+      dialog.removeEventListener('keydown', handleKeyDown);
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [isUnlinkedProfileDialogOpen]);
 
   const clearViewStateFor = useCallback((view) => {
     if (
@@ -305,7 +342,7 @@ function App() {
     };
   }, [confirmLeaveStudentForm, navigateToView]);
 
-  async function handleNavigate(view) {
+  async function handleNavigate(view, initialSection = null) {
     if (!confirmLeaveStudentForm()) {
       return;
     }
@@ -327,6 +364,7 @@ function App() {
         setSelectedStudentId(selectedProfile.id);
         setStudentFormMode('edit');
         setStudentFormInitialData(selectedProfile);
+        setStudentFormInitialSection(initialSection);
         setActiveView('edit-student');
       }
       return;
@@ -377,6 +415,7 @@ function App() {
       setSelectedStudentId(studentId);
       setStudentFormMode('edit');
       setStudentFormInitialData(selectedStudent);
+      setStudentFormInitialSection(null);
       setActiveView('edit-student');
     } catch (error) {
       setActiveView('student-detail');
@@ -499,12 +538,14 @@ function App() {
   async function handleLogin({ email, password }) {
     setAuthErrorMessage('');
     setIsAuthSubmitting(true);
+    pendingLoginEmailRef.current = normalizeEmail(email);
 
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
       setAuthViewMode('status');
       setActiveView('auth');
     } catch (error) {
+      pendingLoginEmailRef.current = '';
       setAuthErrorMessage(getAuthErrorMessage(error, t));
     } finally {
       setIsAuthSubmitting(false);
@@ -717,6 +758,7 @@ function App() {
         canDeleteOwnProfile={isEditingOwnStudentProfile}
         isAdministrator={isAdministrator}
         student={studentFormInitialData}
+        initialSection={studentFormInitialSection}
         onDeleted={isEditingOwnStudentProfile ? handleOwnStudentDeleted : undefined}
         onDirtyChange={handleStudentDirtyChange}
         onSaved={(studentId) => handleOpenStudentDetails(studentId, 'students')}
@@ -757,6 +799,40 @@ function App() {
       onReportIncident={handleOpenIncidentDialog}
     >
       {screen}
+      {isUnlinkedProfileDialogOpen ? (
+        <div className="incident-dialog__backdrop">
+          <div
+            ref={unlinkedProfileDialogRef}
+            className="incident-dialog incident-dialog--unlinked-profile"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="unlinked-profile-title"
+            aria-describedby="unlinked-profile-description"
+          >
+            <h2 id="unlinked-profile-title">{t('auth.unlinkedProfileTitle')}</h2>
+            <p id="unlinked-profile-description">{t('auth.unlinkedProfileDescription')}</p>
+            <div className="incident-dialog__actions">
+              <button
+                className="incident-dialog__button incident-dialog__button--primary"
+                type="button"
+                onClick={() => {
+                  setIsUnlinkedProfileDialogOpen(false);
+                  handleNavigate('edit-profile', 'restaurants');
+                }}
+              >
+                {t('auth.editUnlinkedProfile')}
+              </button>
+              <button
+                className="incident-dialog__button incident-dialog__button--secondary"
+                type="button"
+                onClick={() => setIsUnlinkedProfileDialogOpen(false)}
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {isIncidentDialogOpen ? (
         <div
           className="incident-dialog__backdrop"

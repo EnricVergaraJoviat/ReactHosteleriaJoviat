@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import {
   getRestaurantRoleOptions,
@@ -33,6 +33,15 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const screenRef = useRef(null);
+  const shouldScrollToTopRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (shouldScrollToTopRef.current) {
+      screenRef.current?.scrollIntoView?.({ behavior: 'instant', block: 'start' });
+      shouldScrollToTopRef.current = false;
+    }
+  }, [currentPage]);
   const [areFiltersOpen, setAreFiltersOpen] = useState(true);
   const [areStudyFiltersOpen, setAreStudyFiltersOpen] = useState(false);
   const [areRoleFiltersOpen, setAreRoleFiltersOpen] = useState(false);
@@ -168,6 +177,15 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
     ));
   }
 
+  function handlePageChange(page) {
+    if (page === currentPage) {
+      return;
+    }
+
+    shouldScrollToTopRef.current = true;
+    setCurrentPage(page);
+  }
+
   function renderPagination(position) {
     return (
       <nav
@@ -183,7 +201,7 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
             type="button"
             aria-label={`${t('list.previousPage')} ${t(position === 'bottom' ? 'list.bottomPagination' : 'list.topPagination')}`}
             disabled={currentPage === 1}
-            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
           >
             ‹
           </button>
@@ -202,7 +220,7 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
                     position === 'bottom' ? 'list.bottomPagination' : 'list.topPagination'
                   )}`}
                   aria-current={pageNumber === currentPage ? 'page' : undefined}
-                  onClick={() => setCurrentPage(pageNumber)}
+                  onClick={() => handlePageChange(pageNumber)}
                 >
                   {pageNumber}
                 </button>
@@ -214,7 +232,7 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
             type="button"
             aria-label={`${t('list.nextPage')} ${t(position === 'bottom' ? 'list.bottomPagination' : 'list.topPagination')}`}
             disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
           >
             ›
           </button>
@@ -224,7 +242,7 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
   }
 
   return (
-    <section className="students-screen">
+    <section className="students-screen" ref={screenRef}>
       <div className="students-screen__intro">
         <div className="students-screen__title-row">
           <img className="students-screen__title-icon" src={alumniTitleImage} alt="" aria-hidden="true" />
