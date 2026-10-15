@@ -96,6 +96,8 @@ test('creates the restaurant, alumni and current workplace atomically, then send
   assert.equal(relation.current_job, true);
   assert.equal(f.records.has('UserRegistrations/request-1'), false);
   assert.equal(result.emailSent, true);
+  assert.equal(result.restaurantCreated, true);
+  assert.equal(result.restaurantName, 'Verified name');
   assert.deepEqual(f.calls, { prepare: 1, cleanup: 0, email: 1 });
 });
 
@@ -103,6 +105,8 @@ test('reuses an existing Google Place without overwriting it or importing anothe
   const f = fixture({ existingRestaurant: true });
   const result = await approveWorkplaceRegistration(f.dependencies);
   assert.equal(result.restaurantId, 'existing');
+  assert.equal(result.restaurantCreated, false);
+  assert.equal(result.restaurantName, 'Original name');
   assert.equal(f.records.get('Restaurant/existing').Name, 'Original name');
   assert.equal(f.calls.prepare, 0);
 });
@@ -115,6 +119,8 @@ test('two simultaneous alumni approvals for the same new place create only one e
     approveWorkplaceRegistration({ ...f.dependencies, registrationSnapshot: f.snapshot('UserRegistrations/request-2') }),
   ]);
   assert.equal(first.restaurantId, second.restaurantId);
+  assert.deepEqual([first.restaurantCreated, second.restaurantCreated], [true, false]);
+  assert.equal(second.restaurantName, 'Verified name');
   assert.equal([...f.records.keys()].filter((path) => path.startsWith('Restaurant/')).length, 1);
   assert.equal([...f.records.keys()].filter((path) => path.startsWith('Rest-Alum/')).length, 2);
   assert.equal(f.calls.cleanup, 1);
@@ -163,6 +169,8 @@ test('email failure reports a warning while preserving the completed account and
   const f = fixture({ failEmail: true });
   const result = await approveWorkplaceRegistration(f.dependencies);
   assert.equal(result.emailSent, false);
+  assert.equal(result.restaurantCreated, true);
+  assert.equal(result.restaurantName, 'Verified name');
   assert.ok(f.records.has(`Alumni/${result.studentId}`));
   assert.ok(f.records.has(`Rest-Alum/${result.studentId}_${result.restaurantId}`));
   assert.equal(f.accounts.size, 1);

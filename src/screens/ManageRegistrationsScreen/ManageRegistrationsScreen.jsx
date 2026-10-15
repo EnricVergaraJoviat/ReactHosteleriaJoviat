@@ -3,7 +3,7 @@ import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../../helpers/firebase';
 import { getRestaurantCategoryLabel } from '../../helpers/placeTypes';
-import { translateRestaurantRole } from '../../helpers/restaurantRoles';
+import RegistrationWorkplace from './RegistrationWorkplace';
 import {
   USER_REGISTRATIONS_COLLECTION,
   acceptUserRegistration,
@@ -171,7 +171,27 @@ function ManageRegistrationsScreen({
     try {
       if (action.type === 'accept') {
         const result = await acceptUserRegistration(action.registration);
-        setSuccessMessage(t(result?.emailSent === false ? 'registrations.acceptedEmailWarning' : 'registrations.accepted', { name: action.registration.Name }));
+        const messageKey = result?.restaurantCreated === true
+          ? 'registrations.acceptedNewRestaurant'
+          : result?.restaurantCreated === false
+            ? 'registrations.acceptedExistingRestaurant'
+            : 'registrations.accepted';
+        const message = t(messageKey, {
+          name: action.registration.Name,
+          restaurant: result?.restaurantName || action.registration.Restaurant?.Name,
+        });
+        setSuccessMessage(result?.emailSent === false
+          ? `${message} ${t('registrations.welcomeEmailWarning')}`
+          : message);
+        // Other pending requests for this place must immediately show it as registered.
+        if (result?.restaurantId && action.registration.Restaurant?.GooglePlaceId) {
+          setExistingRestaurants((current) => current.some((entry) =>
+            entry.GooglePlaceId === action.registration.Restaurant.GooglePlaceId
+          ) ? current : [...current, {
+            ...action.registration.Restaurant, id: result.restaurantId,
+            Name: result.restaurantName || action.registration.Restaurant.Name,
+          }]);
+        }
       } else {
         await rejectUserRegistration(action.registration.id);
         setSuccessMessage(t('registrations.rejected', { name: action.registration.Name }));
@@ -252,7 +272,7 @@ function ManageRegistrationsScreen({
         ) : null}
 
         {!isLoading && !errorMessage && successMessage ? (
-          <p className="manage-registrations__status manage-registrations__status--success">
+          <p className="manage-registrations__status manage-registrations__status--success" role="status">
             {successMessage}
           </p>
         ) : null}
@@ -277,11 +297,7 @@ function ManageRegistrationsScreen({
                   <h2>{registration.Name || t('registrations.userNoName')}</h2>
                   <p>{registration.Email || t('registrations.noEmail')}</p>
                   {registration.Restaurant ? (
-                    <div className="manage-registrations__workplace">
-                      <p><strong>{t('auth.stepRestaurant')}: </strong>{registration.Restaurant.Name}</p>
-                      <p>{registration.Restaurant.Address}</p>
-                      <p><strong>{t('forms.role')}: </strong>{translateRestaurantRole(registration.Role, t)}</p>
-                    </div>
+                    <RegistrationWorkplace registration={registration} existingRestaurants={existingRestaurants} />
                   ) : <p className="manage-registrations__meta">{t('registrations.workplaceMissing')}</p>}
                 </div>
                 <div className="manage-registrations__actions">
@@ -345,7 +361,7 @@ function ManageRegistrationsScreen({
       {pendingAction ? (
         <div className="manage-registrations__dialog-layer">
           <div
-            className="manage-registrations__dialog"
+            className={`manage-registrations__dialog${pendingAction.registration.Restaurant ? ' manage-registrations__dialog--wide' : ''}`}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="manage-registrations-confirmation-title"
@@ -362,11 +378,7 @@ function ManageRegistrationsScreen({
                 : t('registrations.confirmRejectText', { name: pendingAction.registration.Name })}
             </p>
             {pendingAction.registration.Restaurant ? (
-              <div className="manage-registrations__workplace">
-                <p><strong>{pendingAction.registration.Restaurant.Name}</strong></p>
-                <p>{pendingAction.registration.Restaurant.Address}</p>
-                <p>{translateRestaurantRole(pendingAction.registration.Role, t)}</p>
-              </div>
+              <RegistrationWorkplace registration={pendingAction.registration} existingRestaurants={existingRestaurants} expanded />
             ) : null}
             {isSubmitting ? (
               <div className="manage-registrations__processing" role="status" aria-live="polite">

@@ -57,6 +57,7 @@ async function approveWorkplaceRegistration({ db, auth, registrationSnapshot, pa
   let usedPreparedRestaurant = false;
   const studentRef = db.collection('Alumni').doc();
   let restaurantId;
+  let restaurantName;
 
   try {
     if (existing.empty) prepared = await prepareRestaurant(googlePlaceId);
@@ -78,13 +79,15 @@ async function approveWorkplaceRegistration({ db, auth, registrationSnapshot, pa
         throw new HttpsError('failed-precondition', 'The request changed. Reload it before approving.');
       }
       if (!alumni.empty) throw new HttpsError('already-exists', 'An Alumni user already exists with this email.');
-      const restaurantRef = restaurants.docs[0]?.ref || (placeSnapshot.exists ? placeSnapshot.ref : placeRef);
+      const existingRestaurant = restaurants.docs[0] || (placeSnapshot.exists ? placeSnapshot : null);
+      const restaurantRef = existingRestaurant?.ref || placeRef;
       usedPreparedRestaurant = restaurants.empty && !placeSnapshot.exists;
       if (usedPreparedRestaurant) {
         if (!prepared) throw new HttpsError('aborted', 'The establishment changed. Please retry.');
         transaction.create(restaurantRef, { ...prepared.data, createdAt: timestamp() });
       }
       restaurantId = restaurantRef.id;
+      restaurantName = (usedPreparedRestaurant ? prepared.data : existingRestaurant.data()).Name || registration.Restaurant.Name || '';
       transaction.create(studentRef, {
         Name: name, Email: email, PhotoURL: '', Bio: '', Phone: '', LinkedIn: '', Instagram: '',
         VisibleContactToAlumniNetwork: true, LegalTermsAcceptedAt: registration.LegalTermsAcceptedAt || null,
@@ -109,7 +112,10 @@ async function approveWorkplaceRegistration({ db, auth, registrationSnapshot, pa
   let emailSent = true;
   try { await sendWelcome({ email, name, password }); }
   catch (error) { emailSent = false; logError('Account approved but welcome email failed', error); }
-  return { studentId: studentRef.id, restaurantId, emailSent };
+  return {
+    studentId: studentRef.id, restaurantId, restaurantName,
+    restaurantCreated: usedPreparedRestaurant, emailSent,
+  };
 }
 
 module.exports = { RESTAURANT_ROLES, validateRegistration, restaurantFromPlace, approveWorkplaceRegistration };

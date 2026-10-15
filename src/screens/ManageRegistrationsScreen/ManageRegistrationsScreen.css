@@ -120,6 +120,7 @@
 }
 
 .manage-registrations__card-content {
+  flex: 1;
   min-width: 0;
 }
 
@@ -128,15 +129,55 @@
 }
 
 .manage-registrations__workplace {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
   margin: 0.8rem 0;
-  padding: 0.7rem 1rem;
-  border-left: 3px solid #b28c51;
+  padding: 1rem;
+  border: 1px solid #e7d9c3;
   background: #f7f2e9;
-  border-radius: 0 10px 10px 0;
+  border-radius: 16px;
   overflow-wrap: anywhere;
 }
 
 .manage-registrations__workplace p { margin: 0.25rem 0; }
+
+.manage-registrations__workplace--expanded {
+  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+}
+
+.manage-registrations__workplace-photo {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 12px;
+}
+
+.manage-registrations__workplace-details { min-width: 0; }
+.manage-registrations__workplace-details h3 { margin: 0 0 0.4rem; font-size: 1.05rem; }
+.manage-registrations__workplace-details p { font-size: 0.9rem; line-height: 1.5; }
+
+.manage-registrations__workplace-details .manage-registrations__workplace-status {
+  display: inline-block;
+  margin-top: 0.65rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  background: #e9e4dc;
+  color: #514a42;
+}
+
+.manage-registrations__workplace-details .manage-registrations__workplace-status--existing {
+  background: #e0f0e5;
+  color: #245c39;
+}
+
+.manage-registrations__workplace-details .manage-registrations__workplace-status--new {
+  background: #f4e3bf;
+  color: #704b11;
+}
 
 .manage-registrations__request-description {
   max-width: 620px;
@@ -188,6 +229,8 @@
 
 .manage-registrations__dialog {
   width: min(100%, 480px);
+  max-height: calc(100dvh - 3rem);
+  overflow-y: auto;
   border-radius: 28px;
   background: rgba(255, 252, 246, 0.98);
   box-shadow: 0 28px 70px rgba(17, 17, 17, 0.18);
@@ -313,6 +356,13 @@
   .manage-registrations__preview {
     grid-template-columns: 1fr;
   }
+
+  .manage-registrations__workplace,
+  .manage-registrations__workplace--expanded {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-registrations__workplace-photo { aspect-ratio: 16 / 9; }
 
   .manage-registrations__toggle {
     width: 100%;
