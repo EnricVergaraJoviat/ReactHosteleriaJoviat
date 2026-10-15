@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../../helpers/firebase';
-import { getTranslatedPlaceType } from '../../helpers/placeTypes';
+import { getRestaurantCategoryLabel } from '../../helpers/placeTypes';
+import { translateRestaurantRole } from '../../helpers/restaurantRoles';
 import {
   USER_REGISTRATIONS_COLLECTION,
   acceptUserRegistration,
@@ -14,12 +15,15 @@ import './ManageRegistrationsScreen.css';
 const RESTAURANT_REGISTRATIONS_COLLECTION = 'RestaruantsRegistrations';
 const resolveGoogleMapsShareLink = httpsCallable(functions, 'resolveGoogleMapsShareLink');
 
-function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
+function ManageRegistrationsScreen({
+  onManageRestaurantRegistration,
+  activeRegistrationView,
+  onRegistrationViewChange,
+}) {
   const { language, t } = useI18n();
   const [registrations, setRegistrations] = useState([]);
   const [restaurantRegistrations, setRestaurantRegistrations] = useState([]);
   const [existingRestaurants, setExistingRestaurants] = useState([]);
-  const [activeRegistrationView, setActiveRegistrationView] = useState('users');
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -166,8 +170,8 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
 
     try {
       if (action.type === 'accept') {
-        await acceptUserRegistration(action.registration);
-        setSuccessMessage(t('registrations.accepted', { name: action.registration.Name }));
+        const result = await acceptUserRegistration(action.registration);
+        setSuccessMessage(t(result?.emailSent === false ? 'registrations.acceptedEmailWarning' : 'registrations.accepted', { name: action.registration.Name }));
       } else {
         await rejectUserRegistration(action.registration.id);
         setSuccessMessage(t('registrations.rejected', { name: action.registration.Name }));
@@ -181,6 +185,7 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
         error?.code === 'auth/email-already-in-use'
         || error?.code === 'alumni/email-already-exists'
         || error?.code === 'already-exists'
+        || error?.code === 'functions/already-exists'
       ) {
         setErrorMessage(t('registrations.userExists'));
       } else if (error?.code === 'auth/invalid-email' || error?.code === 'invalid-argument') {
@@ -200,9 +205,7 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
   const existingRestaurantMatch = restaurantPreview?.googlePlaceId
     ? existingRestaurants.find((entry) => entry.GooglePlaceId === restaurantPreview.googlePlaceId)
     : null;
-  const restaurantPreviewCategory = restaurantPreview?.primaryType
-    ? getTranslatedPlaceType(restaurantPreview.primaryType, language)
-    : '';
+  const restaurantPreviewCategory = getRestaurantCategoryLabel(restaurantPreview, language);
 
   return (
     <section className="manage-registrations">
@@ -222,7 +225,7 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
             }`}
             type="button"
             aria-pressed={activeRegistrationView === 'users'}
-            onClick={() => setActiveRegistrationView('users')}
+            onClick={() => onRegistrationViewChange('users')}
           >
             {t('registrations.viewUsers')}
           </button>
@@ -232,7 +235,7 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
             }`}
             type="button"
             aria-pressed={activeRegistrationView === 'restaurants'}
-            onClick={() => setActiveRegistrationView('restaurants')}
+            onClick={() => onRegistrationViewChange('restaurants')}
           >
             {t('registrations.viewRestaurants')}
           </button>
@@ -273,6 +276,13 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
                 <div className="manage-registrations__card-content">
                   <h2>{registration.Name || t('registrations.userNoName')}</h2>
                   <p>{registration.Email || t('registrations.noEmail')}</p>
+                  {registration.Restaurant ? (
+                    <div className="manage-registrations__workplace">
+                      <p><strong>{t('auth.stepRestaurant')}: </strong>{registration.Restaurant.Name}</p>
+                      <p>{registration.Restaurant.Address}</p>
+                      <p><strong>{t('forms.role')}: </strong>{translateRestaurantRole(registration.Role, t)}</p>
+                    </div>
+                  ) : <p className="manage-registrations__meta">{t('registrations.workplaceMissing')}</p>}
                 </div>
                 <div className="manage-registrations__actions">
                   <button
@@ -311,6 +321,10 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
                       || registration.Description
                       || t('registrations.restaurantNoDescription')}
                   </p>
+                  <p className="manage-registrations__request-description">
+                    <strong>{t('registrations.restaurantReason')}: </strong>
+                    {registration.Reason || t('registrations.restaurantNoReason')}
+                  </p>
                 </div>
                 <div className="manage-registrations__actions">
                   <button
@@ -347,6 +361,13 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
                 ? t('registrations.confirmAcceptText', { name: pendingAction.registration.Name })
                 : t('registrations.confirmRejectText', { name: pendingAction.registration.Name })}
             </p>
+            {pendingAction.registration.Restaurant ? (
+              <div className="manage-registrations__workplace">
+                <p><strong>{pendingAction.registration.Restaurant.Name}</strong></p>
+                <p>{pendingAction.registration.Restaurant.Address}</p>
+                <p>{translateRestaurantRole(pendingAction.registration.Role, t)}</p>
+              </div>
+            ) : null}
             {isSubmitting ? (
               <div className="manage-registrations__processing" role="status" aria-live="polite">
                 <span className="manage-registrations__spinner" aria-hidden="true" />
@@ -396,6 +417,10 @@ function ManageRegistrationsScreen({ onManageRestaurantRegistration }) {
             </h2>
             <p className="manage-registrations__dialog-copy">
               {selectedRestaurantRegistration.Name || t('registrations.userNoName')}
+            </p>
+            <p className="manage-registrations__request-description">
+              <strong>{t('registrations.restaurantReason')}: </strong>
+              {selectedRestaurantRegistration.Reason || t('registrations.restaurantNoReason')}
             </p>
 
             {restaurantPreviewStatus === 'loading' ? (

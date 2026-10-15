@@ -135,6 +135,7 @@ function Sidebar({
   onClose,
   onNavigate,
   onReportIncident,
+  onGenerateReport,
 }) {
   const { language, languages, setLanguage, t } = useI18n();
   const secondaryMenuItems = isAuthenticated
@@ -241,6 +242,16 @@ function Sidebar({
                       </SidebarIcon>
                       <span className="sidebar__link-text">{t('nav.openTrello')}</span>
                     </a>
+                  </li>
+                ) : null}
+                {isAdministrator ? (
+                  <li>
+                    <button className="sidebar__link" type="button" onClick={onGenerateReport}>
+                      <SidebarIcon>
+                        <path d="M5 3h10l4 4v14H5zM14 3v5h5M8 12h8M8 16h8M11 12v7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      </SidebarIcon>
+                      <span className="sidebar__link-text">{t('report.button')}</span>
+                    </button>
                   </li>
                 ) : null}
               </ul>

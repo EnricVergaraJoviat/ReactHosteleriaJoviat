@@ -1123,3 +1123,8 @@
     align-items: flex-start;
   }
 }
+
+.add-student-form__dialog--request {
+  max-height: calc(100dvh - 3rem);
+  overflow-y: auto;
+}

@@ -1,6 +1,7 @@
 import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from './firebase';
+import { RESTAURANT_ROLE_KEYS } from './restaurantRoles';
 
 const USER_REGISTRATIONS_COLLECTION = 'UserRegistrations';
 const createStudentAccount = httpsCallable(functions, 'createStudentAccount');
@@ -73,11 +74,11 @@ function getTimestampMillis(value) {
   return null;
 }
 
-async function createUserRegistration({ email, name, hasAcceptedLegalTerms }) {
+async function createUserRegistration({ email, name, hasAcceptedLegalTerms, googlePlaceId, role }) {
   const normalizedEmail = normalizeEmail(email);
   const normalizedName = normalizeName(name);
 
-  if (!normalizedEmail || !normalizedName || !hasAcceptedLegalTerms) {
+  if (!normalizedEmail || !normalizedName || !hasAcceptedLegalTerms || !googlePlaceId || !RESTAURANT_ROLE_KEYS.includes(role)) {
     throw new Error('missing-registration-data');
   }
 
@@ -86,6 +87,8 @@ async function createUserRegistration({ email, name, hasAcceptedLegalTerms }) {
       email: normalizedEmail,
       name: normalizedName,
       hasAcceptedLegalTerms: true,
+      googlePlaceId,
+      role,
     });
   } catch (error) {
     throw mapCreateRegistrationError(error);
@@ -116,7 +119,7 @@ async function acceptUserRegistration(registration) {
     );
   }
 
-  await createStudentAccount({
+  const response = await createStudentAccount({
     studentData: {
       Name: normalizedName,
       Email: normalizedEmail,
@@ -125,6 +128,7 @@ async function acceptUserRegistration(registration) {
     password: generateTemporaryPassword(),
     deleteRegistrationId: registration.id,
   });
+  return response?.data;
 }
 
 async function rejectUserRegistration(registrationId) {

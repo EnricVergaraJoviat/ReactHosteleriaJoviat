@@ -16,6 +16,7 @@ import StudentDetailScreen from './screens/StudentDetailScreen/StudentDetailScre
 import StudentsScreen from './screens/StudentsScreen/StudentsScreen';
 import { loadStudentRestaurantGraph } from './helpers/firestoreData';
 import { createUserRegistration } from './helpers/userRegistrations';
+import { associateRestaurantRegistration } from './helpers/restaurantRegistrations';
 import { useI18n } from './i18n/I18nContext';
 
 function getAuthErrorMessage(error, t) {
@@ -90,6 +91,7 @@ function App() {
   const [restaurantFormMode, setRestaurantFormMode] = useState('create');
   const [restaurantFormInitialData, setRestaurantFormInitialData] = useState(null);
   const [pendingRestaurantRegistration, setPendingRestaurantRegistration] = useState(null);
+  const [registrationView, setRegistrationView] = useState('users');
   const [authViewMode, setAuthViewMode] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
   const [authErrorMessage, setAuthErrorMessage] = useState('');
@@ -485,6 +487,7 @@ function App() {
       GooglePhotoName: placeDetails.googlePhotoName ?? '',
       PrimaryType: placeDetails.primaryType ?? '',
       PrimaryTypeDisplayName: placeDetails.primaryTypeDisplayName ?? '',
+      GoogleMapsTypeLabels: placeDetails.googleMapsTypeLabels ?? {},
       Types: Array.isArray(placeDetails.types) ? placeDetails.types : [],
       Location:
         typeof placeDetails.latitude === 'number' && typeof placeDetails.longitude === 'number'
@@ -500,6 +503,7 @@ function App() {
   async function handleRestaurantCreated(restaurantId, restaurantName) {
     if (pendingRestaurantRegistration?.id) {
       try {
+        await associateRestaurantRegistration(pendingRestaurantRegistration, restaurantId);
         if (normalizeEmail(pendingRestaurantRegistration.Email)) {
           await notifyRestaurantRegistrationApproved({
             email: pendingRestaurantRegistration.Email,
@@ -509,7 +513,12 @@ function App() {
         }
 
         await deleteDoc(doc(db, 'RestaruantsRegistrations', pendingRestaurantRegistration.id));
-      } catch (error) {}
+      } catch (error) {
+        window.alert(t('registrations.restaurantAssociationError'));
+      }
+
+      setRegistrationView('restaurants');
+      navigateToView('manage-registrations');
     }
 
     setPendingRestaurantRegistration(null);
@@ -580,8 +589,8 @@ function App() {
     setActiveView('home');
   }
 
-  async function handleRequestAccess({ email, name, hasAcceptedLegalTerms }) {
-    await createUserRegistration({ email, name, hasAcceptedLegalTerms });
+  async function handleRequestAccess(registrationData) {
+    await createUserRegistration(registrationData);
   }
 
   function handleOpenIncidentDialog() {
@@ -769,6 +778,8 @@ function App() {
   if (isAdministrator && activeView === 'manage-registrations') {
     screen = (
       <ManageRegistrationsScreen
+        activeRegistrationView={registrationView}
+        onRegistrationViewChange={setRegistrationView}
         onManageRestaurantRegistration={handleManageRestaurantRegistration}
       />
     );

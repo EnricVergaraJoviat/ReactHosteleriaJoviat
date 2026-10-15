@@ -241,7 +241,29 @@ function getTranslatedPlaceType(type, language = 'ca') {
 }
 
 function getRestaurantPrimaryType(restaurant) {
-  return restaurant?.PrimaryType ?? restaurant?.GooglePrimaryType ?? '';
+  return restaurant?.PrimaryType ?? restaurant?.GooglePrimaryType ?? restaurant?.primaryType ?? '';
 }
 
-export { getRestaurantPrimaryType, getTranslatedPlaceType, humanizePlaceType };
+function getMapsCategory(restaurant, language) {
+  const labels = restaurant?.GoogleMapsTypeLabels ?? restaurant?.googleMapsTypeLabels;
+  return [language, 'ca', 'es', 'en']
+    .map((locale) => typeof labels?.[locale] === 'string' ? labels[locale].trim() : '')
+    .find(Boolean) || '';
+}
+
+function getRestaurantCategoryLabel(restaurant, language = 'ca') {
+  return getMapsCategory(restaurant, language)
+    || getTranslatedPlaceType(getRestaurantPrimaryType(restaurant), language);
+}
+
+function getRestaurantCategoryKey(restaurant, language = 'ca') {
+  // Group by the visible label: Google can use the same Catalan label for
+  // categories that have different English names (e.g. pastry shop / cake shop).
+  const label = getRestaurantCategoryLabel(restaurant, language);
+  return label ? `category:${label.toLocaleLowerCase(language)}` : '';
+}
+
+export {
+  getRestaurantPrimaryType, getTranslatedPlaceType, humanizePlaceType,
+  getRestaurantCategoryLabel, getRestaurantCategoryKey,
+};

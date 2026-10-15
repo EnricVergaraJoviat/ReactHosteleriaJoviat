@@ -1,0 +1,99 @@
+.auth-screen__request-dialog.request-access {
+  width: min(100%, 640px);
+  max-height: min(calc(100dvh - 140px), 760px);
+}
+
+.request-access__steps {
+  display: flex;
+  gap: 1rem;
+  padding: 0;
+  margin: 1.5rem 0;
+  list-style: none;
+  color: #716b61;
+  font-size: 0.85rem;
+}
+
+.request-access__steps li {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 0.45rem;
+}
+
+.request-access__steps span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: #eee8de;
+}
+
+.request-access__steps [aria-current="step"] {
+  color: #704810;
+  font-weight: 700;
+}
+
+.request-access__steps [aria-current="step"] span {
+  color: white;
+  background: #8d5f1c;
+}
+
+.request-access__step-title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.request-access__step-title:focus { outline: none; }
+.request-access .request-access__description { margin: 0; }
+
+.request-access .auth-screen__field select {
+  width: 100%;
+  min-width: 0;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  border-radius: 14px;
+  background: white;
+  color: #242424;
+  font: inherit;
+}
+
+.request-access select:focus-visible {
+  outline: 2px solid rgba(141, 95, 28, 0.6);
+  outline-offset: 2px;
+}
+
+.request-access__search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.request-access .request-access__search button { background: #8d5f1c; }
+.request-access button:disabled { cursor: not-allowed; opacity: 0.5; }
+.request-access .auth-screen__secondary-button { background: #eee8de; color: #242424; }
+.request-access__source { color: #716b61; }
+.request-access .auth-screen__request-feedback--error { color: #9a2f2f; margin: 0; }
+
+.request-access__restaurant {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f3ede3;
+  border-radius: 16px;
+  overflow-wrap: anywhere;
+}
+
+.request-access__photo { width: 96px; height: 96px; flex: 0 0 96px; border-radius: 12px; }
+.request-access__restaurant p { margin: 0.35rem 0 0; font-size: 0.9rem; }
+.request-access .auth-screen__dialog-actions { flex-wrap: wrap; }
+
+@media (max-width: 480px) {
+  .request-access__steps { gap: 0.4rem; font-size: 0.75rem; }
+  .request-access__steps li { flex-direction: column; text-align: center; }
+  .request-access__steps span { flex-basis: auto; width: 1.8rem; }
+  .request-access__search { grid-template-columns: minmax(0, 1fr); }
+  .request-access__photo { width: 72px; height: 72px; flex-basis: 72px; }
+}

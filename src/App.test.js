@@ -21,6 +21,9 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import App from './App';
+import { loadGooglePlacesApi, searchRestaurants, fetchPlaceDetails } from './helpers/googlePlaces';
+
+jest.mock('./helpers/googlePlaces');
 import {
   copyPlacePhotoToStorage,
   createStudentAccount,
@@ -244,6 +247,10 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
+  loadGooglePlacesApi.mockResolvedValue({});
+  searchRestaurants.mockResolvedValue([{ placeId: 'place-1', name: 'Restaurant de prova', address: 'Manresa' }]);
+  fetchPlaceDetails.mockResolvedValue({ googlePlaceId: 'place-1', name: 'Restaurant de prova', address: 'Manresa', photoUrl: '' });
+
   window.history.pushState({}, '', '/');
   initializeApp.mockReset();
   initializeApp.mockImplementation((options, name) => ({ options, name }));
@@ -485,6 +492,8 @@ beforeEach(() => {
   resolveGoogleMapsShareLink.mockResolvedValue({
     data: {
       googlePlaceId: 'place-can-jubany',
+      primaryType: 'spanish_restaurant',
+      googleMapsTypeLabels: { ca: 'Restaurant de cuina catalana', es: 'Restaurante de cocina catalana', en: 'Catalonian restaurant' },
       name: 'Can Jubany',
       address: 'Ctra. de Sant Hilari, s/n, 08506 Calldetenes, Barcelona',
       phone: '+34 938 89 81 02',
@@ -749,6 +758,17 @@ test('shows administrator options when the logged user exists in Administrator',
   expect(await screen.findByRole('heading', { name: /afegir establiment/i })).toBeInTheDocument();
 });
 
+async function completeWorkplaceSteps() {
+  await userEvent.type(screen.getByLabelText(/nom de l.establiment/i), 'Restaurant de prova');
+  await userEvent.click(screen.getByRole('button', { name: /^buscar$/i }));
+  await screen.findByRole('option', { name: /Restaurant de prova/ });
+  await userEvent.selectOptions(screen.getByLabelText(/resultats/i), 'place-1');
+  await userEvent.click(screen.getByRole('button', { name: /^següent$/i }));
+  await screen.findByRole('heading', { name: /quin és el teu perfil/i });
+  await userEvent.selectOptions(screen.getByLabelText(/^perfil professional$/i), 'kitchen');
+  await userEvent.click(screen.getByRole('button', { name: /sol·licitar accés/i }));
+}
+
 test('allows a visitor to request access from the login dialog', async () => {
   render(<App />);
 
@@ -767,13 +787,16 @@ test('allows a visitor to request access from the login dialog', async () => {
     await userEvent.type(emailInputs[emailInputs.length - 1], 'pepito@joviat.cat');
     await userEvent.type(screen.getByLabelText(/nom i cognoms/i), 'Pepito Perez');
     await userEvent.click(screen.getByLabelText(/accepto les condicions legals/i));
-    await userEvent.click(screen.getByRole('button', { name: /sol·licitar accés/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^següent$/i }));
   });
+  await completeWorkplaceSteps();
 
   expect(createUserRegistration).toHaveBeenCalledWith({
     email: 'pepito@joviat.cat',
     name: 'Pepito Perez',
     hasAcceptedLegalTerms: true,
+    googlePlaceId: 'place-1',
+    role: 'kitchen',
   });
   expect(
     await screen.findByText(/s'ha enviat la sol·licitud d'accés/i)
@@ -856,15 +879,16 @@ test('warns when requesting access with an existing Alumni email', async () => {
     await userEvent.type(emailInputs[emailInputs.length - 1], 'aina@joviat.cat');
     await userEvent.type(screen.getByLabelText(/nom i cognoms/i), 'Aina Serra');
     await userEvent.click(screen.getByLabelText(/accepto les condicions legals/i));
-    await userEvent.click(screen.getByRole('button', { name: /sol·licitar accés/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^següent$/i }));
   });
+  await completeWorkplaceSteps();
 
   expect(addDoc).not.toHaveBeenCalled();
   expect(
     await screen.findByText(/aquest email ja existeix com a Alumni/i)
   ).toBeInTheDocument();
   expect(screen.queryByLabelText(/nom i cognoms/i)).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /tancar/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /anterior/i })).toBeInTheDocument();
 });
 
 test('warns when requesting access with a pending registration email', async () => {
@@ -885,15 +909,16 @@ test('warns when requesting access with a pending registration email', async () 
     await userEvent.type(emailInputs[emailInputs.length - 1], 'pendent@joviat.cat');
     await userEvent.type(screen.getByLabelText(/nom i cognoms/i), 'Usuari Pendent');
     await userEvent.click(screen.getByLabelText(/accepto les condicions legals/i));
-    await userEvent.click(screen.getByRole('button', { name: /sol·licitar accés/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^següent$/i }));
   });
+  await completeWorkplaceSteps();
 
   expect(addDoc).not.toHaveBeenCalled();
   expect(
     await screen.findByText(/aquest email ja té una sol·licitud pendent/i)
   ).toBeInTheDocument();
   expect(screen.queryByLabelText(/nom i cognoms/i)).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /tancar/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /anterior/i })).toBeInTheDocument();
 });
 
 test('allows an administrator to accept a pending registration', async () => {
@@ -928,6 +953,8 @@ test('allows an administrator to accept a pending registration', async () => {
             data: () => ({
               Email: 'pepito@joviat.cat',
               Name: 'Pepito Perez',
+              Restaurant: { Name: 'Restaurant de prova', Address: 'Manresa', GooglePlaceId: 'place-1' },
+              Role: 'kitchen',
               LegalTermsAcceptedAt: {
                 toMillis: () => 1719828000000,
               },
@@ -967,6 +994,8 @@ test('allows an administrator to accept a pending registration', async () => {
   expect(await screen.findByRole('heading', { name: /gestionar altes/i })).toBeInTheDocument();
   expect(screen.getByText(/pepito perez/i)).toBeInTheDocument();
   expect(screen.getByText(/pepito@joviat.cat/i)).toBeInTheDocument();
+  expect(screen.getByText(/Restaurant de prova/)).toBeInTheDocument();
+  expect(screen.getByText(/professional de cuina/i)).toBeInTheDocument();
 
   await act(async () => {
     await userEvent.click(screen.getByRole('button', { name: /acceptar/i }));
@@ -1123,6 +1152,102 @@ test('allows an administrator to review and delete a pending establishment regis
             data: () => ({
               Name: 'Aina Serra',
               Email: 'aina@joviat.cat',
+              Reason: 'Hi treballo com a cuinera.',
+              GoogleMapsShareUrl: 'https://maps.app.goo.gl/WB8f8HhEWVut69Uy7',
+            }),
+          },
+        ],
+      };
+    }
+
+    return { docs: [] };
+  });
+
+  render(<App />);
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^login$/i }));
+  });
+
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(/email/i), 'evergara@joviat.cat');
+    await userEvent.type(screen.getByLabelText(/contrasenya/i), '123456');
+    await userEvent.click(screen.getByRole('button', { name: /fer login/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /gestionar altes/i }));
+  });
+
+  await act(async () => {
+    await userEvent.click(await screen.findByRole('button', { name: /visualitzar altes establiments/i }));
+  });
+
+  expect(await screen.findByText(/aina serra/i)).toBeInTheDocument();
+  expect(screen.getByText(/maps.app.goo.gl/i)).toBeInTheDocument();
+  expect(screen.getByText(/Hi treballo com a cuinera/)).toBeInTheDocument();
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /veure petició|ver petición|view request/i }));
+  });
+
+  expect(await screen.findByText(/can jubany/i)).toBeInTheDocument();
+  expect(within(screen.getByRole('dialog')).getByText(/Hi treballo com a cuinera/)).toBeInTheDocument();
+  expect(resolveGoogleMapsShareLink).toHaveBeenCalledWith({
+    url: 'https://maps.app.goo.gl/WB8f8HhEWVut69Uy7',
+  });
+
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /cancel·lar petició/i }));
+  });
+
+  expect(deleteDoc).toHaveBeenCalledWith({
+    id: 'restaurant-registration-1',
+    path: 'RestaruantsRegistrations/restaurant-registration-1',
+  });
+  expect(await screen.findByText(/s'ha eliminat la petici/i)).toBeInTheDocument();
+});
+
+test('returns to pending establishment registrations after saving a requested restaurant', async () => {
+  let authListener;
+  onAuthStateChanged.mockImplementation((auth, callback) => {
+    authListener = callback;
+    callback(null);
+    return jest.fn();
+  });
+  signInWithEmailAndPassword.mockImplementation(async () => {
+    authListener({ email: 'evergara@joviat.cat' });
+  });
+  getDocs.mockImplementation(async (collectionName) => {
+    if (collectionName === 'Administrator') {
+      return {
+        docs: [
+          {
+            id: 'admin-1',
+            data: () => ({
+              Email: 'evergara@joviat.cat',
+            }),
+          },
+        ],
+      };
+    }
+
+    if (collectionName === 'Alumni') {
+      return { docs: [{ id: 'student-aina', data: () => ({ Email: 'aina@joviat.cat' }) }] };
+    }
+
+    if (collectionName === 'UserRegistrations') {
+      return { docs: [] };
+    }
+
+    if (collectionName === 'RestaruantsRegistrations') {
+      return {
+        docs: [
+          {
+            id: 'restaurant-registration-1',
+            data: () => ({
+              Name: 'Aina Serra',
+              Email: 'aina@joviat.cat',
               GoogleMapsShareUrl: 'https://maps.app.goo.gl/WB8f8HhEWVut69Uy7',
             }),
           },
@@ -1166,14 +1291,32 @@ test('allows an administrator to review and delete a pending establishment regis
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /cancel·lar petició/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^gestionar alta$/i }));
   });
-
+  expect(await screen.findByDisplayValue('Can Jubany')).toBeInTheDocument();
+  expect(screen.getByDisplayValue('Restaurant de cuina catalana')).toBeInTheDocument();
+  deleteDoc.mockImplementationOnce(async () => {
+    getDocs.mockResolvedValue({ docs: [] });
+  });
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /desar establiment/i }));
+  });
+  expect(addDoc).toHaveBeenCalledWith('Restaurant', expect.objectContaining({
+    Name: 'Can Jubany', PrimaryType: 'spanish_restaurant',
+    GoogleMapsTypeLabels: { ca: 'Restaurant de cuina catalana', es: 'Restaurante de cocina catalana', en: 'Catalonian restaurant' },
+  }));
+  expect(addDoc).toHaveBeenCalledWith('Rest-Alum', expect.objectContaining({
+    id_alumni: { id: 'student-aina', path: 'Alumni/student-aina' },
+    id_restaurant: expect.objectContaining({ path: expect.stringMatching(/^Restaurant\//) }),
+    rol: [],
+    current_job: false,
+  }));
   expect(deleteDoc).toHaveBeenCalledWith({
-    id: 'restaurant-registration-1',
-    path: 'RestaruantsRegistrations/restaurant-registration-1',
+    id: 'restaurant-registration-1', path: 'RestaruantsRegistrations/restaurant-registration-1',
   });
-  expect(await screen.findByText(/s'ha eliminat la petici/i)).toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: /visualitzar altes establiments/i })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.queryByRole('button', { name: /desar establiment/i })).not.toBeInTheDocument();
+  expect(screen.queryByText(/aina serra/i)).not.toBeInTheDocument();
 });
 
 test('warns when accepting a registration whose Alumni email already exists', async () => {
@@ -2736,11 +2879,31 @@ test.each([
 
   const isUnverifiedGoogleSearch = !sharedUrl.includes('maps.app.goo.gl');
 
+  expect(screen.getByLabelText(/motiu de la petició/i)).toBeRequired();
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(/enllaç de google maps/i), 'https://maps.app.goo.gl/example');
+    await userEvent.click(screen.getByRole('button', { name: /enviar petici/i }));
+  });
+  expect(screen.getByRole('alert')).toHaveTextContent('Indica el motiu');
+  expect(addDoc).not.toHaveBeenCalled();
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(/motiu de la petició/i), '   ');
+    await userEvent.click(screen.getByRole('button', { name: /enviar petici/i }));
+  });
+  expect(screen.getByRole('alert')).toHaveTextContent('Indica el motiu');
+  expect(resolveGoogleMapsShareLink).not.toHaveBeenCalled();
+  expect(addDoc).not.toHaveBeenCalled();
+  await act(async () => {
+    await userEvent.clear(screen.getByLabelText(/enllaç de google maps/i));
+    await userEvent.clear(screen.getByLabelText(/motiu de la petició/i));
+  });
+
   await act(async () => {
     await userEvent.type(
       screen.getByLabelText(/enllaç de google maps/i),
       sharedUrl
     );
+    await userEvent.type(screen.getByLabelText(/motiu de la petició/i), '  Soc el propietari d’aquest restaurant.  ');
     await userEvent.click(screen.getByRole('button', { name: /enviar petici/i }));
   });
 
@@ -2756,6 +2919,7 @@ test.each([
     Name: 'Aina Serra',
     Email: 'aina@joviat.cat',
     Description: '',
+    Reason: 'Soc el propietari d’aquest restaurant.',
     GoogleMapsShareUrl: sharedUrl,
     id_alumni: { id: 'student-1', path: 'Alumni/student-1' },
     createdAt: 'SERVER_TIMESTAMP',
@@ -2852,6 +3016,7 @@ test('warns a logged student when requested restaurant already exists', async ()
       screen.getByLabelText(/enllaç de google maps/i),
       'https://maps.app.goo.gl/can-jubany'
     );
+    await userEvent.type(screen.getByLabelText(/motiu de la petició/i), '  Soc el propietari d’aquest restaurant.  ');
     await userEvent.click(screen.getByRole('button', { name: /enviar petici/i }));
   });
 
@@ -3640,8 +3805,8 @@ test('navigates to the restaurants screen and returns home from the logo', async
   expect(
     await screen.findByRole('heading', { name: /llistat d'establiments/i })
   ).toBeInTheDocument();
-  expect(screen.getByTestId('restaurants-map')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /veure mapa/i })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.queryByTestId('restaurants-map')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /veure mosaic/i })).toHaveAttribute('aria-pressed', 'true');
   expect(
     screen.queryByRole('navigation', { name: /paginació d'establiments/i })
   ).not.toBeInTheDocument();
@@ -3667,6 +3832,10 @@ test('shows the restaurant card on restaurant map pins and opens the detail from
     );
   });
 
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /veure mapa/i }));
+  });
+
   expect((await screen.findAllByText(/el celler de can roca/i)).length).toBeGreaterThan(0);
   expect(screen.getAllByText(/carrer de can sunyer/i).length).toBeGreaterThan(0);
   expect(screen.getAllByText(/1 Alumni associat/i).length).toBeGreaterThan(0);
@@ -3683,31 +3852,34 @@ test('shows the restaurant card on restaurant map pins and opens the detail from
   ).toBeInTheDocument();
 });
 
-test('hides restaurants without alumni by default and includes them only while the filter is checked', async () => {
+test('shows all restaurants by default and filters to alumni only when checked', async () => {
   render(<App />);
   await act(async () => {
     await userEvent.click(screen.getByRole('button', { name: /^establiments$/i }));
   });
 
   expect(await screen.findByText(/el celler de can roca/i)).toBeInTheDocument();
-  const checkbox = screen.getByRole('checkbox', { name: /mostrar establiments sense alumni associats/i });
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /més opcions de filtratge/i }));
+  });
+  const checkbox = screen.getByRole('checkbox', { name: /mostrar només establiments amb alumni associats/i });
   expect(checkbox).not.toBeChecked();
-  expect(screen.queryByText(/can jubany/i)).not.toBeInTheDocument();
+  expect(screen.getByText(/can jubany/i)).toBeInTheDocument();
 
   await act(async () => {
     await userEvent.click(checkbox);
   });
-  expect(screen.getByText(/can jubany/i)).toBeInTheDocument();
+  expect(screen.queryByText(/can jubany/i)).not.toBeInTheDocument();
 
   await act(async () => {
     await userEvent.click(screen.getByRole('button', { name: /veure llistat/i }));
   });
-  expect(screen.getByText(/can jubany/i)).toBeInTheDocument();
+  expect(screen.queryByText(/can jubany/i)).not.toBeInTheDocument();
 
   await act(async () => {
     await userEvent.click(checkbox);
   });
-  expect(screen.queryByText(/can jubany/i)).not.toBeInTheDocument();
+  expect(screen.getByText(/can jubany/i)).toBeInTheDocument();
   expect(screen.getByText(/el celler de can roca/i)).toBeInTheDocument();
 });
 
@@ -3784,7 +3956,7 @@ test('builds restaurant city filters from the city after the postal code', async
 
   await act(async () => {
     await userEvent.click(screen.getByRole('button', { name: /veure llistat/i }));
-    await userEvent.click(screen.getByRole('checkbox', { name: /mostrar establiments sense alumni associats/i }));
+    await userEvent.click(screen.getByRole('button', { name: /més opcions de filtratge/i }));
   });
 
   const cityFilter = await screen.findByRole('button', { name: /ciutat/i });
@@ -3838,8 +4010,7 @@ test('paginates the restaurants list in groups of 8 below the search field', asy
   });
 
   await act(async () => {
-    await userEvent.click(screen.getByRole('button', { name: /veure llistat/i }));
-    await userEvent.click(screen.getByRole('checkbox', { name: /mostrar establiments sense alumni associats/i }));
+    await userEvent.click(screen.getByRole('button', { name: /veure mosaic/i }));
   });
 
   const searchInput = await screen.findByLabelText(/cercar establiment/i);
@@ -3921,3 +4092,42 @@ test.each(['edit', 'cancel', 'linked', 'load-error'])(
     }
   }
 );
+
+
+test.each([
+  ['Alumni', 'Alumni', 'cercar Alumni'],
+  ['establiments', 'Restaurant', 'cercar establiment'],
+])('switches %s between an 8-card mosaic and a 40-row list', async (section, collectionName, searchLabel) => {
+  getDocs.mockImplementation(async (name) => ({
+    docs: name === collectionName ? Array.from({ length: 45 }, (_, index) => ({
+      id: `item-${index + 1}`,
+      data: () => ({ Name: `Item ${String(index + 1).padStart(2, '0')}` }),
+    })) : [],
+  }));
+  render(<App />);
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: new RegExp(`^${section}$`, 'i') }));
+  });
+  await screen.findByRole('heading', { name: 'Item 01' });
+  expect(screen.getByRole('button', { name: /veure mosaic/i })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.queryByRole('heading', { name: 'Item 09' })).not.toBeInTheDocument();
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /pàgina següent superior/i }));
+    await userEvent.click(screen.getByRole('button', { name: /veure llistat/i }));
+  });
+  expect(screen.getByRole('heading', { name: 'Item 01' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Item 40' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Item 41' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /veure llistat/i })).toHaveAttribute('aria-pressed', 'true');
+  await act(async () => {
+    await userEvent.click(screen.getByRole('button', { name: /pàgina següent superior/i }));
+  });
+  expect(screen.getByRole('heading', { name: 'Item 45' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Item 40' })).not.toBeInTheDocument();
+  await act(async () => {
+    await userEvent.type(screen.getByLabelText(new RegExp(searchLabel, 'i')), 'Item 01');
+    await userEvent.click(screen.getByRole('button', { name: /veure mosaic/i }));
+  });
+  expect(screen.getByRole('heading', { name: 'Item 01' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Item 02' })).not.toBeInTheDocument();
+});

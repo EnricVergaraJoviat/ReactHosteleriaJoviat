@@ -943,3 +943,101 @@
     font-size: 0.66rem;
   }
 }
+
+/* Compact rows keep the same information and detail actions as the mosaic. */
+.restaurants-grid--list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.restaurants-grid--list .restaurant-card {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  gap: 0.85rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.restaurants-grid--list .restaurant-card__image-wrap {
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: 0 0 3.5rem;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.restaurants-grid--list .restaurant-card__body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.35rem 1rem;
+  padding: 0;
+}
+
+.restaurants-grid--list .restaurant-card__body h2 {
+  grid-area: name;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.restaurants-grid--list .restaurant-card__meta {
+  grid-area: meta;
+  margin: 0;
+  min-width: 0;
+}
+
+.restaurants-grid--list .restaurant-card__details {
+  grid-area: details;
+  margin: 0;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.restaurants-grid--list .restaurant-card__body {
+  grid-template-areas: "name address details" "category meta details";
+}
+
+.restaurants-grid--list .restaurant-card__category {
+  grid-area: category;
+  padding: 0.2rem 0.5rem;
+}
+
+.restaurants-grid--list .restaurant-card__address {
+  grid-area: address;
+  margin: 0;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.restaurants-grid--list .linked-students-preview__avatars {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .restaurants-grid--list .restaurant-card {
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.6rem;
+  }
+
+  .restaurants-grid--list .restaurant-card__image-wrap {
+    width: 2.5rem;
+    height: 2.5rem;
+    flex-basis: 2.5rem;
+  }
+
+  .restaurants-grid--list .restaurant-card__body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name details" "category category" "address address" "meta meta";
+    gap: 0.4rem;
+  }
+
+  .restaurants-grid--list .restaurant-card__details {
+    font-size: 0.65rem;
+    padding: 0.4rem;
+  }
+}

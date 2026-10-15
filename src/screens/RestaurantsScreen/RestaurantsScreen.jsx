@@ -5,7 +5,8 @@ import MarkerClusterGroup from 'react-leaflet-markercluster';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import { joviatMapIcon } from '../../helpers/joviatMapIcon';
 import { NEUTRAL_MAP_TILE_ATTRIBUTION, NEUTRAL_MAP_TILE_URL } from '../../helpers/mapTiles';
-import { getRestaurantPrimaryType, getTranslatedPlaceType } from '../../helpers/placeTypes';
+import { getRestaurantCategoryKey, getRestaurantCategoryLabel } from '../../helpers/placeTypes';
+import ViewModeToggle from '../../components/ViewModeToggle/ViewModeToggle';
 import SmartImage from '../../components/SmartImage/SmartImage';
 import LinkedStudentsPreview from '../../components/LinkedStudentsPreview/LinkedStudentsPreview';
 import { ReactComponent as SearchIcon } from '../../assets/icons/search.svg';
@@ -16,29 +17,8 @@ import 'leaflet/dist/leaflet.css';
 import 'react-leaflet-markercluster/styles';
 import './RestaurantsScreen.css';
 
-const RESTAURANTS_PER_PAGE = 8;
-
-function ViewModeIcon({ type }) {
-  if (type === 'map') {
-    return (
-      <svg viewBox="0 0 24 24">
-        <path
-          d="M12 3.5A5.5 5.5 0 0 0 6.5 9c0 3.8 4.4 9.5 5 10.2a.7.7 0 0 0 1 0c.6-.7 5-6.4 5-10.2A5.5 5.5 0 0 0 12 3.5Zm0 7.8A2.3 2.3 0 1 1 12 6.7a2.3 2.3 0 0 1 0 4.6Z"
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 24 24">
-      <path
-        d="M5 6.5h14v2H5v-2Zm0 4.5h14v2H5v-2Zm0 4.5h14v2H5v-2Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
+const GRID_PAGE_SIZE = 8;
+const LIST_PAGE_SIZE = 40;
 
 function AddressIcon() {
   return (
@@ -159,10 +139,7 @@ function RestaurantCard({ restaurant, onOpenRestaurantDetails, isCompact = false
   const { language, t } = useI18n();
   const cardRef = useRef(null);
   const restaurantName = restaurant.Name ?? t('common.noName');
-  const restaurantPrimaryType = getRestaurantPrimaryType(restaurant);
-  const categoryLabel = restaurantPrimaryType
-    ? getTranslatedPlaceType(restaurantPrimaryType, language)
-    : '';
+  const categoryLabel = getRestaurantCategoryLabel(restaurant, language);
   const openDetailsLabel = isCompact
     ? t('restaurants.openDetailsMap', { name: restaurant.Name ?? t('common.restaurant') })
     : t('restaurants.openDetails', { name: restaurant.Name ?? t('common.restaurant') });
@@ -251,9 +228,9 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
       shouldScrollToTopRef.current = false;
     }
   }, [currentPage]);
-  const [viewMode, setViewMode] = useState('map');
-  const [areFiltersOpen, setAreFiltersOpen] = useState(true);
-  const [showWithoutStudents, setShowWithoutStudents] = useState(false);
+  const [viewMode, setViewMode] = useState('grid');
+  const [areFiltersOpen, setAreFiltersOpen] = useState(false);
+  const [showOnlyWithStudents, setShowOnlyWithStudents] = useState(false);
   const [selectedCities, setSelectedCities] = useState(['all']);
   const [selectedCategories, setSelectedCategories] = useState(['all']);
   const [openFilterDropdown, setOpenFilterDropdown] = useState('');
@@ -304,15 +281,12 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
     return [...new Set(cities)].sort((a, b) => a.localeCompare(b));
   }, [restaurants]);
   const categoryOptions = useMemo(() => {
-    const uniqueTypes = restaurants
-      .map((restaurant) => getRestaurantPrimaryType(restaurant))
-      .filter(Boolean);
-
-    return [...new Set(uniqueTypes)]
-      .map((type) => ({
-        value: type,
-        label: getTranslatedPlaceType(type, language),
-      }))
+    const categories = new Map();
+    restaurants.forEach((restaurant) => {
+      const value = getRestaurantCategoryKey(restaurant, language);
+      if (value) categories.set(value, getRestaurantCategoryLabel(restaurant, language));
+    });
+    return [...categories].map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label, language));
   }, [language, restaurants]);
   const filteredRestaurants = restaurants.filter((restaurant) => {
@@ -320,32 +294,37 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
     const restaurantCity = getRestaurantCity(restaurant.Address);
     const matchesCity = selectedCities.includes('all')
       || (restaurantCity && selectedCities.includes(restaurantCity));
-    const restaurantPrimaryType = getRestaurantPrimaryType(restaurant);
+    const categoryKey = getRestaurantCategoryKey(restaurant, language);
     const matchesCategory = selectedCategories.includes('all')
-      || (restaurantPrimaryType && selectedCategories.includes(restaurantPrimaryType));
+      || (categoryKey && selectedCategories.includes(categoryKey));
 
-    const matchesStudents = showWithoutStudents || (restaurant.linkedStudentCount ?? 0) > 0;
+    const matchesStudents = !showOnlyWithStudents || (restaurant.linkedStudentCount ?? 0) > 0;
 
     return matchesSearch && matchesCity && matchesCategory && matchesStudents;
   });
-  const totalPages = Math.ceil(filteredRestaurants.length / RESTAURANTS_PER_PAGE);
+  const pageSize = viewMode === 'list' ? LIST_PAGE_SIZE : GRID_PAGE_SIZE;
+  const totalPages = Math.ceil(filteredRestaurants.length / pageSize);
   const visibleRestaurants = filteredRestaurants.slice(
-    (currentPage - 1) * RESTAURANTS_PER_PAGE,
-    currentPage * RESTAURANTS_PER_PAGE
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
   );
   const rangeStart = filteredRestaurants.length === 0
     ? 0
-    : ((currentPage - 1) * RESTAURANTS_PER_PAGE) + 1;
-  const rangeEnd = Math.min(currentPage * RESTAURANTS_PER_PAGE, filteredRestaurants.length);
+    : ((currentPage - 1) * pageSize) + 1;
+  const rangeEnd = Math.min(currentPage * pageSize, filteredRestaurants.length);
   const shouldShowPagination = !isLoading
     && !error
-    && viewMode === 'list'
-    && filteredRestaurants.length > RESTAURANTS_PER_PAGE;
+    && viewMode !== 'map'
+    && filteredRestaurants.length > pageSize;
   const shouldShowBottomPagination = shouldShowPagination && visibleRestaurants.length > gridColumnCount;
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [normalizedSearchTerm, selectedCities, selectedCategories, showWithoutStudents]);
+  }, [normalizedSearchTerm, selectedCities, selectedCategories, showOnlyWithStudents]);
+
+  useEffect(() => {
+    setSelectedCategories(['all']);
+  }, [language]);
 
   useEffect(() => {
     if (totalPages > 0 && currentPage > totalPages) {
@@ -434,6 +413,11 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
       .map((option) => option.label);
 
     return selectedLabels.join(', ');
+  }
+
+  function handleViewModeChange(mode) {
+    setViewMode(mode);
+    setCurrentPage(1);
   }
 
   function handlePageChange(page) {
@@ -537,34 +521,7 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
         </div>
       </div>
 
-      <div className="restaurants-view-toggle" aria-label={t('restaurants.viewMode')}>
-        <button
-          className={`restaurants-view-toggle__button${
-            viewMode === 'map' ? ' restaurants-view-toggle__button--active' : ''
-          }`}
-          type="button"
-          aria-pressed={viewMode === 'map'}
-          onClick={() => setViewMode('map')}
-        >
-          <span className="restaurants-view-toggle__icon" aria-hidden="true">
-            <ViewModeIcon type="map" />
-          </span>
-          {t('restaurants.mapMode')}
-        </button>
-        <button
-          className={`restaurants-view-toggle__button${
-            viewMode === 'list' ? ' restaurants-view-toggle__button--active' : ''
-          }`}
-          type="button"
-          aria-pressed={viewMode === 'list'}
-          onClick={() => setViewMode('list')}
-        >
-          <span className="restaurants-view-toggle__icon" aria-hidden="true">
-            <ViewModeIcon type="list" />
-          </span>
-          {t('restaurants.listMode')}
-        </button>
-      </div>
+      <ViewModeToggle value={viewMode} onChange={handleViewModeChange} showMap />
 
       <div className="restaurants-search">
         <label className="restaurants-search__label" htmlFor="restaurants-search">
@@ -615,10 +572,10 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
             <label className="restaurants-filters__checkbox">
               <input
                 type="checkbox"
-                checked={showWithoutStudents}
-                onChange={(event) => setShowWithoutStudents(event.target.checked)}
+                checked={showOnlyWithStudents}
+                onChange={(event) => setShowOnlyWithStudents(event.target.checked)}
               />
-              <span>{t('filters.showRestaurantsWithoutStudents')}</span>
+              <span>{t('filters.showRestaurantsWithStudentsOnly')}</span>
             </label>
             <div
               ref={cityDropdownRef}
@@ -773,11 +730,11 @@ function RestaurantsScreen({ isAuthenticated = false, onOpenRestaurantDetails })
         </section>
       ) : null}
 
-      {!isLoading && !error && viewMode === 'list' ? (
+      {!isLoading && !error && viewMode !== 'map' ? (
         <>
           {shouldShowPagination ? renderPagination('top') : null}
 
-          <div className="restaurants-grid" ref={restaurantsGridRef}>
+          <div className={`restaurants-grid${viewMode === 'list' ? ' restaurants-grid--list' : ''}`} ref={restaurantsGridRef}>
             {visibleRestaurants.map((restaurant) => (
               <RestaurantCard
                 key={restaurant.id ?? restaurant.Name}

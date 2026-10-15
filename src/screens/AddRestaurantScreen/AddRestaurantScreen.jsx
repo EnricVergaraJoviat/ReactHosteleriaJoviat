@@ -11,7 +11,7 @@ import {
   loadGooglePlacesApi,
   searchRestaurants,
 } from '../../helpers/googlePlaces';
-import { getTranslatedPlaceType } from '../../helpers/placeTypes';
+import { getRestaurantCategoryLabel } from '../../helpers/placeTypes';
 import { useI18n } from '../../i18n/I18nContext';
 import 'leaflet/dist/leaflet.css';
 import './AddRestaurantScreen.css';
@@ -35,6 +35,7 @@ const INITIAL_FORM_DATA = {
   googlePhotoName: '',
   primaryType: '',
   primaryTypeDisplayName: '',
+  googleMapsTypeLabels: {},
   types: [],
 };
 
@@ -178,6 +179,7 @@ function buildFormDataFromRestaurant(restaurant) {
     googlePhotoName: restaurant.GooglePhotoName ?? '',
     primaryType: restaurant.PrimaryType ?? '',
     primaryTypeDisplayName: restaurant.PrimaryTypeDisplayName ?? '',
+    googleMapsTypeLabels: restaurant.GoogleMapsTypeLabels ?? {},
     types: Array.isArray(restaurant.Types) ? restaurant.Types : [],
   };
 }
@@ -446,9 +448,9 @@ function AddRestaurantScreen({
     () => buildGoogleEmbedUrl(formData),
     [formData]
   );
-  const translatedPrimaryType = useMemo(
-    () => (formData.primaryType ? getTranslatedPlaceType(formData.primaryType, language) : ''),
-    [formData.primaryType, language]
+  const categoryLabel = useMemo(
+    () => getRestaurantCategoryLabel(formData, language),
+    [formData, language]
   );
 
   useEffect(() => {
@@ -569,6 +571,10 @@ function AddRestaurantScreen({
         googlePhotoName: details.googlePhotoName ?? '',
         primaryType: details.primaryType ?? '',
         primaryTypeDisplayName: details.primaryTypeDisplayName ?? '',
+        googleMapsTypeLabels: {
+          ...(formData.googlePlaceId === details.googlePlaceId ? formData.googleMapsTypeLabels : {}),
+          ...details.googleMapsTypeLabels,
+        },
         types: Array.isArray(details.types) ? details.types : [],
       });
       setSuccessMessage(t('forms.restaurantImported'));
@@ -681,6 +687,7 @@ function AddRestaurantScreen({
         GooglePhotoName: formData.googlePhotoName.trim(),
         PrimaryType: formData.primaryType.trim(),
         PrimaryTypeDisplayName: formData.primaryTypeDisplayName.trim(),
+        GoogleMapsTypeLabels: formData.googleMapsTypeLabels,
         Types: Array.isArray(formData.types) ? formData.types : [],
         Location: hasValidCoordinates ? { latitude, longitude } : '',
       };
@@ -943,7 +950,7 @@ function AddRestaurantScreen({
               <input
                 name="primaryTypeDisplay"
                 type="text"
-                value={translatedPrimaryType || ''}
+                value={categoryLabel}
                 readOnly
                 placeholder={t('forms.categoryPending')}
               />

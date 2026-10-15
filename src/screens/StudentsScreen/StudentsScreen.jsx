@@ -14,6 +14,7 @@ import {
   createPromotionYears,
   formatPromotionYear,
 } from '../../helpers/promotionYears';
+import ViewModeToggle from '../../components/ViewModeToggle/ViewModeToggle';
 import SmartImage from '../../components/SmartImage/SmartImage';
 import { ReactComponent as SearchIcon } from '../../assets/icons/search.svg';
 import { ReactComponent as SettingsIcon } from '../../assets/icons/settings.svg';
@@ -22,7 +23,8 @@ import alumniTitleImage from '../../assets/images/Alumni.png';
 import { useI18n } from '../../i18n/I18nContext';
 import './StudentsScreen.css';
 
-const STUDENTS_PER_PAGE = 8;
+const GRID_PAGE_SIZE = 8;
+const LIST_PAGE_SIZE = 40;
 const joviatStudyOptions = getJoviatStudyOptions();
 const allJoviatStudyValues = joviatStudyOptions.map((studyOption) => studyOption.value);
 
@@ -33,6 +35,7 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState('grid');
   const screenRef = useRef(null);
   const shouldScrollToTopRef = useRef(false);
 
@@ -108,16 +111,17 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
 
     return matchesSearch && matchesStudies && matchesCurrentWork && matchesPromotionYear && matchesRole;
   });
-  const totalPages = Math.ceil(filteredStudents.length / STUDENTS_PER_PAGE);
+  const pageSize = viewMode === 'list' ? LIST_PAGE_SIZE : GRID_PAGE_SIZE;
+  const totalPages = Math.ceil(filteredStudents.length / pageSize);
   const visibleStudents = filteredStudents.slice(
-    (currentPage - 1) * STUDENTS_PER_PAGE,
-    currentPage * STUDENTS_PER_PAGE
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
   );
   const rangeStart = filteredStudents.length === 0
     ? 0
-    : ((currentPage - 1) * STUDENTS_PER_PAGE) + 1;
-  const rangeEnd = Math.min(currentPage * STUDENTS_PER_PAGE, filteredStudents.length);
-  const shouldShowPagination = !isLoading && !error && filteredStudents.length > STUDENTS_PER_PAGE;
+    : ((currentPage - 1) * pageSize) + 1;
+  const rangeEnd = Math.min(currentPage * pageSize, filteredStudents.length);
+  const shouldShowPagination = !isLoading && !error && filteredStudents.length > pageSize;
   const shouldShowBottomPagination = shouldShowPagination && visibleStudents.length > gridColumnCount;
 
   useEffect(() => {
@@ -155,7 +159,7 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
     return () => {
       resizeObserver.disconnect();
     };
-  }, [visibleStudents.length]);
+  }, [visibleStudents.length, viewMode]);
 
   function handleStudyFilterToggle(studyValue) {
     setStudyFilters((current) => {
@@ -175,6 +179,11 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
         ? current.filter((entry) => entry !== roleValue)
         : [...current, roleValue]
     ));
+  }
+
+  function handleViewModeChange(mode) {
+    setViewMode(mode);
+    setCurrentPage(1);
   }
 
   function handlePageChange(page) {
@@ -249,6 +258,8 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
           <h1>{t('students.title')}</h1>
         </div>
       </div>
+
+      <ViewModeToggle value={viewMode} onChange={handleViewModeChange} />
 
       <div className="students-search">
         <label className="students-search__label" htmlFor="students-search">
@@ -431,7 +442,7 @@ function StudentsScreen({ isAuthenticated = false, onOpenStudentDetails }) {
         </p>
       ) : null}
 
-      <div className="students-grid" ref={studentsGridRef}>
+      <div className={`students-grid${viewMode === 'list' ? ' students-grid--list' : ''}`} ref={studentsGridRef}>
         {visibleStudents.map((student) => {
           const joviatStudyLabels = getJoviatStudyLabels(student.JoviatStudies ?? student.Studies);
 

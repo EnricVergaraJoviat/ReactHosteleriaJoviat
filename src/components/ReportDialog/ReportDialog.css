@@ -1,0 +1,26 @@
+.report-dialog { width: min(540px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 1px solid #e7dbc8; border-radius: 24px; background: #fffcf7; color: #202520; box-shadow: 0 30px 100px #0004; }
+.report-dialog::backdrop { background: #101710a8; backdrop-filter: blur(5px); }
+.report-dialog__content { padding: 32px; }
+.report-dialog__eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .14em; color: #86652f; }
+.report-dialog h2 { margin: 12px 0; font-size: clamp(25px, 5vw, 32px); line-height: 1.15; }
+.report-dialog p { font-size: 15px; line-height: 1.6; color: #625e55; }
+.report-dialog__preview { margin: 22px 0 16px; padding: 20px; background: white; border: 1px solid #eee5d8; border-radius: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.report-dialog__preview-cards { grid-column: 1 / -1; display: flex; gap: 12px; }
+.report-dialog__preview-cards span { height: 35px; flex: 1; border-radius: 5px; background: #f2eadc; border-top: 4px solid #b58a46; }
+.report-dialog__preview-bars, .report-dialog__preview-table { display: grid; gap: 8px; }
+.report-dialog__preview-bars i { display: block; height: 10px; background: #287568; border-radius: 2px; }
+.report-dialog__preview-bars i:nth-child(2) { width: 75%; background: #b58a46; }
+.report-dialog__preview-bars i:nth-child(3) { width: 45%; }
+.report-dialog__preview-table span { background: #f2eee7; border-bottom: 1px solid #dfd6c7; }
+.report-dialog__preview-table span:first-child { background: #202520; }
+.report-dialog .report-dialog__includes { font-size: 13px; }
+.report-dialog .report-dialog__error { color: #a23424; }
+.report-dialog .report-dialog__status { color: #287568; min-height: 24px; }
+.report-dialog__actions { display: flex; justify-content: flex-end; gap: 10px; }
+.report-dialog__actions button { padding: 13px 18px; border-radius: 12px; font: inherit; font-weight: 700; cursor: pointer; }
+.report-dialog__cancel { background: transparent; border: 1px solid #d8cbb7; color: #4b463e; }
+.report-dialog__generate { background: #202520; color: #fff8ec; border: 1px solid #202520; }
+.report-dialog__actions button:hover { filter: brightness(.92); }
+.report-dialog__actions button:focus-visible { outline: 3px solid #b58a46; outline-offset: 3px; }
+.report-dialog__actions button:disabled { opacity: .6; cursor: wait; }
+@media (max-width: 480px) { .report-dialog__content { padding: 24px; } .report-dialog__actions { flex-direction: column-reverse; } .report-dialog__actions button { width: 100%; } }

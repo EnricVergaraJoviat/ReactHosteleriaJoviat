@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Header from '../Header/Header';
 import Sidebar from '../Sidebar/Sidebar';
+import ReportDialog from '../ReportDialog/ReportDialog';
 import useIsDesktop from '../../hooks/useIsDesktop';
 import './AppShell.css';
 
@@ -20,6 +21,11 @@ function AppShell({
 }) {
   const isDesktop = useIsDesktop();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isAdministrator || !isAuthenticated) setIsReportOpen(false);
+  }, [isAdministrator, isAuthenticated]);
 
   useEffect(() => {
     if (isDesktop) {
@@ -59,6 +65,10 @@ function AppShell({
           isOpen={isMenuOpen}
           onClose={() => setIsMenuOpen(false)}
           onNavigate={handleNavigate}
+          onGenerateReport={() => {
+            setIsReportOpen(true);
+            setIsMenuOpen(false);
+          }}
           onReportIncident={() => {
             onReportIncident?.();
             if (!isDesktop) {
@@ -67,6 +77,7 @@ function AppShell({
           }}
         />
         <main className="app-shell__content">{children}</main>
+        {isReportOpen && isAdministrator && isAuthenticated && <ReportDialog onClose={() => setIsReportOpen(false)} />}
       </div>
     </div>
   );

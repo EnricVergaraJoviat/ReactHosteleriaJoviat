@@ -7,6 +7,8 @@ const { defineSecret, defineString } = require('firebase-functions/params');
 const logger = require('firebase-functions/logger');
 const nodemailer = require('nodemailer');
 const { fetchGoogleSharePage } = require('./googleShareRedirect');
+const { fetchGoogleMapsTypeLabels } = require('./googlePlaceCategories');
+const { validateRegistration, restaurantFromPlace, approveWorkplaceRegistration } = require('./userRegistrationWorkflow');
 
 initializeApp();
 
@@ -311,12 +313,13 @@ async function sendRestaurantRegistrationApprovedEmail({
   await transporter.sendMail({
     from: fromAddress,
     to: email,
-    subject: 'El teu establiment ja està disponible a Alumni Joviat',
+    subject: 'Ja estàs associat al teu establiment a Alumni Joviat',
     text: [
       `Hola ${safeName},`,
       '',
       `Ja hem donat d'alta ${safeRestaurantName} a Alumni Joviat.`,
-      'A partir d\'ara ja el pots vincular al teu compte des de la plataforma.',
+      'Ja hem associat aquest establiment al teu perfil, de moment sense cap rol.',
+      'Ja pots entrar a la plataforma i editar l’associació des del teu perfil per indicar el rol o els rols que hi tens.',
       '',
       'Salutacions,',
       'Equip Alumni Joviat',
@@ -324,7 +327,8 @@ async function sendRestaurantRegistrationApprovedEmail({
     html: `
       <p>Hola ${safeName},</p>
       <p>Ja hem donat d'alta <strong>${safeRestaurantName}</strong> a Alumni Joviat.</p>
-      <p>A partir d'ara ja el pots vincular al teu compte des de la plataforma.</p>
+      <p>Ja hem associat aquest establiment al teu perfil, de moment sense cap rol.</p>
+      <p>Ja pots entrar a la plataforma i editar l’associació des del teu perfil per indicar el rol o els rols que hi tens.</p>
       <p>Salutacions,<br />Equip Alumni Joviat</p>
     `,
   });
@@ -534,7 +538,9 @@ function extractGoogleMapsLocationBias(urlValue) {
 
   try {
     const parsedUrl = new URL(urlValue);
-    const coordinateMatch = parsedUrl.pathname.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    // The !3d/!4d pair is the place marker; @ is only the map viewport.
+    const markerMatch = parsedUrl.pathname.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+    const coordinateMatch = markerMatch || parsedUrl.pathname.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
 
     if (!coordinateMatch) {
       return null;
@@ -543,7 +549,7 @@ function extractGoogleMapsLocationBias(urlValue) {
     const latitude = Number(coordinateMatch[1]);
     const longitude = Number(coordinateMatch[2]);
 
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
       return null;
     }
 
@@ -553,7 +559,7 @@ function extractGoogleMapsLocationBias(urlValue) {
           latitude,
           longitude,
         },
-        radius: 500,
+        radius: markerMatch ? 100 : 500,
       },
     };
   } catch (error) {}
@@ -685,11 +691,11 @@ async function searchPlaceIdByText(textQuery, apiKey, locationBias = null) {
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'places.id',
+        'X-Goog-FieldMask': 'places.id,places.location',
       },
       body: JSON.stringify({
         textQuery,
-        maxResultCount: 1,
+        maxResultCount: 20,
         ...(locationBias ? { locationBias } : {}),
       }),
     });
@@ -709,7 +715,63 @@ async function searchPlaceIdByText(textQuery, apiKey, locationBias = null) {
   }
 
   const data = await response.json();
-  return data.places?.[0]?.id || '';
+  // A location bias is not a restriction: Google may return a namesake abroad.
+  const nearbyPlaces = (data.places || []).filter((place) =>
+    isWithinGoogleMapsLocation(place.location, locationBias)
+  );
+  return nearbyPlaces.length === 1 ? nearbyPlaces[0].id : '';
+}
+
+function extractGoogleMapsCid(urlValue) {
+  try {
+    const url = new URL(urlValue);
+    const cid = url.searchParams.get('cid');
+    if (cid && /^\d+$/.test(cid)) return BigInt(cid).toString();
+    const feature = decodeURIComponent(url.pathname).match(/!1s0x[0-9a-f]+:(0x[0-9a-f]+)/i);
+    return feature ? BigInt(feature[1]).toString() : '';
+  } catch (error) {
+    return '';
+  }
+}
+
+async function searchPlaceIdByCid(cid, apiKey, locationBias) {
+  let response;
+  try {
+    response = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'places.id,places.googleMapsUri',
+      },
+      body: JSON.stringify({
+        maxResultCount: 20,
+        rankPreference: 'DISTANCE',
+        locationRestriction: locationBias,
+      }),
+    });
+  } catch (error) {
+    throw new HttpsError('unavailable', 'Unable to look up the shared place identity.');
+  }
+  if (!response.ok) {
+    throw new HttpsError('unavailable', 'Shared place identity lookup failed.');
+  }
+  const data = await response.json();
+  return data.places?.find((place) => extractGoogleMapsCid(place.googleMapsUri) === cid)?.id || '';
+}
+
+function isWithinGoogleMapsLocation(location, locationBias) {
+  if (!locationBias || !Number.isFinite(location?.latitude) || !Number.isFinite(location?.longitude)) {
+    return false;
+  }
+  const { center, radius } = locationBias.circle;
+  const radians = (degrees) => degrees * Math.PI / 180;
+  const latitudeDelta = radians(location.latitude - center.latitude);
+  const longitudeDelta = radians(location.longitude - center.longitude);
+  const a = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(radians(center.latitude)) * Math.cos(radians(location.latitude))
+    * Math.sin(longitudeDelta / 2) ** 2;
+  return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0, 1 - a))) <= radius;
 }
 
 exports.getPublicStudentRestaurantGraph = onCall(
@@ -752,13 +814,7 @@ exports.createUserRegistration = onCall(
   },
   async (request) => {
     const db = getFirestore();
-    const email = normalizeEmail(request.data?.email);
-    const name = normalizeOptionalString(request.data?.name);
-    const hasAcceptedLegalTerms = request.data?.hasAcceptedLegalTerms === true;
-
-    if (!email || !name || !hasAcceptedLegalTerms) {
-      throw new HttpsError('invalid-argument', 'Missing registration data.');
-    }
+    const { email, name, googlePlaceId, role } = validateRegistration(request.data);
 
     try {
       const [alumniSnapshot, registrationsSnapshot] = await Promise.all([
@@ -774,9 +830,15 @@ exports.createUserRegistration = onCall(
         throw new HttpsError('failed-precondition', 'A pending access request already exists with this email.');
       }
 
+      const apiKey = GOOGLE_MAPS_API_KEY.value();
+      if (!apiKey) throw new HttpsError('unavailable', 'Google Places is not configured.');
+      const restaurant = restaurantFromPlace(await fetchPlaceDetailsById(googlePlaceId, apiKey));
+
       const registrationReference = await db.collection('UserRegistrations').add({
         Email: email,
         Name: name,
+        Restaurant: restaurant,
+        Role: role,
         LegalTermsAccepted: true,
         LegalTermsAcceptedAt: FieldValue.serverTimestamp(),
         createdAt: FieldValue.serverTimestamp(),
@@ -811,6 +873,7 @@ exports.createStudentAccount = onCall(
   async (request) => {
     const auth = getAuth();
     const db = getFirestore();
+    await assertAdministrator(request, db);
     const rawStudentData = request.data?.studentData ?? {};
     const password = normalizeOptionalString(request.data?.password);
     const deleteRegistrationId = normalizeOptionalString(request.data?.deleteRegistrationId);
@@ -823,6 +886,32 @@ exports.createStudentAccount = onCall(
 
     if (password.length < 6) {
       throw new HttpsError('invalid-argument', 'Password must be at least 6 characters long.');
+    }
+
+    if (deleteRegistrationId) {
+      const registrationSnapshot = await db.collection('UserRegistrations').doc(deleteRegistrationId).get();
+      if (!registrationSnapshot.exists) throw new HttpsError('not-found', 'The request no longer exists.');
+      const registration = registrationSnapshot.data();
+      if (normalizeEmail(registration.Email) !== email || normalizeOptionalString(registration.Name) !== name) {
+        throw new HttpsError('invalid-argument', 'Account data must match the saved request.');
+      }
+      if (registration.Restaurant || registration.Role) {
+        try {
+          return await approveWorkplaceRegistration({
+            db, auth, registrationSnapshot, password,
+            timestamp: () => FieldValue.serverTimestamp(),
+            prepareRestaurant: prepareRegistrationRestaurant,
+            sendWelcome: sendStudentWelcomeEmail,
+            logError: (message, error) => logger.error(message, { error, registrationId: deleteRegistrationId }),
+          });
+        } catch (error) {
+          if (error instanceof HttpsError) throw error;
+          if (error?.code === 'auth/email-already-exists') throw new HttpsError('already-exists', 'An auth user already exists with this email.');
+          logger.error('Unable to approve workplace registration', { error, registrationId: deleteRegistrationId });
+          throw new HttpsError('internal', 'Unable to approve the registration.');
+        }
+      }
+      // Requests submitted before the workplace step keep their original flow.
     }
 
     const alumniCollection = db.collection('Alumni');
@@ -1273,6 +1362,185 @@ async function fetchPlaceDetailsById(placeId, apiKey) {
   };
 }
 
+exports.getGoogleMapsCategories = onCall(
+  { region: 'europe-west1', timeoutSeconds: 30, memory: '256MiB', cors: true, invoker: 'public' },
+  async (request) => {
+    await assertAdministrator(request, getFirestore());
+    const placeId = normalizeOptionalString(request.data?.placeId);
+    if (!placeId || !/^[A-Za-z0-9_-]{1,255}$/.test(placeId)) {
+      throw new HttpsError('invalid-argument', 'A valid placeId is required.');
+    }
+    const apiKey = GOOGLE_MAPS_API_KEY.value();
+    if (!apiKey) {
+      throw new HttpsError('failed-precondition', 'GOOGLE_MAPS_API_KEY missing.');
+    }
+    try {
+      return { googleMapsTypeLabels: await fetchGoogleMapsTypeLabels(placeId, apiKey) };
+    } catch (error) {
+      logger.warn('Unable to load Google Maps categories', { placeId, message: error.message });
+      throw new HttpsError('unavailable', 'Unable to load Google Maps categories.');
+    }
+  }
+);
+
+async function copyGooglePlacePhoto(data) {
+  let photoName = String(data.photoName || '').trim();
+  const restaurantName = String(data.restaurantName || '').trim();
+  const googlePlaceId = String(data.googlePlaceId || '').trim();
+
+  const apiKey = GOOGLE_MAPS_API_KEY.value();
+  if (!apiKey) {
+    throw new HttpsError('failed-precondition', 'GOOGLE_MAPS_API_KEY missing.');
+  }
+
+  if (!photoName && googlePlaceId) {
+    const detailsUrl = `https://places.googleapis.com/v1/places/${encodeURIComponent(googlePlaceId)}`;
+
+    let detailsResponse;
+    try {
+      detailsResponse = await fetch(detailsUrl, {
+        headers: {
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask': 'photos',
+        },
+      });
+    } catch (error) {
+      logger.error('Google Place details fetch failed', { googlePlaceId, error });
+      throw new HttpsError('unavailable', 'Unable to fetch Google Place details.');
+    }
+
+    if (!detailsResponse.ok) {
+      const bodyText = await detailsResponse.text().catch(() => '');
+      logger.error('Google Place details response failed', {
+        googlePlaceId,
+        status: detailsResponse.status,
+        bodyText,
+      });
+      throw new HttpsError('unavailable', 'Google Place details request failed.');
+    }
+
+    const details = await detailsResponse.json();
+    photoName = details.photos?.[0]?.name || '';
+  }
+
+  if (!photoName || !photoName.startsWith('places/')) {
+    throw new HttpsError('invalid-argument', 'photoName invalid.');
+  }
+
+  const photoUrl = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=1200&skipHttpRedirect=true&key=${apiKey}`;
+
+  let metadataResponse;
+  try {
+    metadataResponse = await fetch(photoUrl, {
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+  } catch (error) {
+    logger.error('Google Place Photo metadata fetch failed', { photoName, error });
+    throw new HttpsError('unavailable', 'Unable to fetch Google Place photo metadata.');
+  }
+
+  if (!metadataResponse.ok) {
+    const bodyText = await metadataResponse.text().catch(() => '');
+    logger.error('Google Place Photo metadata response failed', {
+      photoName,
+      status: metadataResponse.status,
+      bodyText,
+    });
+    throw new HttpsError('unavailable', 'Google Place photo metadata request failed.');
+  }
+
+  const metadata = await metadataResponse.json();
+  const directDownloadUrl = metadata.photoUri;
+
+  if (!directDownloadUrl) {
+    logger.error('Google Place Photo metadata missing photoUri', { photoName, metadata });
+    throw new HttpsError('internal', 'Google Place photo URI missing.');
+  }
+
+  let imageResponse;
+  try {
+    imageResponse = await fetch(directDownloadUrl);
+  } catch (error) {
+    logger.error('Google Place Photo binary fetch failed', { photoName, error });
+    throw new HttpsError('unavailable', 'Unable to download Google Place photo.');
+  }
+
+  if (!imageResponse.ok) {
+    const bodyText = await imageResponse.text().catch(() => '');
+    logger.error('Google Place Photo binary response failed', {
+      photoName,
+      status: imageResponse.status,
+      bodyText,
+    });
+    throw new HttpsError('unavailable', 'Google Place photo download failed.');
+  }
+
+  const arrayBuffer = await imageResponse.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+  const extension = extractImageExtension(contentType);
+  const safeBaseName = normalizeFileName(
+    googlePlaceId || restaurantName || photoName.split('/').pop() || `restaurant-${Date.now()}`
+  ) || `restaurant-${Date.now()}`;
+  const storagePath = `restaurantes/${Date.now()}-${safeBaseName}.${extension}`;
+
+  const bucket = getStorage().bucket();
+  const file = bucket.file(storagePath);
+
+  try {
+    await file.save(buffer, {
+      resumable: false,
+      metadata: {
+        contentType,
+      },
+    });
+  } catch (error) {
+    logger.error('Firebase Storage save failed', { photoName, storagePath, error });
+    throw new HttpsError('internal', 'Unable to store Google Place photo.');
+  }
+
+  try {
+    await file.makePublic();
+  } catch (error) {
+    logger.warn('Firebase Storage makePublic failed, continuing with signed URL fallback', {
+      storagePath,
+      error,
+    });
+    const [signedUrl] = await file.getSignedUrl({
+      action: 'read',
+      expires: '03-01-2500',
+    });
+
+    return {
+      photoUrl: signedUrl,
+      storagePath,
+    };
+  }
+
+  return {
+    photoUrl: `https://storage.googleapis.com/${bucket.name}/${encodeURIComponent(storagePath)}`,
+    storagePath,
+  };
+}
+
+async function prepareRegistrationRestaurant(googlePlaceId) {
+  const apiKey = GOOGLE_MAPS_API_KEY.value();
+  if (!apiKey) throw new HttpsError('unavailable', 'Google Places is not configured.');
+  const place = await fetchPlaceDetailsById(googlePlaceId, apiKey);
+  try { place.googleMapsTypeLabels = await fetchGoogleMapsTypeLabels(googlePlaceId, apiKey); }
+  catch (error) { logger.warn('Unable to fetch registration restaurant category', { googlePlaceId, error }); }
+  let photo;
+  if (place.googlePhotoName) {
+    photo = await copyGooglePlacePhoto({ googlePlaceId, photoName: place.googlePhotoName, restaurantName: place.name });
+  }
+  return {
+    data: restaurantFromPlace({ ...place, photoUrl: photo?.photoUrl || '' }),
+    cleanup: photo ? () => getStorage().bucket().file(photo.storagePath).delete() : null,
+  };
+}
+
 exports.copyPlacePhotoToStorage = onCall(
   {
     region: 'europe-west1',
@@ -1281,147 +1549,7 @@ exports.copyPlacePhotoToStorage = onCall(
     cors: true,
     invoker: 'public',
   },
-  async (request) => {
-    let photoName = String(request.data?.photoName || '').trim();
-    const restaurantName = String(request.data?.restaurantName || '').trim();
-    const googlePlaceId = String(request.data?.googlePlaceId || '').trim();
-
-    const apiKey = GOOGLE_MAPS_API_KEY.value();
-    if (!apiKey) {
-      throw new HttpsError('failed-precondition', 'GOOGLE_MAPS_API_KEY missing.');
-    }
-
-    if (!photoName && googlePlaceId) {
-      const detailsUrl = `https://places.googleapis.com/v1/places/${encodeURIComponent(googlePlaceId)}`;
-
-      let detailsResponse;
-      try {
-        detailsResponse = await fetch(detailsUrl, {
-          headers: {
-            'X-Goog-Api-Key': apiKey,
-            'X-Goog-FieldMask': 'photos',
-          },
-        });
-      } catch (error) {
-        logger.error('Google Place details fetch failed', { googlePlaceId, error });
-        throw new HttpsError('unavailable', 'Unable to fetch Google Place details.');
-      }
-
-      if (!detailsResponse.ok) {
-        const bodyText = await detailsResponse.text().catch(() => '');
-        logger.error('Google Place details response failed', {
-          googlePlaceId,
-          status: detailsResponse.status,
-          bodyText,
-        });
-        throw new HttpsError('unavailable', 'Google Place details request failed.');
-      }
-
-      const details = await detailsResponse.json();
-      photoName = details.photos?.[0]?.name || '';
-    }
-
-    if (!photoName || !photoName.startsWith('places/')) {
-      throw new HttpsError('invalid-argument', 'photoName invalid.');
-    }
-
-    const photoUrl = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=1200&skipHttpRedirect=true&key=${apiKey}`;
-
-    let metadataResponse;
-    try {
-      metadataResponse = await fetch(photoUrl, {
-        headers: {
-          Accept: 'application/json',
-        },
-      });
-    } catch (error) {
-      logger.error('Google Place Photo metadata fetch failed', { photoName, error });
-      throw new HttpsError('unavailable', 'Unable to fetch Google Place photo metadata.');
-    }
-
-    if (!metadataResponse.ok) {
-      const bodyText = await metadataResponse.text().catch(() => '');
-      logger.error('Google Place Photo metadata response failed', {
-        photoName,
-        status: metadataResponse.status,
-        bodyText,
-      });
-      throw new HttpsError('unavailable', 'Google Place photo metadata request failed.');
-    }
-
-    const metadata = await metadataResponse.json();
-    const directDownloadUrl = metadata.photoUri;
-
-    if (!directDownloadUrl) {
-      logger.error('Google Place Photo metadata missing photoUri', { photoName, metadata });
-      throw new HttpsError('internal', 'Google Place photo URI missing.');
-    }
-
-    let imageResponse;
-    try {
-      imageResponse = await fetch(directDownloadUrl);
-    } catch (error) {
-      logger.error('Google Place Photo binary fetch failed', { photoName, error });
-      throw new HttpsError('unavailable', 'Unable to download Google Place photo.');
-    }
-
-    if (!imageResponse.ok) {
-      const bodyText = await imageResponse.text().catch(() => '');
-      logger.error('Google Place Photo binary response failed', {
-        photoName,
-        status: imageResponse.status,
-        bodyText,
-      });
-      throw new HttpsError('unavailable', 'Google Place photo download failed.');
-    }
-
-    const arrayBuffer = await imageResponse.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
-    const extension = extractImageExtension(contentType);
-    const safeBaseName = normalizeFileName(
-      googlePlaceId || restaurantName || photoName.split('/').pop() || `restaurant-${Date.now()}`
-    ) || `restaurant-${Date.now()}`;
-    const storagePath = `restaurantes/${Date.now()}-${safeBaseName}.${extension}`;
-
-    const bucket = getStorage().bucket();
-    const file = bucket.file(storagePath);
-
-    try {
-      await file.save(buffer, {
-        resumable: false,
-        metadata: {
-          contentType,
-        },
-      });
-    } catch (error) {
-      logger.error('Firebase Storage save failed', { photoName, storagePath, error });
-      throw new HttpsError('internal', 'Unable to store Google Place photo.');
-    }
-
-    try {
-      await file.makePublic();
-    } catch (error) {
-      logger.warn('Firebase Storage makePublic failed, continuing with signed URL fallback', {
-        storagePath,
-        error,
-      });
-      const [signedUrl] = await file.getSignedUrl({
-        action: 'read',
-        expires: '03-01-2500',
-      });
-
-      return {
-        photoUrl: signedUrl,
-        storagePath,
-      };
-    }
-
-    return {
-      photoUrl: `https://storage.googleapis.com/${bucket.name}/${encodeURIComponent(storagePath)}`,
-      storagePath,
-    };
-  }
+  async (request) => copyGooglePlacePhoto(request.data ?? {})
 );
 
 exports.resolveGoogleMapsShareLink = onCall(
@@ -1501,13 +1629,28 @@ exports.resolveGoogleMapsShareLink = onCall(
     let placeId = [
       finalUrl,
       canonicalUrl,
-      html,
+      sharedUrl,
     ]
       .map((value) => extractPlaceIdFromText(value))
       .find(Boolean) || '';
 
+    const locationBias = extractGoogleMapsLocationBias(finalUrl)
+      || extractGoogleMapsLocationBias(canonicalUrl);
+    const cid = extractGoogleMapsCid(finalUrl) || extractGoogleMapsCid(canonicalUrl);
+    if (!placeId && cid && locationBias) {
+      placeId = await searchPlaceIdByCid(cid, apiKey, locationBias);
+      if (!placeId) {
+        throw new HttpsError('failed-precondition', 'The shared place identity could not be matched.', {
+          reason: 'google-place-unverified',
+        });
+      }
+    }
     if (!placeId) {
-      const locationBias = extractGoogleMapsLocationBias(canonicalUrl || finalUrl);
+      if (!locationBias) {
+        throw new HttpsError('failed-precondition', 'The shared place cannot be verified.', {
+          reason: 'google-place-unverified',
+        });
+      }
       const candidateQueries = collectCandidateQueries({
         html,
         finalUrl,
@@ -1534,10 +1677,19 @@ exports.resolveGoogleMapsShareLink = onCall(
     }
 
     const details = await fetchPlaceDetailsById(placeId, apiKey);
+    if (locationBias && !isWithinGoogleMapsLocation(details, locationBias)) {
+      throw new HttpsError('failed-precondition', 'The resolved place does not match the shared location.', {
+        reason: 'google-place-unverified',
+      });
+    }
 
-    return {
-      finalUrl,
-      ...details,
-    };
+    let googleMapsTypeLabels = {};
+    try {
+      googleMapsTypeLabels = await fetchGoogleMapsTypeLabels(placeId, apiKey);
+    } catch (error) {
+      // A temporary category failure must not prevent importing the verified place.
+      logger.warn('Unable to load shared place categories', { placeId, message: error.message });
+    }
+    return { finalUrl, ...details, googleMapsTypeLabels };
   }
 );

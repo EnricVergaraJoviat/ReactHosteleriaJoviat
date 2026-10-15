@@ -33,7 +33,8 @@ service cloud.firestore {
 
     match /RestaruantsRegistrations/{registrationId} {
       allow read, update, delete: if isSignedIn();
-      allow create: if true;
+      allow create: if request.resource.data.Reason is string
+        && request.resource.data.Reason.matches('(?s).*[^\\s].*');
     }
 
     match /{document=**} {

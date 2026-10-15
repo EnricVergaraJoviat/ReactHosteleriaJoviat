@@ -3,7 +3,7 @@ import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import { loadStudentRestaurantGraph } from '../../helpers/firestoreData';
 import { joviatMapIcon } from '../../helpers/joviatMapIcon';
 import { NEUTRAL_MAP_TILE_ATTRIBUTION, NEUTRAL_MAP_TILE_URL } from '../../helpers/mapTiles';
-import { getRestaurantPrimaryType, getTranslatedPlaceType } from '../../helpers/placeTypes';
+import { getRestaurantCategoryLabel } from '../../helpers/placeTypes';
 import { formatPromotionYear } from '../../helpers/promotionYears';
 import { translateRestaurantRoles } from '../../helpers/restaurantRoles';
 import { deleteRestaurant } from '../../helpers/restaurantDeletion';
@@ -307,10 +307,7 @@ function RestaurantDetailScreen({
   }
 
   const coordinates = parseLocation(restaurant.Location);
-  const restaurantPrimaryType = getRestaurantPrimaryType(restaurant);
-  const categoryLabel = restaurantPrimaryType
-    ? getTranslatedPlaceType(restaurantPrimaryType, language)
-    : '';
+  const categoryLabel = getRestaurantCategoryLabel(restaurant, language);
 
   return (
     <section className="restaurant-detail">

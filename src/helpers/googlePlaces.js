@@ -1,3 +1,7 @@
+import { httpsCallable } from 'firebase/functions';
+import { functions } from './firebase';
+
+const getGoogleMapsCategories = httpsCallable(functions, 'getGoogleMapsCategories');
 let googlePlacesLoaderPromise = null;
 
 function loadMapsBootstrap(apiKey) {
@@ -188,7 +192,7 @@ async function searchRestaurants(query) {
   return (response.places ?? []).map(normalizeSearchResult);
 }
 
-async function fetchPlaceDetails(placeId) {
+async function fetchPlaceDetails(placeId, { includeCategories = true } = {}) {
   if (!placeId) {
     throw new Error('missing-place-id');
   }
@@ -214,7 +218,16 @@ async function fetchPlaceDetails(placeId) {
     ],
   });
 
-  return normalizePlaceDetails(place);
+  let googleMapsTypeLabels = {};
+  try {
+    if (includeCategories) {
+      const response = await getGoogleMapsCategories({ placeId });
+      googleMapsTypeLabels = response.data?.googleMapsTypeLabels ?? {};
+    }
+  } catch (error) {
+    console.warn('Google Maps category unavailable; using the primary type.', error?.code);
+  }
+  return { ...normalizePlaceDetails(place), googleMapsTypeLabels };
 }
 
 export { fetchPlaceDetails, loadGooglePlacesApi, searchRestaurants };

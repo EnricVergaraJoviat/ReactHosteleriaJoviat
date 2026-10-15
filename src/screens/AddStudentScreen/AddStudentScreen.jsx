@@ -351,6 +351,7 @@ function AddStudentScreen({
   const [restaurantError, setRestaurantError] = useState('');
   const [areStudyOptionsOpen, setAreStudyOptionsOpen] = useState(false);
   const [restaurantRequestMapsUrl, setRestaurantRequestMapsUrl] = useState('');
+  const [restaurantRequestReason, setRestaurantRequestReason] = useState('');
   const [restaurantRequestError, setRestaurantRequestError] = useState('');
   const [isRestaurantRequestDialogOpen, setIsRestaurantRequestDialogOpen] = useState(false);
   const [isRestaurantRequestConfirmationOpen, setIsRestaurantRequestConfirmationOpen] = useState(false);
@@ -438,6 +439,7 @@ function AddStudentScreen({
     setRestaurantError('');
     setAreStudyOptionsOpen(false);
     setRestaurantRequestMapsUrl('');
+    setRestaurantRequestReason('');
     setRestaurantRequestError('');
     setIsRestaurantRequestDialogOpen(false);
     setIsRestaurantRequestConfirmationOpen(false);
@@ -783,6 +785,7 @@ function AddStudentScreen({
 
   function handleOpenRestaurantRequestDialog() {
     setRestaurantRequestMapsUrl('');
+    setRestaurantRequestReason('');
     setRestaurantRequestError('');
     setIsRestaurantRequestConfirmationOpen(false);
     setIsRestaurantRequestDialogOpen(true);
@@ -810,6 +813,11 @@ function AddStudentScreen({
       return;
     }
 
+    if (!restaurantRequestReason.trim()) {
+      setRestaurantRequestError(t('forms.restaurantRequestReasonRequired'));
+      return;
+    }
+
     setIsSubmittingRestaurantRequest(true);
 
     try {
@@ -830,12 +838,14 @@ function AddStudentScreen({
         Name: trimmedName,
         Email: trimmedEmail,
         Description: '',
+        Reason: restaurantRequestReason.trim(),
         GoogleMapsShareUrl: trimmedMapsUrl,
         id_alumni: student?.id ? doc(db, 'Alumni', student.id) : null,
         createdAt: serverTimestamp(),
       });
 
       setRestaurantRequestMapsUrl('');
+      setRestaurantRequestReason('');
       setIsRestaurantRequestDialogOpen(false);
       setIsRestaurantRequestConfirmationOpen(true);
     } catch (error) {
@@ -1983,7 +1993,7 @@ function AddStudentScreen({
       {isRestaurantRequestDialogOpen ? (
         <div className="add-student-form__dialog-layer">
           <div
-            className="add-student-form__dialog"
+            className="add-student-form__dialog add-student-form__dialog--request"
             role="dialog"
             aria-modal="true"
             aria-labelledby="restaurant-request-title"
@@ -2004,6 +2014,19 @@ function AddStudentScreen({
                 }}
               />
               <small>{t('forms.restaurantRequestHelp')}</small>
+            </label>
+            <label className="add-student-form__field" htmlFor="restaurant-request-reason">
+              <span>{t('forms.restaurantRequestReason')}</span>
+              <textarea
+                id="restaurant-request-reason"
+                value={restaurantRequestReason}
+                required
+                rows={3}
+                aria-describedby="restaurant-request-reason-help"
+                disabled={isSubmittingRestaurantRequest}
+                onChange={(event) => setRestaurantRequestReason(event.target.value)}
+              />
+              <small id="restaurant-request-reason-help">{t('forms.restaurantRequestReasonHelp')}</small>
             </label>
             <figure className="add-student-form__request-example">
               <img

@@ -1,0 +1,42 @@
+.view-mode-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  max-width: 1100px;
+  margin: 0 auto 1.5rem;
+}
+
+.view-mode-toggle__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.75rem;
+  border: 1px solid rgba(109, 85, 50, 0.18);
+  border-radius: 999px;
+  padding: 0.6rem 0.9rem;
+  background: rgba(255, 255, 255, 0.8);
+  color: #3f372e;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.view-mode-toggle__button[aria-pressed='true'] {
+  background: #111;
+  border-color: #111;
+  color: #fff;
+}
+
+.view-mode-toggle__button:focus-visible {
+  outline: 2px solid #6d5532;
+  outline-offset: 3px;
+}
+
+.view-mode-toggle__button svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
